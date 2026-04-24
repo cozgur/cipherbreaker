@@ -1,0 +1,8 @@
+node_modules
+.expo
+dist
+web-build
+reference
+fonts-download
+assets
+package-lock.json
