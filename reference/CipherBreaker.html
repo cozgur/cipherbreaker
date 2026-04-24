@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>CipherBreaker — Design Canvas</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@700;900&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@700&display=swap" rel="stylesheet"/>
+<style>
+  html, body { margin: 0; padding: 0; background: #f0eee9; font-family: -apple-system, system-ui, sans-serif; }
+  * { box-sizing: border-box; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<script type="text/babel" src="design-canvas.jsx"></script>
+<script type="text/babel" src="ios-frame.jsx"></script>
+<script type="text/babel" src="tokens.jsx"></script>
+<script type="text/babel" src="modes.jsx"></script>
+<script type="text/babel" src="screens-home.jsx"></script>
+<script type="text/babel" src="screens-match.jsx"></script>
+<script type="text/babel" src="screens-aux.jsx"></script>
+
+<script type="text/babel" data-presets="react">
+// ─────────────────────────────────────────────────────────────
+// Phone wrapper — iPhone 15 Pro sized to 390x844
+// ─────────────────────────────────────────────────────────────
+const PH_W = 390, PH_H = 844;
+
+function Phone({ children }) {
+  return (
+    <div style={{
+      width: PH_W, height: PH_H,
+      borderRadius: 52, overflow: 'hidden', position: 'relative',
+      background: '#000',
+      boxShadow: '0 40px 80px rgba(0,0,0,0.35), 0 0 0 8px #18181f, 0 0 0 9px #2a2a36',
+    }}>
+      <CBIsland/>
+      {children}
+    </div>
+  );
+}
+
+// Match screen with the mode-switcher Tweak
+function MatchWithTweak() {
+  const [mode, setMode] = React.useState(() => {
+    const v = parseInt(localStorage.getItem('cb-match-mode') || '1', 10);
+    return isNaN(v) ? 1 : v;
+  });
+
+  const setM = (m) => {
+    setMode(m);
+    localStorage.setItem('cb-match-mode', String(m));
+    window.parent?.postMessage({type:'__edit_mode_set_keys', edits:{ matchMode: m }}, '*');
+  };
+
+  React.useEffect(() => {
+    const handler = (e) => {
+      if (!e.data) return;
+      if (e.data.type === '__activate_edit_mode') setTweakOpen(true);
+      if (e.data.type === '__deactivate_edit_mode') setTweakOpen(false);
+    };
+    window.addEventListener('message', handler);
+    window.parent?.postMessage({ type:'__edit_mode_available' }, '*');
+    return () => window.removeEventListener('message', handler);
+  }, []);
+  const [tweakOpen, setTweakOpen] = React.useState(false);
+
+  return (
+    <div style={{ position: 'relative', width: PH_W, height: PH_H }}>
+      <Phone>
+        <MatchScreen mode={mode}/>
+      </Phone>
+      {tweakOpen && (
+        <div style={{
+          position: 'absolute', right: -200, top: 20, width: 180,
+          background: '#fff', borderRadius: 8, padding: 12,
+          boxShadow: '0 8px 28px rgba(0,0,0,0.15)', border: '1px solid rgba(0,0,0,0.06)',
+          fontFamily: 'Inter, system-ui', fontSize: 12, zIndex: 100,
+        }}>
+          <div style={{ fontWeight: 700, marginBottom: 8, fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#333' }}>Tweaks · Match Mode</div>
+          {MODES.map(m => (
+            <button key={m.id} onClick={() => setM(m.id)} style={{
+              display: 'block', width: '100%', textAlign: 'left',
+              padding: '6px 8px', marginBottom: 2, borderRadius: 5, cursor: 'pointer',
+              border: 'none', fontSize: 12, fontFamily: 'inherit',
+              background: m.id === mode ? '#8b5cf6' : 'transparent',
+              color: m.id === mode ? '#fff' : '#333',
+              fontWeight: m.id === mode ? 600 : 400,
+            }}>{m.id}. {m.name}</button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+const TWEAK_DEFAULS = /*EDITMODE-BEGIN*/{
+  "matchMode": 1
+}/*EDITMODE-END*/;
+
+function App() {
+  return (
+    <DesignCanvas>
+      <DCSection id="onboarding" title="Onboarding" subtitle="First-launch, swipeable, skippable">
+        <DCArtboard id="ob1" label="1 · Crack the code" width={PH_W} height={PH_H}><Phone><OnboardingScreen step={1}/></Phone></DCArtboard>
+        <DCArtboard id="ob2" label="2 · Climb the ranks" width={PH_W} height={PH_H}><Phone><OnboardingScreen step={2}/></Phone></DCArtboard>
+        <DCArtboard id="ob3" label="3 · Start Playing" width={PH_W} height={PH_H}><Phone><OnboardingScreen step={3}/></Phone></DCArtboard>
+      </DCSection>
+
+      <DCSection id="home" title="Home" subtitle="Main hub · 7 mode cards · Classic + Advanced">
+        <DCArtboard id="hm1" label="Home · full" width={PH_W} height={PH_H}><Phone><HomeScreen/></Phone></DCArtboard>
+        <DCArtboard id="shop" label="Shop · Get Tokens" width={PH_W} height={PH_H}><Phone><ShopScreen/></Phone></DCArtboard>
+      </DCSection>
+
+      <DCSection id="flow" title="Play Flow" subtitle="Matchmaking → Secret Setup → Match">
+        <DCArtboard id="mm1" label="Matchmaking · searching" width={PH_W} height={PH_H}><Phone><MatchmakingScreen resolved={false}/></Phone></DCArtboard>
+        <DCArtboard id="mm2" label="Matchmaking · opponent found" width={PH_W} height={PH_H}><Phone><MatchmakingScreen resolved={true}/></Phone></DCArtboard>
+        <DCArtboard id="ss" label="Secret Setup" width={PH_W} height={PH_H}><Phone><SecretSetupScreen filled={[4,7,1,null]}/></Phone></DCArtboard>
+      </DCSection>
+
+      <DCSection id="match" title="Match Screen" subtitle="Mode 1 default. Use Tweaks toggle to switch between all 7 modes.">
+        <DCArtboard id="match-live" label="Match · live (Tweaks: mode switcher)" width={PH_W} height={PH_H}><MatchWithTweak/></DCArtboard>
+        <DCArtboard id="match-blackout" label="Match · Mode 5 Blackout" width={PH_W} height={PH_H}><Phone><MatchScreen mode={5}/></Phone></DCArtboard>
+      </DCSection>
+
+      <DCSection id="results" title="Match Results" subtitle="Victory · Draw · Defeat · Stalemate">
+        <DCArtboard id="vic" label="Victory" width={PH_W} height={PH_H}><Phone><ResultScreen outcome="victory"/></Phone></DCArtboard>
+        <DCArtboard id="drw" label="Draw" width={PH_W} height={PH_H}><Phone><ResultScreen outcome="draw"/></Phone></DCArtboard>
+        <DCArtboard id="def" label="Defeat" width={PH_W} height={PH_H}><Phone><ResultScreen outcome="defeat"/></Phone></DCArtboard>
+        <DCArtboard id="stm" label="Stalemate" width={PH_W} height={PH_H}><Phone><ResultScreen outcome="stalemate"/></Phone></DCArtboard>
+      </DCSection>
+
+      <DCSection id="ancillary" title="Ancillary" subtitle="Profile · Ad Watch · Low-balance modal">
+        <DCArtboard id="prof" label="Profile" width={PH_W} height={PH_H}><Phone><ProfileScreen/></Phone></DCArtboard>
+        <DCArtboard id="adw" label="Ad Watch" width={PH_W} height={PH_H}><Phone><AdWatchScreen/></Phone></DCArtboard>
+        <DCArtboard id="insuf" label="Insufficient Tokens · Modal" width={PH_W} height={PH_H}><Phone><InsufficientTokensScreen/></Phone></DCArtboard>
+      </DCSection>
+    </DesignCanvas>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
