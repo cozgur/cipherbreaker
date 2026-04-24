@@ -1,0 +1,237 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`AmbientBackground honours a custom tint + intensity 1`] = `
+<View
+  pointerEvents="none"
+  style={
+    {
+      "bottom": 0,
+      "left": 0,
+      "position": "absolute",
+      "right": 0,
+      "top": 0,
+    }
+  }
+>
+  <ViewManagerAdapter_ExpoLinearGradient
+    colors={
+      [
+        4278848286,
+        4278650902,
+      ]
+    }
+    endPoint={
+      [
+        0.5,
+        1,
+      ]
+    }
+    startPoint={
+      [
+        0.5,
+        0,
+      ]
+    }
+    style={
+      {
+        "bottom": 0,
+        "left": 0,
+        "position": "absolute",
+        "right": 0,
+        "top": 0,
+      }
+    }
+  />
+  <RNSVGSvgView
+    bbHeight="100%"
+    bbWidth="100%"
+    focusable={false}
+    style={
+      [
+        {
+          "backgroundColor": "transparent",
+          "borderWidth": 0,
+        },
+        {
+          "bottom": 0,
+          "left": 0,
+          "position": "absolute",
+          "right": 0,
+          "top": 0,
+        },
+        {
+          "flex": 0,
+          "height": "100%",
+          "width": "100%",
+        },
+      ]
+    }
+  >
+    <RNSVGGroup
+      fill={
+        {
+          "payload": 4278190080,
+          "type": 0,
+        }
+      }
+    >
+      <RNSVGDefs>
+        <RNSVGRadialGradient
+          cx="50%"
+          cy="0%"
+          fx="50%"
+          fy="0%"
+          gradient={
+            [
+              0,
+              1308344100,
+              0.6,
+              16498468,
+            ]
+          }
+          gradientTransform={null}
+          gradientUnits={0}
+          name="amb"
+          rx="60%"
+          ry="60%"
+        />
+      </RNSVGDefs>
+      <RNSVGRect
+        fill={
+          {
+            "brushRef": "amb",
+            "type": 1,
+          }
+        }
+        height="100%"
+        propList={
+          [
+            "fill",
+          ]
+        }
+        width="100%"
+        x="0"
+        y="0"
+      />
+    </RNSVGGroup>
+  </RNSVGSvgView>
+</View>
+`;
+
+exports[`AmbientBackground renders with default violet tint 1`] = `
+<View
+  pointerEvents="none"
+  style={
+    {
+      "bottom": 0,
+      "left": 0,
+      "position": "absolute",
+      "right": 0,
+      "top": 0,
+    }
+  }
+>
+  <ViewManagerAdapter_ExpoLinearGradient
+    colors={
+      [
+        4278848286,
+        4278650902,
+      ]
+    }
+    endPoint={
+      [
+        0.5,
+        1,
+      ]
+    }
+    startPoint={
+      [
+        0.5,
+        0,
+      ]
+    }
+    style={
+      {
+        "bottom": 0,
+        "left": 0,
+        "position": "absolute",
+        "right": 0,
+        "top": 0,
+      }
+    }
+  />
+  <RNSVGSvgView
+    bbHeight="100%"
+    bbWidth="100%"
+    focusable={false}
+    style={
+      [
+        {
+          "backgroundColor": "transparent",
+          "borderWidth": 0,
+        },
+        {
+          "bottom": 0,
+          "left": 0,
+          "position": "absolute",
+          "right": 0,
+          "top": 0,
+        },
+        {
+          "flex": 0,
+          "height": "100%",
+          "width": "100%",
+        },
+      ]
+    }
+  >
+    <RNSVGGroup
+      fill={
+        {
+          "payload": 4278190080,
+          "type": 0,
+        }
+      }
+    >
+      <RNSVGDefs>
+        <RNSVGRadialGradient
+          cx="50%"
+          cy="0%"
+          fx="50%"
+          fy="0%"
+          gradient={
+            [
+              0,
+              780885238,
+              0.6,
+              9133302,
+            ]
+          }
+          gradientTransform={null}
+          gradientUnits={0}
+          name="amb"
+          rx="60%"
+          ry="60%"
+        />
+      </RNSVGDefs>
+      <RNSVGRect
+        fill={
+          {
+            "brushRef": "amb",
+            "type": 1,
+          }
+        }
+        height="100%"
+        propList={
+          [
+            "fill",
+          ]
+        }
+        width="100%"
+        x="0"
+        y="0"
+      />
+    </RNSVGGroup>
+  </RNSVGSvgView>
+</View>
+`;

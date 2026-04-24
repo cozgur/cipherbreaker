@@ -1,0 +1,632 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`ModeIcon renders the blackout glyph 1`] = `
+<RNSVGSvgView
+  align="xMidYMid"
+  bbHeight={44}
+  bbWidth={44}
+  focusable={false}
+  height={44}
+  meetOrSlice={0}
+  minX={0}
+  minY={0}
+  style={
+    [
+      {
+        "backgroundColor": "transparent",
+        "borderWidth": 0,
+      },
+      {
+        "flex": 0,
+        "height": 44,
+        "width": 44,
+      },
+    ]
+  }
+  vbHeight={44}
+  vbWidth={44}
+  width={44}
+>
+  <RNSVGGroup
+    fill={
+      {
+        "payload": 4278190080,
+        "type": 0,
+      }
+    }
+  >
+    <RNSVGPath
+      d="M22 14c-6 0-11 8-11 8s5 8 11 8 11-8 11-8-5-8-11-8z"
+      fill={null}
+      propList={
+        [
+          "fill",
+          "stroke",
+          "strokeWidth",
+          "strokeLinecap",
+          "strokeLinejoin",
+        ]
+      }
+      stroke={
+        {
+          "payload": 4294967295,
+          "type": 0,
+        }
+      }
+      strokeLinecap={1}
+      strokeLinejoin={1}
+      strokeWidth="2.2"
+    />
+    <RNSVGCircle
+      cx="22"
+      cy="22"
+      fill={
+        {
+          "payload": 4294967295,
+          "type": 0,
+        }
+      }
+      propList={
+        [
+          "fill",
+        ]
+      }
+      r="3.2"
+    />
+    <RNSVGPath
+      d="M10 10l24 24"
+      fill={
+        {
+          "payload": 4278190080,
+          "type": 0,
+        }
+      }
+      propList={
+        [
+          "stroke",
+          "strokeWidth",
+        ]
+      }
+      stroke={
+        {
+          "payload": 4294967295,
+          "type": 0,
+        }
+      }
+      strokeWidth="2.5"
+    />
+  </RNSVGGroup>
+</RNSVGSvgView>
+`;
+
+exports[`ModeIcon renders the blitz glyph 1`] = `
+<RNSVGSvgView
+  align="xMidYMid"
+  bbHeight={44}
+  bbWidth={44}
+  focusable={false}
+  height={44}
+  meetOrSlice={0}
+  minX={0}
+  minY={0}
+  style={
+    [
+      {
+        "backgroundColor": "transparent",
+        "borderWidth": 0,
+      },
+      {
+        "flex": 0,
+        "height": 44,
+        "width": 44,
+      },
+    ]
+  }
+  vbHeight={44}
+  vbWidth={44}
+  width={44}
+>
+  <RNSVGGroup
+    fill={
+      {
+        "payload": 4278190080,
+        "type": 0,
+      }
+    }
+  >
+    <RNSVGCircle
+      cx="22"
+      cy="24"
+      fill={null}
+      propList={
+        [
+          "fill",
+          "stroke",
+          "strokeWidth",
+        ]
+      }
+      r="12"
+      stroke={
+        {
+          "payload": 4294967295,
+          "type": 0,
+        }
+      }
+      strokeWidth="2.2"
+    />
+    <RNSVGPath
+      d="M22 17v7l4 3"
+      fill={null}
+      propList={
+        [
+          "fill",
+          "stroke",
+          "strokeWidth",
+          "strokeLinecap",
+          "strokeLinejoin",
+        ]
+      }
+      stroke={
+        {
+          "payload": 4294967295,
+          "type": 0,
+        }
+      }
+      strokeLinecap={1}
+      strokeLinejoin={1}
+      strokeWidth="2.2"
+    />
+    <RNSVGPath
+      d="M18 8h8M22 8v4"
+      fill={null}
+      propList={
+        [
+          "fill",
+          "stroke",
+          "strokeWidth",
+          "strokeLinecap",
+        ]
+      }
+      stroke={
+        {
+          "payload": 4294967295,
+          "type": 0,
+        }
+      }
+      strokeLinecap={1}
+      strokeWidth="2.2"
+    />
+  </RNSVGGroup>
+</RNSVGSvgView>
+`;
+
+exports[`ModeIcon renders the color-match glyph 1`] = `
+<RNSVGSvgView
+  align="xMidYMid"
+  bbHeight={44}
+  bbWidth={44}
+  focusable={false}
+  height={44}
+  meetOrSlice={0}
+  minX={0}
+  minY={0}
+  style={
+    [
+      {
+        "backgroundColor": "transparent",
+        "borderWidth": 0,
+      },
+      {
+        "flex": 0,
+        "height": 44,
+        "width": 44,
+      },
+    ]
+  }
+  vbHeight={44}
+  vbWidth={44}
+  width={44}
+>
+  <RNSVGGroup
+    fill={
+      {
+        "payload": 4278190080,
+        "type": 0,
+      }
+    }
+  >
+    <RNSVGCircle
+      cx="14"
+      cy="22"
+      fill={
+        {
+          "payload": 4279286145,
+          "type": 0,
+        }
+      }
+      propList={
+        [
+          "fill",
+        ]
+      }
+      r="9"
+    />
+    <RNSVGCircle
+      cx="22"
+      cy="22"
+      fill={
+        {
+          "payload": 4294286859,
+          "type": 0,
+        }
+      }
+      propList={
+        [
+          "fill",
+        ]
+      }
+      r="9"
+    />
+    <RNSVGCircle
+      cx="30"
+      cy="22"
+      fill={
+        {
+          "payload": 4284111482,
+          "type": 0,
+        }
+      }
+      opacity={0.85}
+      propList={
+        [
+          "fill",
+        ]
+      }
+      r="9"
+    />
+  </RNSVGGroup>
+</RNSVGSvgView>
+`;
+
+exports[`ModeIcon renders the high-low glyph 1`] = `
+<RNSVGSvgView
+  align="xMidYMid"
+  bbHeight={44}
+  bbWidth={44}
+  focusable={false}
+  height={44}
+  meetOrSlice={0}
+  minX={0}
+  minY={0}
+  style={
+    [
+      {
+        "backgroundColor": "transparent",
+        "borderWidth": 0,
+      },
+      {
+        "flex": 0,
+        "height": 44,
+        "width": 44,
+      },
+    ]
+  }
+  vbHeight={44}
+  vbWidth={44}
+  width={44}
+>
+  <RNSVGGroup
+    fill={
+      {
+        "payload": 4278190080,
+        "type": 0,
+      }
+    }
+  >
+    <RNSVGPath
+      d="M22 8l-7 7h14l-7-7z"
+      fill={
+        {
+          "payload": 4294967295,
+          "type": 0,
+        }
+      }
+      propList={
+        [
+          "fill",
+        ]
+      }
+    />
+    <RNSVGPath
+      d="M22 36l7-7H15l7 7z"
+      fill={
+        {
+          "payload": 4294967295,
+          "type": 0,
+        }
+      }
+      propList={
+        [
+          "fill",
+        ]
+      }
+    />
+  </RNSVGGroup>
+</RNSVGSvgView>
+`;
+
+exports[`ModeIcon renders the mirror glyph 1`] = `
+<RNSVGSvgView
+  align="xMidYMid"
+  bbHeight={44}
+  bbWidth={44}
+  focusable={false}
+  height={44}
+  meetOrSlice={0}
+  minX={0}
+  minY={0}
+  style={
+    [
+      {
+        "backgroundColor": "transparent",
+        "borderWidth": 0,
+      },
+      {
+        "flex": 0,
+        "height": 44,
+        "width": 44,
+      },
+    ]
+  }
+  vbHeight={44}
+  vbWidth={44}
+  width={44}
+>
+  <RNSVGGroup
+    fill={
+      {
+        "payload": 4278190080,
+        "type": 0,
+      }
+    }
+  >
+    <RNSVGGroup
+      fill={null}
+      propList={
+        [
+          "fill",
+          "stroke",
+          "strokeWidth",
+          "strokeLinecap",
+          "strokeLinejoin",
+        ]
+      }
+      stroke={
+        {
+          "payload": 4294967295,
+          "type": 0,
+        }
+      }
+      strokeLinecap={1}
+      strokeLinejoin={1}
+      strokeWidth="2.4"
+    >
+      <RNSVGPath
+        d="M8 14h20l-4-4M8 14l4 4"
+        fill={
+          {
+            "payload": 4278190080,
+            "type": 0,
+          }
+        }
+      />
+      <RNSVGPath
+        d="M36 30H16l4-4M36 30l-4 4"
+        fill={
+          {
+            "payload": 4278190080,
+            "type": 0,
+          }
+        }
+      />
+    </RNSVGGroup>
+  </RNSVGGroup>
+</RNSVGSvgView>
+`;
+
+exports[`ModeIcon renders the precision glyph 1`] = `
+<RNSVGSvgView
+  align="xMidYMid"
+  bbHeight={44}
+  bbWidth={44}
+  focusable={false}
+  height={44}
+  meetOrSlice={0}
+  minX={0}
+  minY={0}
+  style={
+    [
+      {
+        "backgroundColor": "transparent",
+        "borderWidth": 0,
+      },
+      {
+        "flex": 0,
+        "height": 44,
+        "width": 44,
+      },
+    ]
+  }
+  vbHeight={44}
+  vbWidth={44}
+  width={44}
+>
+  <RNSVGGroup
+    fill={
+      {
+        "payload": 4278190080,
+        "type": 0,
+      }
+    }
+  >
+    <RNSVGPath
+      d="M10 15h10M15 10v10"
+      fill={
+        {
+          "payload": 4278190080,
+          "type": 0,
+        }
+      }
+      propList={
+        [
+          "stroke",
+          "strokeWidth",
+          "strokeLinecap",
+        ]
+      }
+      stroke={
+        {
+          "payload": 4294967295,
+          "type": 0,
+        }
+      }
+      strokeLinecap={1}
+      strokeWidth="3"
+    />
+    <RNSVGPath
+      d="M24 29h10"
+      fill={
+        {
+          "payload": 4278190080,
+          "type": 0,
+        }
+      }
+      propList={
+        [
+          "stroke",
+          "strokeWidth",
+          "strokeLinecap",
+        ]
+      }
+      stroke={
+        {
+          "payload": 4294967295,
+          "type": 0,
+        }
+      }
+      strokeLinecap={1}
+      strokeWidth="3"
+    />
+  </RNSVGGroup>
+</RNSVGSvgView>
+`;
+
+exports[`ModeIcon renders the sudden-death glyph 1`] = `
+<RNSVGSvgView
+  align="xMidYMid"
+  bbHeight={44}
+  bbWidth={44}
+  focusable={false}
+  height={44}
+  meetOrSlice={0}
+  minX={0}
+  minY={0}
+  style={
+    [
+      {
+        "backgroundColor": "transparent",
+        "borderWidth": 0,
+      },
+      {
+        "flex": 0,
+        "height": 44,
+        "width": 44,
+      },
+    ]
+  }
+  vbHeight={44}
+  vbWidth={44}
+  width={44}
+>
+  <RNSVGGroup
+    fill={
+      {
+        "payload": 4278190080,
+        "type": 0,
+      }
+    }
+  >
+    <RNSVGCircle
+      cx="22"
+      cy="22"
+      fill={null}
+      propList={
+        [
+          "fill",
+          "stroke",
+          "strokeWidth",
+        ]
+      }
+      r="13"
+      stroke={
+        {
+          "payload": 4294967295,
+          "type": 0,
+        }
+      }
+      strokeWidth="2.2"
+    />
+    <RNSVGText
+      content={null}
+      dx={[]}
+      dy={[]}
+      fill={
+        {
+          "payload": 4294967295,
+          "type": 0,
+        }
+      }
+      font={
+        {
+          "fontFamily": "ChakraPetch-Bold",
+          "fontSize": 17,
+          "fontWeight": "900",
+          "textAnchor": "middle",
+        }
+      }
+      propList={
+        [
+          "fill",
+        ]
+      }
+      rotate={[]}
+      x={
+        [
+          "22",
+        ]
+      }
+      y={
+        [
+          "28",
+        ]
+      }
+    >
+      <RNSVGTSpan
+        content="5"
+        dx={[]}
+        dy={[]}
+        fill={
+          {
+            "payload": 4278190080,
+            "type": 0,
+          }
+        }
+        font={{}}
+        rotate={[]}
+        x={[]}
+        y={[]}
+      />
+    </RNSVGText>
+  </RNSVGGroup>
+</RNSVGSvgView>
+`;

@@ -1,0 +1,79 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`Avatar accepts a gradient override 1`] = `
+<View
+  style={
+    [
+      {
+        "alignSelf": "flex-start",
+      },
+      undefined,
+      {
+        "borderRadius": 20,
+        "height": 40,
+        "shadowColor": "#b45309",
+        "shadowOffset": {
+          "height": 2,
+          "width": 0,
+        },
+        "shadowOpacity": 0.5,
+        "shadowRadius": 10,
+        "width": 40,
+      },
+    ]
+  }
+>
+  <ViewManagerAdapter_ExpoLinearGradient
+    colors={
+      [
+        4294688548,
+        4290007817,
+      ]
+    }
+    endPoint={
+      [
+        1,
+        1,
+      ]
+    }
+    startPoint={
+      [
+        0,
+        0,
+      ]
+    }
+    style={
+      [
+        {
+          "alignItems": "center",
+          "justifyContent": "center",
+        },
+        {
+          "borderRadius": 20,
+          "height": 40,
+          "width": 40,
+        },
+      ]
+    }
+  >
+    <Text
+      accessibilityLabel="Nova"
+      style={
+        [
+          {
+            "color": "#ffffff",
+            "fontFamily": "ChakraPetch-Bold",
+            "fontWeight": "700",
+          },
+          {
+            "fontSize": 17,
+            "textShadowColor": "rgba(255,255,255,0.2)",
+          },
+        ]
+      }
+    >
+      N
+    </Text>
+  </ViewManagerAdapter_ExpoLinearGradient>
+</View>
+`;

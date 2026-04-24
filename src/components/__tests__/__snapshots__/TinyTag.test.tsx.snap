@@ -1,0 +1,42 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`TinyTag snapshots a coloured variant 1`] = `
+<View
+  style={
+    [
+      {
+        "alignItems": "center",
+        "alignSelf": "flex-start",
+        "borderRadius": 999,
+        "borderWidth": 1,
+        "flexDirection": "row",
+        "paddingHorizontal": 8,
+        "paddingVertical": 3,
+      },
+      {
+        "backgroundColor": "rgba(220,38,38,0.12)",
+        "borderColor": "rgba(220,38,38,0.35)",
+      },
+      undefined,
+    ]
+  }
+>
+  <Text
+    style={
+      [
+        {
+          "fontFamily": "Inter-SemiBold",
+          "fontSize": 10,
+          "letterSpacing": 1.2,
+          "textTransform": "uppercase",
+        },
+        {
+          "color": "#dc2626",
+        },
+      ]
+    }
+  >
+    HIGH RISK
+  </Text>
+</View>
+`;

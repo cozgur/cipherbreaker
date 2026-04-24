@@ -1,0 +1,235 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`LevelBar clamps overflow above 100% 1`] = `
+<View
+  style={
+    {
+      "backgroundColor": "#15172e",
+      "borderColor": "#2a2c54",
+      "borderRadius": 16,
+      "borderWidth": 1,
+      "paddingHorizontal": 16,
+      "paddingVertical": 14,
+    }
+  }
+>
+  <View
+    style={
+      {
+        "alignItems": "center",
+        "flexDirection": "row",
+        "justifyContent": "space-between",
+        "marginBottom": 8,
+      }
+    }
+  >
+    <Text
+      style={
+        [
+          {
+            "fontFamily": "Inter-SemiBold",
+            "fontSize": 11,
+            "letterSpacing": 1.54,
+            "textTransform": "uppercase",
+          },
+          {
+            "color": "#a1a1b5",
+          },
+          undefined,
+        ]
+      }
+    >
+      LEVEL 
+      9
+    </Text>
+    <Text
+      style={
+        {
+          "color": "#a1a1b5",
+          "fontFamily": "Inter-Regular",
+          "fontSize": 12,
+        }
+      }
+    >
+      999
+       / 
+      100
+       XP
+    </Text>
+  </View>
+  <View
+    style={
+      {
+        "backgroundColor": "rgba(251,191,36,0.15)",
+        "borderRadius": 3,
+        "height": 6,
+        "overflow": "hidden",
+      }
+    }
+  >
+    <View
+      style={
+        [
+          {
+            "height": "100%",
+            "shadowColor": "#fbbf24",
+            "shadowOffset": {
+              "height": 0,
+              "width": 0,
+            },
+            "shadowOpacity": 0.6,
+            "shadowRadius": 12,
+          },
+          {
+            "width": "100%",
+          },
+        ]
+      }
+    >
+      <ViewManagerAdapter_ExpoLinearGradient
+        colors={
+          [
+            4292441862,
+            4294688548,
+          ]
+        }
+        endPoint={
+          [
+            1,
+            0.5,
+          ]
+        }
+        startPoint={
+          [
+            0,
+            0.5,
+          ]
+        }
+        style={
+          {
+            "borderRadius": 3,
+            "flex": 1,
+          }
+        }
+      />
+    </View>
+  </View>
+</View>
+`;
+
+exports[`LevelBar handles a zero target without dividing by zero 1`] = `
+<View
+  style={
+    {
+      "backgroundColor": "#15172e",
+      "borderColor": "#2a2c54",
+      "borderRadius": 16,
+      "borderWidth": 1,
+      "paddingHorizontal": 16,
+      "paddingVertical": 14,
+    }
+  }
+>
+  <View
+    style={
+      {
+        "alignItems": "center",
+        "flexDirection": "row",
+        "justifyContent": "space-between",
+        "marginBottom": 8,
+      }
+    }
+  >
+    <Text
+      style={
+        [
+          {
+            "fontFamily": "Inter-SemiBold",
+            "fontSize": 11,
+            "letterSpacing": 1.54,
+            "textTransform": "uppercase",
+          },
+          {
+            "color": "#a1a1b5",
+          },
+          undefined,
+        ]
+      }
+    >
+      LEVEL 
+      1
+    </Text>
+    <Text
+      style={
+        {
+          "color": "#a1a1b5",
+          "fontFamily": "Inter-Regular",
+          "fontSize": 12,
+        }
+      }
+    >
+      0
+       / 
+      0
+       XP
+    </Text>
+  </View>
+  <View
+    style={
+      {
+        "backgroundColor": "rgba(251,191,36,0.15)",
+        "borderRadius": 3,
+        "height": 6,
+        "overflow": "hidden",
+      }
+    }
+  >
+    <View
+      style={
+        [
+          {
+            "height": "100%",
+            "shadowColor": "#fbbf24",
+            "shadowOffset": {
+              "height": 0,
+              "width": 0,
+            },
+            "shadowOpacity": 0.6,
+            "shadowRadius": 12,
+          },
+          {
+            "width": "0%",
+          },
+        ]
+      }
+    >
+      <ViewManagerAdapter_ExpoLinearGradient
+        colors={
+          [
+            4292441862,
+            4294688548,
+          ]
+        }
+        endPoint={
+          [
+            1,
+            0.5,
+          ]
+        }
+        startPoint={
+          [
+            0,
+            0.5,
+          ]
+        }
+        style={
+          {
+            "borderRadius": 3,
+            "flex": 1,
+          }
+        }
+      />
+    </View>
+  </View>
+</View>
+`;

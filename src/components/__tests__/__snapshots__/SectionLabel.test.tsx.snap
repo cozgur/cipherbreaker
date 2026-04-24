@@ -1,0 +1,22 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`SectionLabel snapshots with a custom colour 1`] = `
+<Text
+  style={
+    [
+      {
+        "fontFamily": "Inter-SemiBold",
+        "fontSize": 11,
+        "letterSpacing": 1.54,
+        "textTransform": "uppercase",
+      },
+      {
+        "color": "#ec4899",
+      },
+      undefined,
+    ]
+  }
+>
+  ADVANCED
+</Text>
+`;

@@ -1,0 +1,259 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`TypingIndicator renders at the default size 1`] = `
+<View
+  style={
+    [
+      {
+        "alignItems": "center",
+        "flexDirection": "row",
+      },
+      {
+        "gap": 5.333333333333333,
+        "height": 18,
+      },
+    ]
+  }
+>
+  <View
+    animate={
+      {
+        "scale": 1.1,
+        "translateY": -5,
+      }
+    }
+    from={
+      {
+        "scale": 1,
+        "translateY": 0,
+      }
+    }
+    style={
+      [
+        {
+          "alignSelf": "center",
+        },
+        {
+          "backgroundColor": "#8b5cf6",
+          "borderRadius": 4,
+          "height": 8,
+          "width": 8,
+        },
+      ]
+    }
+    transition={
+      {
+        "delay": 0,
+        "duration": 700,
+        "easing": [Function],
+        "loop": true,
+        "repeatReverse": true,
+        "type": "timing",
+      }
+    }
+  />
+  <View
+    animate={
+      {
+        "scale": 1.1,
+        "translateY": -5,
+      }
+    }
+    from={
+      {
+        "scale": 1,
+        "translateY": 0,
+      }
+    }
+    style={
+      [
+        {
+          "alignSelf": "center",
+        },
+        {
+          "backgroundColor": "#8b5cf6",
+          "borderRadius": 4,
+          "height": 8,
+          "width": 8,
+        },
+      ]
+    }
+    transition={
+      {
+        "delay": 180,
+        "duration": 700,
+        "easing": [Function],
+        "loop": true,
+        "repeatReverse": true,
+        "type": "timing",
+      }
+    }
+  />
+  <View
+    animate={
+      {
+        "scale": 1.1,
+        "translateY": -5,
+      }
+    }
+    from={
+      {
+        "scale": 1,
+        "translateY": 0,
+      }
+    }
+    style={
+      [
+        {
+          "alignSelf": "center",
+        },
+        {
+          "backgroundColor": "#8b5cf6",
+          "borderRadius": 4,
+          "height": 8,
+          "width": 8,
+        },
+      ]
+    }
+    transition={
+      {
+        "delay": 360,
+        "duration": 700,
+        "easing": [Function],
+        "loop": true,
+        "repeatReverse": true,
+        "type": "timing",
+      }
+    }
+  />
+</View>
+`;
+
+exports[`TypingIndicator renders with a custom colour + size 1`] = `
+<View
+  style={
+    [
+      {
+        "alignItems": "center",
+        "flexDirection": "row",
+      },
+      {
+        "gap": 8,
+        "height": 26,
+      },
+    ]
+  }
+>
+  <View
+    animate={
+      {
+        "scale": 1.1,
+        "translateY": -7,
+      }
+    }
+    from={
+      {
+        "scale": 1,
+        "translateY": 0,
+      }
+    }
+    style={
+      [
+        {
+          "alignSelf": "center",
+        },
+        {
+          "backgroundColor": "#06b6d4",
+          "borderRadius": 6,
+          "height": 12,
+          "width": 12,
+        },
+      ]
+    }
+    transition={
+      {
+        "delay": 0,
+        "duration": 700,
+        "easing": [Function],
+        "loop": true,
+        "repeatReverse": true,
+        "type": "timing",
+      }
+    }
+  />
+  <View
+    animate={
+      {
+        "scale": 1.1,
+        "translateY": -7,
+      }
+    }
+    from={
+      {
+        "scale": 1,
+        "translateY": 0,
+      }
+    }
+    style={
+      [
+        {
+          "alignSelf": "center",
+        },
+        {
+          "backgroundColor": "#06b6d4",
+          "borderRadius": 6,
+          "height": 12,
+          "width": 12,
+        },
+      ]
+    }
+    transition={
+      {
+        "delay": 180,
+        "duration": 700,
+        "easing": [Function],
+        "loop": true,
+        "repeatReverse": true,
+        "type": "timing",
+      }
+    }
+  />
+  <View
+    animate={
+      {
+        "scale": 1.1,
+        "translateY": -7,
+      }
+    }
+    from={
+      {
+        "scale": 1,
+        "translateY": 0,
+      }
+    }
+    style={
+      [
+        {
+          "alignSelf": "center",
+        },
+        {
+          "backgroundColor": "#06b6d4",
+          "borderRadius": 6,
+          "height": 12,
+          "width": 12,
+        },
+      ]
+    }
+    transition={
+      {
+        "delay": 360,
+        "duration": 700,
+        "easing": [Function],
+        "loop": true,
+        "repeatReverse": true,
+        "type": "timing",
+      }
+    }
+  />
+</View>
+`;
