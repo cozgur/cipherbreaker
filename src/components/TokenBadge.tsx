@@ -31,11 +31,7 @@ const SIZE_SPEC: Record<TokenBadgeSize, SizeSpec> = {
  * Gold pill with the C-coin glyph and a monospace amount. Rendered
  * across Home (top-right wallet), Shop (header), Result (reward).
  */
-export function TokenBadge({
-  amount,
-  size = 'md',
-  style,
-}: TokenBadgeProps): React.JSX.Element {
+export function TokenBadge({ amount, size = 'md', style }: TokenBadgeProps): React.JSX.Element {
   const spec = SIZE_SPEC[size];
   return (
     <View style={[styles.shadow, style]}>

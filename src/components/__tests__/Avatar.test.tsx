@@ -20,9 +20,7 @@ describe('Avatar', () => {
   });
 
   it('accepts a gradient override', () => {
-    const tree = render(
-      <Avatar name="Nova" colors={['#fbbf24', '#b45309']} />,
-    ).toJSON();
+    const tree = render(<Avatar name="Nova" colors={['#fbbf24', '#b45309']} />).toJSON();
     expect(tree).toMatchSnapshot();
   });
 });

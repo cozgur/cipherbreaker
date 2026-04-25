@@ -32,9 +32,7 @@ describe('ModeCard', () => {
 
   it('suppresses onPress when disabled', () => {
     const onPress = jest.fn();
-    const { getByRole } = render(
-      <ModeCard meta={colorMatch.meta} onPress={onPress} disabled />,
-    );
+    const { getByRole } = render(<ModeCard meta={colorMatch.meta} onPress={onPress} disabled />);
     fireEvent.press(getByRole('button'));
     expect(onPress).not.toHaveBeenCalled();
   });

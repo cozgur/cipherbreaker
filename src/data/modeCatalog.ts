@@ -13,6 +13,7 @@ export const modeCatalog: readonly ModeCatalogEntry[] = [
     meta: {
       section: 'CLASSIC',
       name: 'COLOR MATCH',
+      shortLabel: 'COLOR',
       description: 'Green, yellow, gray — Wordle-style feedback.',
       stake: 50,
       rewardWin: 100,
@@ -31,6 +32,7 @@ export const modeCatalog: readonly ModeCatalogEntry[] = [
     meta: {
       section: 'CLASSIC',
       name: 'HIGH & LOW',
+      shortLabel: 'HIGH',
       description: 'One hint: is the secret higher or lower?',
       stake: 50,
       rewardWin: 100,
@@ -49,6 +51,7 @@ export const modeCatalog: readonly ModeCatalogEntry[] = [
     meta: {
       section: 'CLASSIC',
       name: 'PRECISION',
+      shortLabel: 'PRECISION',
       description: '+1 for right spot, −1 for wrong spot.',
       stake: 50,
       rewardWin: 100,
@@ -67,6 +70,7 @@ export const modeCatalog: readonly ModeCatalogEntry[] = [
     meta: {
       section: 'ADVANCED',
       name: 'BLITZ',
+      shortLabel: 'BLITZ',
       description: "Chess clock. 60 seconds each. Don't flag.",
       stake: 50,
       rewardWin: 100,
@@ -87,6 +91,7 @@ export const modeCatalog: readonly ModeCatalogEntry[] = [
     meta: {
       section: 'ADVANCED',
       name: 'BLACKOUT',
+      shortLabel: 'BLACKOUT',
       description: 'Only locked-in digits revealed. High stakes.',
       stake: 100,
       rewardWin: 200,
@@ -106,6 +111,7 @@ export const modeCatalog: readonly ModeCatalogEntry[] = [
     meta: {
       section: 'ADVANCED',
       name: 'SUDDEN DEATH',
+      shortLabel: 'SUDDEN',
       description: 'Five guesses. No second chances.',
       stake: 50,
       rewardWin: 100,
@@ -126,6 +132,7 @@ export const modeCatalog: readonly ModeCatalogEntry[] = [
     meta: {
       section: 'ADVANCED',
       name: 'MIRROR',
+      shortLabel: 'MIRROR',
       description: 'Same code, different minds. First to crack wins.',
       stake: 75,
       rewardWin: 150,

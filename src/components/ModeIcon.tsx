@@ -93,7 +93,13 @@ export function ModeIcon({ iconKey, size = 44 }: ModeIconProps): React.JSX.Eleme
     case 'mirror':
       return (
         <Svg width={size} height={size} viewBox="0 0 44 44">
-          <G stroke="#fff" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" fill="none">
+          <G
+            stroke="#fff"
+            strokeWidth="2.4"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            fill="none"
+          >
             <Path d="M8 14h20l-4-4M8 14l4 4" />
             <Path d="M36 30H16l4-4M36 30l-4 4" />
           </G>

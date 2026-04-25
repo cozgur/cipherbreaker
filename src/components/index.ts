@@ -6,6 +6,7 @@
 export { AmbientBackground } from './AmbientBackground';
 export { Avatar } from './Avatar';
 export { Button, type ButtonSize, type ButtonVariant } from './Button';
+export { ConfettiOverlay } from './ConfettiOverlay';
 export { DigitKeypad } from './DigitKeypad';
 export { DigitTile, type DigitTileState } from './DigitTile';
 export { GlassCard } from './GlassCard';

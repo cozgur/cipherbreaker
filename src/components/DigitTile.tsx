@@ -3,13 +3,7 @@ import { Platform, StyleSheet, Text, View, type ViewStyle } from 'react-native';
 import { colors, fonts, withAlpha } from '@theme/tokens';
 
 /** Feedback palette drives DigitTile appearance — one per mode flavour. */
-export type DigitTileState =
-  | 'neutral'
-  | 'green'
-  | 'yellow'
-  | 'gray'
-  | 'violet'
-  | 'blackout';
+export type DigitTileState = 'neutral' | 'green' | 'yellow' | 'gray' | 'violet' | 'blackout';
 
 interface DigitTileProps {
   /** Single digit 0–9. Renders `—` when `null`/`undefined` (empty slot). */

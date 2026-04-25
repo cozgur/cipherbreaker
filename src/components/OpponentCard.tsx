@@ -30,16 +30,17 @@ export function OpponentCard({
       style={[
         styles.card,
         active && styles.cardActive,
-        active && Platform.select({
-          ios: {
-            shadowColor: colors.violet,
-            shadowOpacity: 0.35,
-            shadowRadius: 18,
-            shadowOffset: { width: 0, height: 0 },
-          },
-          android: { elevation: 6 },
-          default: {},
-        }),
+        active &&
+          Platform.select({
+            ios: {
+              shadowColor: colors.violet,
+              shadowOpacity: 0.35,
+              shadowRadius: 18,
+              shadowOffset: { width: 0, height: 0 },
+            },
+            android: { elevation: 6 },
+            default: {},
+          }),
       ]}
     >
       <Avatar name={name} size={34} />

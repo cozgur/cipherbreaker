@@ -21,11 +21,7 @@ interface ModeCardProps {
  * corner ribbon so the title never has to share horizontal space
  * with a growing tag (SUDDEN DEATH + HIGH RISK was clipping).
  */
-export function ModeCard({
-  meta,
-  onPress,
-  disabled = false,
-}: ModeCardProps): React.JSX.Element {
+export function ModeCard({ meta, onPress, disabled = false }: ModeCardProps): React.JSX.Element {
   return (
     <Pressable
       accessibilityRole="button"
@@ -99,9 +95,7 @@ export function ModeCard({
             },
           ]}
         >
-          <Text style={[styles.ribbonLabel, { color: meta.badge.color }]}>
-            {meta.badge.label}
-          </Text>
+          <Text style={[styles.ribbonLabel, { color: meta.badge.color }]}>{meta.badge.label}</Text>
         </View>
       ) : null}
     </Pressable>

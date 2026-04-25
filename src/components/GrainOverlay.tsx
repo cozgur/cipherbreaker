@@ -19,10 +19,7 @@ const CELL = 260;
  * 1px dots inside a tiled SVG cell. The result is comparable in feel
  * to the reference `CBGrain` noise without the native-only filter.
  */
-export function GrainOverlay({
-  opacity = 0.02,
-  seed = 1,
-}: GrainOverlayProps): React.JSX.Element {
+export function GrainOverlay({ opacity = 0.02, seed = 1 }: GrainOverlayProps): React.JSX.Element {
   const dots = useMemo(() => {
     // Small deterministic LCG so we never pull Math.random into tests.
     let state = seed * 1013904223 + 1664525;
@@ -39,7 +36,12 @@ export function GrainOverlay({
 
   return (
     <View pointerEvents="none" style={[styles.fill, { opacity }]}>
-      <Svg width="100%" height="100%" viewBox={`0 0 ${CELL} ${CELL}`} preserveAspectRatio="xMidYMid slice">
+      <Svg
+        width="100%"
+        height="100%"
+        viewBox={`0 0 ${CELL} ${CELL}`}
+        preserveAspectRatio="xMidYMid slice"
+      >
         {dots.map(([x, y], index) => (
           <Rect key={index} x={x} y={y} width={1} height={1} fill="#ffffff" />
         ))}

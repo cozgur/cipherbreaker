@@ -1,0 +1,1658 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`ConfettiOverlay snapshots the deterministic 36-particle scatter 1`] = `
+<View
+  pointerEvents="none"
+  style={
+    [
+      {
+        "bottom": 0,
+        "left": 0,
+        "overflow": "hidden",
+        "position": "absolute",
+        "right": 0,
+        "top": 0,
+      },
+      undefined,
+    ]
+  }
+>
+  <View
+    animate={
+      {
+        "opacity": 1,
+        "translateX": 65.25027259608038,
+        "translateY": 884,
+      }
+    }
+    from={
+      {
+        "opacity": 0,
+        "translateX": 92.21765487739296,
+        "translateY": -42.15624042836862,
+      }
+    }
+    style={
+      [
+        {
+          "position": "absolute",
+        },
+        {
+          "backgroundColor": "#fbbf24",
+          "borderRadius": 5,
+          "height": 10,
+          "shadowColor": "#fbbf24",
+          "shadowOffset": {
+            "height": 0,
+            "width": 0,
+          },
+          "shadowOpacity": 1,
+          "shadowRadius": 10,
+          "width": 10,
+        },
+      ]
+    }
+    transition={
+      {
+        "delay": 563,
+        "duration": 2400,
+        "easing": [Function],
+        "loop": false,
+        "type": "timing",
+      }
+    }
+  />
+  <View
+    animate={
+      {
+        "opacity": 1,
+        "translateX": 152.466920607832,
+        "translateY": 884,
+      }
+    }
+    from={
+      {
+        "opacity": 0,
+        "translateX": 144.1121582114399,
+        "translateY": -66.48577775957197,
+      }
+    }
+    style={
+      [
+        {
+          "position": "absolute",
+        },
+        {
+          "backgroundColor": "#fbbf24",
+          "borderRadius": 5,
+          "height": 10,
+          "shadowColor": "#fbbf24",
+          "shadowOffset": {
+            "height": 0,
+            "width": 0,
+          },
+          "shadowOpacity": 1,
+          "shadowRadius": 10,
+          "width": 10,
+        },
+      ]
+    }
+    transition={
+      {
+        "delay": 13,
+        "duration": 2400,
+        "easing": [Function],
+        "loop": false,
+        "type": "timing",
+      }
+    }
+  />
+  <View
+    animate={
+      {
+        "opacity": 1,
+        "translateX": 81.78050037747725,
+        "translateY": 884,
+      }
+    }
+    from={
+      {
+        "opacity": 0,
+        "translateX": 97.67594520879814,
+        "translateY": -45.34266609822927,
+      }
+    }
+    style={
+      [
+        {
+          "position": "absolute",
+        },
+        {
+          "backgroundColor": "#fbbf24",
+          "borderRadius": 5,
+          "height": 10,
+          "shadowColor": "#fbbf24",
+          "shadowOffset": {
+            "height": 0,
+            "width": 0,
+          },
+          "shadowOpacity": 1,
+          "shadowRadius": 10,
+          "width": 10,
+        },
+      ]
+    }
+    transition={
+      {
+        "delay": 669,
+        "duration": 2400,
+        "easing": [Function],
+        "loop": false,
+        "type": "timing",
+      }
+    }
+  />
+  <View
+    animate={
+      {
+        "opacity": 1,
+        "translateX": 384.4174720310647,
+        "translateY": 884,
+      }
+    }
+    from={
+      {
+        "opacity": 0,
+        "translateX": 382.5299252505717,
+        "translateY": -71.65322567607583,
+      }
+    }
+    style={
+      [
+        {
+          "position": "absolute",
+        },
+        {
+          "backgroundColor": "#fbbf24",
+          "borderRadius": 4,
+          "height": 8,
+          "shadowColor": "#fbbf24",
+          "shadowOffset": {
+            "height": 0,
+            "width": 0,
+          },
+          "shadowOpacity": 1,
+          "shadowRadius": 8,
+          "width": 8,
+        },
+      ]
+    }
+    transition={
+      {
+        "delay": 546,
+        "duration": 2400,
+        "easing": [Function],
+        "loop": false,
+        "type": "timing",
+      }
+    }
+  />
+  <View
+    animate={
+      {
+        "opacity": 1,
+        "translateX": 62.00628828536866,
+        "translateY": 884,
+      }
+    }
+    from={
+      {
+        "opacity": 0,
+        "translateX": 84.21738257729854,
+        "translateY": -26.272053631551575,
+      }
+    }
+    style={
+      [
+        {
+          "position": "absolute",
+        },
+        {
+          "backgroundColor": "#fbbf24",
+          "borderRadius": 3,
+          "height": 6,
+          "shadowColor": "#fbbf24",
+          "shadowOffset": {
+            "height": 0,
+            "width": 0,
+          },
+          "shadowOpacity": 1,
+          "shadowRadius": 6,
+          "width": 6,
+        },
+      ]
+    }
+    transition={
+      {
+        "delay": 255,
+        "duration": 2400,
+        "easing": [Function],
+        "loop": false,
+        "type": "timing",
+      }
+    }
+  />
+  <View
+    animate={
+      {
+        "opacity": 1,
+        "translateX": 290.88038753505805,
+        "translateY": 884,
+      }
+    }
+    from={
+      {
+        "opacity": 0,
+        "translateX": 275.8261037631487,
+        "translateY": -54.97322576003457,
+      }
+    }
+    style={
+      [
+        {
+          "position": "absolute",
+        },
+        {
+          "backgroundColor": "#fbbf24",
+          "borderRadius": 4,
+          "height": 8,
+          "shadowColor": "#fbbf24",
+          "shadowOffset": {
+            "height": 0,
+            "width": 0,
+          },
+          "shadowOpacity": 1,
+          "shadowRadius": 8,
+          "width": 8,
+        },
+      ]
+    }
+    transition={
+      {
+        "delay": 210,
+        "duration": 2400,
+        "easing": [Function],
+        "loop": false,
+        "type": "timing",
+      }
+    }
+  />
+  <View
+    animate={
+      {
+        "opacity": 1,
+        "translateX": 356.2884522244075,
+        "translateY": 884,
+      }
+    }
+    from={
+      {
+        "opacity": 0,
+        "translateX": 362.97335709048747,
+        "translateY": -30.636443363185144,
+      }
+    }
+    style={
+      [
+        {
+          "position": "absolute",
+        },
+        {
+          "backgroundColor": "#fbbf24",
+          "borderRadius": 4,
+          "height": 8,
+          "shadowColor": "#fbbf24",
+          "shadowOffset": {
+            "height": 0,
+            "width": 0,
+          },
+          "shadowOpacity": 1,
+          "shadowRadius": 8,
+          "width": 8,
+        },
+      ]
+    }
+    transition={
+      {
+        "delay": 786,
+        "duration": 2400,
+        "easing": [Function],
+        "loop": false,
+        "type": "timing",
+      }
+    }
+  />
+  <View
+    animate={
+      {
+        "opacity": 1,
+        "translateX": 226.4228912876972,
+        "translateY": 884,
+      }
+    }
+    from={
+      {
+        "opacity": 0,
+        "translateX": 213.73839972627778,
+        "translateY": -47.96739340479658,
+      }
+    }
+    style={
+      [
+        {
+          "position": "absolute",
+        },
+        {
+          "backgroundColor": "#fbbf24",
+          "borderRadius": 6,
+          "height": 12,
+          "shadowColor": "#fbbf24",
+          "shadowOffset": {
+            "height": 0,
+            "width": 0,
+          },
+          "shadowOpacity": 1,
+          "shadowRadius": 12,
+          "width": 12,
+        },
+      ]
+    }
+    transition={
+      {
+        "delay": 700,
+        "duration": 2400,
+        "easing": [Function],
+        "loop": false,
+        "type": "timing",
+      }
+    }
+  />
+  <View
+    animate={
+      {
+        "opacity": 1,
+        "translateX": 384.6846181281574,
+        "translateY": 884,
+      }
+    }
+    from={
+      {
+        "opacity": 0,
+        "translateX": 373.51474944816783,
+        "translateY": -78.49953299353353,
+      }
+    }
+    style={
+      [
+        {
+          "position": "absolute",
+        },
+        {
+          "backgroundColor": "#fbbf24",
+          "borderRadius": 3,
+          "height": 6,
+          "shadowColor": "#fbbf24",
+          "shadowOffset": {
+            "height": 0,
+            "width": 0,
+          },
+          "shadowOpacity": 1,
+          "shadowRadius": 6,
+          "width": 6,
+        },
+      ]
+    }
+    transition={
+      {
+        "delay": 297,
+        "duration": 2400,
+        "easing": [Function],
+        "loop": false,
+        "type": "timing",
+      }
+    }
+  />
+  <View
+    animate={
+      {
+        "opacity": 1,
+        "translateX": 86.09231799517113,
+        "translateY": 884,
+      }
+    }
+    from={
+      {
+        "opacity": 0,
+        "translateX": 63.782436380577835,
+        "translateY": -49.532026422566744,
+      }
+    }
+    style={
+      [
+        {
+          "position": "absolute",
+        },
+        {
+          "backgroundColor": "#fbbf24",
+          "borderRadius": 3,
+          "height": 6,
+          "shadowColor": "#fbbf24",
+          "shadowOffset": {
+            "height": 0,
+            "width": 0,
+          },
+          "shadowOpacity": 1,
+          "shadowRadius": 6,
+          "width": 6,
+        },
+      ]
+    }
+    transition={
+      {
+        "delay": 473,
+        "duration": 2400,
+        "easing": [Function],
+        "loop": false,
+        "type": "timing",
+      }
+    }
+  />
+  <View
+    animate={
+      {
+        "opacity": 1,
+        "translateX": 148.84117864045342,
+        "translateY": 884,
+      }
+    }
+    from={
+      {
+        "opacity": 0,
+        "translateX": 128.94918698560195,
+        "translateY": -21.151345218799857,
+      }
+    }
+    style={
+      [
+        {
+          "position": "absolute",
+        },
+        {
+          "backgroundColor": "#fbbf24",
+          "borderRadius": 6,
+          "height": 12,
+          "shadowColor": "#fbbf24",
+          "shadowOffset": {
+            "height": 0,
+            "width": 0,
+          },
+          "shadowOpacity": 1,
+          "shadowRadius": 12,
+          "width": 12,
+        },
+      ]
+    }
+    transition={
+      {
+        "delay": 184,
+        "duration": 2400,
+        "easing": [Function],
+        "loop": false,
+        "type": "timing",
+      }
+    }
+  />
+  <View
+    animate={
+      {
+        "opacity": 1,
+        "translateX": -12.030385809957608,
+        "translateY": 884,
+      }
+    }
+    from={
+      {
+        "opacity": 0,
+        "translateX": 10.101222656690801,
+        "translateY": -43.03157276078863,
+      }
+    }
+    style={
+      [
+        {
+          "position": "absolute",
+        },
+        {
+          "backgroundColor": "#fbbf24",
+          "borderRadius": 3,
+          "height": 6,
+          "shadowColor": "#fbbf24",
+          "shadowOffset": {
+            "height": 0,
+            "width": 0,
+          },
+          "shadowOpacity": 1,
+          "shadowRadius": 6,
+          "width": 6,
+        },
+      ]
+    }
+    transition={
+      {
+        "delay": 276,
+        "duration": 2400,
+        "easing": [Function],
+        "loop": false,
+        "type": "timing",
+      }
+    }
+  />
+  <View
+    animate={
+      {
+        "opacity": 1,
+        "translateX": 333.4142106500022,
+        "translateY": 884,
+      }
+    }
+    from={
+      {
+        "opacity": 0,
+        "translateX": 315.7575266984658,
+        "translateY": -44.472600101603334,
+      }
+    }
+    style={
+      [
+        {
+          "position": "absolute",
+        },
+        {
+          "backgroundColor": "#fbbf24",
+          "borderRadius": 3,
+          "height": 6,
+          "shadowColor": "#fbbf24",
+          "shadowOffset": {
+            "height": 0,
+            "width": 0,
+          },
+          "shadowOpacity": 1,
+          "shadowRadius": 6,
+          "width": 6,
+        },
+      ]
+    }
+    transition={
+      {
+        "delay": 488,
+        "duration": 2400,
+        "easing": [Function],
+        "loop": false,
+        "type": "timing",
+      }
+    }
+  />
+  <View
+    animate={
+      {
+        "opacity": 1,
+        "translateX": 382.2287292783681,
+        "translateY": 884,
+      }
+    }
+    from={
+      {
+        "opacity": 0,
+        "translateX": 364.00025979010394,
+        "translateY": -20.669625075689897,
+      }
+    }
+    style={
+      [
+        {
+          "position": "absolute",
+        },
+        {
+          "backgroundColor": "#fbbf24",
+          "borderRadius": 3,
+          "height": 6,
+          "shadowColor": "#fbbf24",
+          "shadowOffset": {
+            "height": 0,
+            "width": 0,
+          },
+          "shadowOpacity": 1,
+          "shadowRadius": 6,
+          "width": 6,
+        },
+      ]
+    }
+    transition={
+      {
+        "delay": 798,
+        "duration": 2400,
+        "easing": [Function],
+        "loop": false,
+        "type": "timing",
+      }
+    }
+  />
+  <View
+    animate={
+      {
+        "opacity": 1,
+        "translateX": 191.6006523188205,
+        "translateY": 884,
+      }
+    }
+    from={
+      {
+        "opacity": 0,
+        "translateX": 177.58221153113575,
+        "translateY": -43.48408473736701,
+      }
+    }
+    style={
+      [
+        {
+          "position": "absolute",
+        },
+        {
+          "backgroundColor": "#fbbf24",
+          "borderRadius": 5,
+          "height": 10,
+          "shadowColor": "#fbbf24",
+          "shadowOffset": {
+            "height": 0,
+            "width": 0,
+          },
+          "shadowOpacity": 1,
+          "shadowRadius": 10,
+          "width": 10,
+        },
+      ]
+    }
+    transition={
+      {
+        "delay": 772,
+        "duration": 2400,
+        "easing": [Function],
+        "loop": false,
+        "type": "timing",
+      }
+    }
+  />
+  <View
+    animate={
+      {
+        "opacity": 1,
+        "translateX": 205.26268703985554,
+        "translateY": 884,
+      }
+    }
+    from={
+      {
+        "opacity": 0,
+        "translateX": 190.4444091349012,
+        "translateY": -44.939688263679784,
+      }
+    }
+    style={
+      [
+        {
+          "position": "absolute",
+        },
+        {
+          "backgroundColor": "#fbbf24",
+          "borderRadius": 3,
+          "height": 6,
+          "shadowColor": "#fbbf24",
+          "shadowOffset": {
+            "height": 0,
+            "width": 0,
+          },
+          "shadowOpacity": 1,
+          "shadowRadius": 6,
+          "width": 6,
+        },
+      ]
+    }
+    transition={
+      {
+        "delay": 721,
+        "duration": 2400,
+        "easing": [Function],
+        "loop": false,
+        "type": "timing",
+      }
+    }
+  />
+  <View
+    animate={
+      {
+        "opacity": 1,
+        "translateX": 243.43330569412404,
+        "translateY": 884,
+      }
+    }
+    from={
+      {
+        "opacity": 0,
+        "translateX": 248.14694493267382,
+        "translateY": -54.689907444335965,
+      }
+    }
+    style={
+      [
+        {
+          "position": "absolute",
+        },
+        {
+          "backgroundColor": "#fbbf24",
+          "borderRadius": 5,
+          "height": 10,
+          "shadowColor": "#fbbf24",
+          "shadowOffset": {
+            "height": 0,
+            "width": 0,
+          },
+          "shadowOpacity": 1,
+          "shadowRadius": 10,
+          "width": 10,
+        },
+      ]
+    }
+    transition={
+      {
+        "delay": 41,
+        "duration": 2400,
+        "easing": [Function],
+        "loop": false,
+        "type": "timing",
+      }
+    }
+  />
+  <View
+    animate={
+      {
+        "opacity": 1,
+        "translateX": 206.15783338112706,
+        "translateY": 884,
+      }
+    }
+    from={
+      {
+        "opacity": 0,
+        "translateX": 219.70475487171316,
+        "translateY": -76.78218473139735,
+      }
+    }
+    style={
+      [
+        {
+          "position": "absolute",
+        },
+        {
+          "backgroundColor": "#fbbf24",
+          "borderRadius": 4,
+          "height": 8,
+          "shadowColor": "#fbbf24",
+          "shadowOffset": {
+            "height": 0,
+            "width": 0,
+          },
+          "shadowOpacity": 1,
+          "shadowRadius": 8,
+          "width": 8,
+        },
+      ]
+    }
+    transition={
+      {
+        "delay": 621,
+        "duration": 2400,
+        "easing": [Function],
+        "loop": false,
+        "type": "timing",
+      }
+    }
+  />
+  <View
+    animate={
+      {
+        "opacity": 1,
+        "translateX": 346.51861778379384,
+        "translateY": 884,
+      }
+    }
+    from={
+      {
+        "opacity": 0,
+        "translateX": 355.3132966848354,
+        "translateY": -76.47586655720973,
+      }
+    }
+    style={
+      [
+        {
+          "position": "absolute",
+        },
+        {
+          "backgroundColor": "#fbbf24",
+          "borderRadius": 4,
+          "height": 8,
+          "shadowColor": "#fbbf24",
+          "shadowOffset": {
+            "height": 0,
+            "width": 0,
+          },
+          "shadowOpacity": 1,
+          "shadowRadius": 8,
+          "width": 8,
+        },
+      ]
+    }
+    transition={
+      {
+        "delay": 345,
+        "duration": 2400,
+        "easing": [Function],
+        "loop": false,
+        "type": "timing",
+      }
+    }
+  />
+  <View
+    animate={
+      {
+        "opacity": 1,
+        "translateX": 8.159079944751944,
+        "translateY": 884,
+      }
+    }
+    from={
+      {
+        "opacity": 0,
+        "translateX": 8.177676070057247,
+        "translateY": -59.74213111208336,
+      }
+    }
+    style={
+      [
+        {
+          "position": "absolute",
+        },
+        {
+          "backgroundColor": "#fbbf24",
+          "borderRadius": 5,
+          "height": 10,
+          "shadowColor": "#fbbf24",
+          "shadowOffset": {
+            "height": 0,
+            "width": 0,
+          },
+          "shadowOpacity": 1,
+          "shadowRadius": 10,
+          "width": 10,
+        },
+      ]
+    }
+    transition={
+      {
+        "delay": 353,
+        "duration": 2400,
+        "easing": [Function],
+        "loop": false,
+        "type": "timing",
+      }
+    }
+  />
+  <View
+    animate={
+      {
+        "opacity": 1,
+        "translateX": 337.49971247452766,
+        "translateY": 884,
+      }
+    }
+    from={
+      {
+        "opacity": 0,
+        "translateX": 327.84040384177126,
+        "translateY": -36.94525821994647,
+      }
+    }
+    style={
+      [
+        {
+          "position": "absolute",
+        },
+        {
+          "backgroundColor": "#fbbf24",
+          "borderRadius": 3,
+          "height": 6,
+          "shadowColor": "#fbbf24",
+          "shadowOffset": {
+            "height": 0,
+            "width": 0,
+          },
+          "shadowOpacity": 1,
+          "shadowRadius": 6,
+          "width": 6,
+        },
+      ]
+    }
+    transition={
+      {
+        "delay": 280,
+        "duration": 2400,
+        "easing": [Function],
+        "loop": false,
+        "type": "timing",
+      }
+    }
+  />
+  <View
+    animate={
+      {
+        "opacity": 1,
+        "translateX": 47.8959215590488,
+        "translateY": 884,
+      }
+    }
+    from={
+      {
+        "opacity": 0,
+        "translateX": 31.529206764309016,
+        "translateY": -37.683638720233844,
+      }
+    }
+    style={
+      [
+        {
+          "position": "absolute",
+        },
+        {
+          "backgroundColor": "#fbbf24",
+          "borderRadius": 3,
+          "height": 6,
+          "shadowColor": "#fbbf24",
+          "shadowOffset": {
+            "height": 0,
+            "width": 0,
+          },
+          "shadowOpacity": 1,
+          "shadowRadius": 6,
+          "width": 6,
+        },
+      ]
+    }
+    transition={
+      {
+        "delay": 195,
+        "duration": 2400,
+        "easing": [Function],
+        "loop": false,
+        "type": "timing",
+      }
+    }
+  />
+  <View
+    animate={
+      {
+        "opacity": 1,
+        "translateX": 194.33378391068752,
+        "translateY": 884,
+      }
+    }
+    from={
+      {
+        "opacity": 0,
+        "translateX": 195.58385001858323,
+        "translateY": -56.91429118088314,
+      }
+    }
+    style={
+      [
+        {
+          "position": "absolute",
+        },
+        {
+          "backgroundColor": "#fbbf24",
+          "borderRadius": 5,
+          "height": 10,
+          "shadowColor": "#fbbf24",
+          "shadowOffset": {
+            "height": 0,
+            "width": 0,
+          },
+          "shadowOpacity": 1,
+          "shadowRadius": 10,
+          "width": 10,
+        },
+      ]
+    }
+    transition={
+      {
+        "delay": 786,
+        "duration": 2400,
+        "easing": [Function],
+        "loop": false,
+        "type": "timing",
+      }
+    }
+  />
+  <View
+    animate={
+      {
+        "opacity": 1,
+        "translateX": 113.15657911662863,
+        "translateY": 884,
+      }
+    }
+    from={
+      {
+        "opacity": 0,
+        "translateX": 116.12049258922238,
+        "translateY": -79.22285878547069,
+      }
+    }
+    style={
+      [
+        {
+          "position": "absolute",
+        },
+        {
+          "backgroundColor": "#fbbf24",
+          "borderRadius": 5,
+          "height": 10,
+          "shadowColor": "#fbbf24",
+          "shadowOffset": {
+            "height": 0,
+            "width": 0,
+          },
+          "shadowOpacity": 1,
+          "shadowRadius": 10,
+          "width": 10,
+        },
+      ]
+    }
+    transition={
+      {
+        "delay": 502,
+        "duration": 2400,
+        "easing": [Function],
+        "loop": false,
+        "type": "timing",
+      }
+    }
+  />
+  <View
+    animate={
+      {
+        "opacity": 1,
+        "translateX": 205.1077284000599,
+        "translateY": 884,
+      }
+    }
+    from={
+      {
+        "opacity": 0,
+        "translateX": 234.52410396992323,
+        "translateY": -27.097870080521766,
+      }
+    }
+    style={
+      [
+        {
+          "position": "absolute",
+        },
+        {
+          "backgroundColor": "#fbbf24",
+          "borderRadius": 6,
+          "height": 12,
+          "shadowColor": "#fbbf24",
+          "shadowOffset": {
+            "height": 0,
+            "width": 0,
+          },
+          "shadowOpacity": 1,
+          "shadowRadius": 12,
+          "width": 12,
+        },
+      ]
+    }
+    transition={
+      {
+        "delay": 659,
+        "duration": 2400,
+        "easing": [Function],
+        "loop": false,
+        "type": "timing",
+      }
+    }
+  />
+  <View
+    animate={
+      {
+        "opacity": 1,
+        "translateX": 74.03082582494962,
+        "translateY": 884,
+      }
+    }
+    from={
+      {
+        "opacity": 0,
+        "translateX": 75.51976526284585,
+        "translateY": -53.74021231982396,
+      }
+    }
+    style={
+      [
+        {
+          "position": "absolute",
+        },
+        {
+          "backgroundColor": "#fbbf24",
+          "borderRadius": 3,
+          "height": 6,
+          "shadowColor": "#fbbf24",
+          "shadowOffset": {
+            "height": 0,
+            "width": 0,
+          },
+          "shadowOpacity": 1,
+          "shadowRadius": 6,
+          "width": 6,
+        },
+      ]
+    }
+    transition={
+      {
+        "delay": 449,
+        "duration": 2400,
+        "easing": [Function],
+        "loop": false,
+        "type": "timing",
+      }
+    }
+  />
+  <View
+    animate={
+      {
+        "opacity": 1,
+        "translateX": 204.20378220598303,
+        "translateY": 884,
+      }
+    }
+    from={
+      {
+        "opacity": 0,
+        "translateX": 177.02857003478067,
+        "translateY": -46.54385306093466,
+      }
+    }
+    style={
+      [
+        {
+          "position": "absolute",
+        },
+        {
+          "backgroundColor": "#fbbf24",
+          "borderRadius": 3,
+          "height": 6,
+          "shadowColor": "#fbbf24",
+          "shadowOffset": {
+            "height": 0,
+            "width": 0,
+          },
+          "shadowOpacity": 1,
+          "shadowRadius": 6,
+          "width": 6,
+        },
+      ]
+    }
+    transition={
+      {
+        "delay": 544,
+        "duration": 2400,
+        "easing": [Function],
+        "loop": false,
+        "type": "timing",
+      }
+    }
+  />
+  <View
+    animate={
+      {
+        "opacity": 1,
+        "translateX": 295.4158810096364,
+        "translateY": 884,
+      }
+    }
+    from={
+      {
+        "opacity": 0,
+        "translateX": 287.1777386863664,
+        "translateY": -50.37571339643926,
+      }
+    }
+    style={
+      [
+        {
+          "position": "absolute",
+        },
+        {
+          "backgroundColor": "#fbbf24",
+          "borderRadius": 6,
+          "height": 12,
+          "shadowColor": "#fbbf24",
+          "shadowOffset": {
+            "height": 0,
+            "width": 0,
+          },
+          "shadowOpacity": 1,
+          "shadowRadius": 12,
+          "width": 12,
+        },
+      ]
+    }
+    transition={
+      {
+        "delay": 279,
+        "duration": 2400,
+        "easing": [Function],
+        "loop": false,
+        "type": "timing",
+      }
+    }
+  />
+  <View
+    animate={
+      {
+        "opacity": 1,
+        "translateX": 381.7929490124325,
+        "translateY": 884,
+      }
+    }
+    from={
+      {
+        "opacity": 0,
+        "translateX": 376.999350706348,
+        "translateY": -37.869982523347716,
+      }
+    }
+    style={
+      [
+        {
+          "position": "absolute",
+        },
+        {
+          "backgroundColor": "#fbbf24",
+          "borderRadius": 6,
+          "height": 12,
+          "shadowColor": "#fbbf24",
+          "shadowOffset": {
+            "height": 0,
+            "width": 0,
+          },
+          "shadowOpacity": 1,
+          "shadowRadius": 12,
+          "width": 12,
+        },
+      ]
+    }
+    transition={
+      {
+        "delay": 467,
+        "duration": 2400,
+        "easing": [Function],
+        "loop": false,
+        "type": "timing",
+      }
+    }
+  />
+  <View
+    animate={
+      {
+        "opacity": 1,
+        "translateX": 29.319208965012624,
+        "translateY": 884,
+      }
+    }
+    from={
+      {
+        "opacity": 0,
+        "translateX": 54.4116898310398,
+        "translateY": -21.547912853199037,
+      }
+    }
+    style={
+      [
+        {
+          "position": "absolute",
+        },
+        {
+          "backgroundColor": "#fbbf24",
+          "borderRadius": 5,
+          "height": 10,
+          "shadowColor": "#fbbf24",
+          "shadowOffset": {
+            "height": 0,
+            "width": 0,
+          },
+          "shadowOpacity": 1,
+          "shadowRadius": 10,
+          "width": 10,
+        },
+      ]
+    }
+    transition={
+      {
+        "delay": 668,
+        "duration": 2400,
+        "easing": [Function],
+        "loop": false,
+        "type": "timing",
+      }
+    }
+  />
+  <View
+    animate={
+      {
+        "opacity": 1,
+        "translateX": 3.5031400372980013,
+        "translateY": 884,
+      }
+    }
+    from={
+      {
+        "opacity": 0,
+        "translateX": 15.916241667213907,
+        "translateY": -77.57253236080811,
+      }
+    }
+    style={
+      [
+        {
+          "position": "absolute",
+        },
+        {
+          "backgroundColor": "#fbbf24",
+          "borderRadius": 3,
+          "height": 6,
+          "shadowColor": "#fbbf24",
+          "shadowOffset": {
+            "height": 0,
+            "width": 0,
+          },
+          "shadowOpacity": 1,
+          "shadowRadius": 6,
+          "width": 6,
+        },
+      ]
+    }
+    transition={
+      {
+        "delay": 258,
+        "duration": 2400,
+        "easing": [Function],
+        "loop": false,
+        "type": "timing",
+      }
+    }
+  />
+  <View
+    animate={
+      {
+        "opacity": 1,
+        "translateX": 146.22214034810247,
+        "translateY": 884,
+      }
+    }
+    from={
+      {
+        "opacity": 0,
+        "translateX": 170.08372395301325,
+        "translateY": -65.0174588442355,
+      }
+    }
+    style={
+      [
+        {
+          "position": "absolute",
+        },
+        {
+          "backgroundColor": "#fbbf24",
+          "borderRadius": 4,
+          "height": 8,
+          "shadowColor": "#fbbf24",
+          "shadowOffset": {
+            "height": 0,
+            "width": 0,
+          },
+          "shadowOpacity": 1,
+          "shadowRadius": 8,
+          "width": 8,
+        },
+      ]
+    }
+    transition={
+      {
+        "delay": 192,
+        "duration": 2400,
+        "easing": [Function],
+        "loop": false,
+        "type": "timing",
+      }
+    }
+  />
+  <View
+    animate={
+      {
+        "opacity": 1,
+        "translateX": 264.3062176961233,
+        "translateY": 884,
+      }
+    }
+    from={
+      {
+        "opacity": 0,
+        "translateX": 271.1262794935904,
+        "translateY": -60.359308063136254,
+      }
+    }
+    style={
+      [
+        {
+          "position": "absolute",
+        },
+        {
+          "backgroundColor": "#fbbf24",
+          "borderRadius": 5,
+          "height": 10,
+          "shadowColor": "#fbbf24",
+          "shadowOffset": {
+            "height": 0,
+            "width": 0,
+          },
+          "shadowOpacity": 1,
+          "shadowRadius": 10,
+          "width": 10,
+        },
+      ]
+    }
+    transition={
+      {
+        "delay": 389,
+        "duration": 2400,
+        "easing": [Function],
+        "loop": false,
+        "type": "timing",
+      }
+    }
+  />
+  <View
+    animate={
+      {
+        "opacity": 1,
+        "translateX": 14.113932883859132,
+        "translateY": 884,
+      }
+    }
+    from={
+      {
+        "opacity": 0,
+        "translateX": 5.14582930485388,
+        "translateY": -62.09048878450191,
+      }
+    }
+    style={
+      [
+        {
+          "position": "absolute",
+        },
+        {
+          "backgroundColor": "#fbbf24",
+          "borderRadius": 3,
+          "height": 6,
+          "shadowColor": "#fbbf24",
+          "shadowOffset": {
+            "height": 0,
+            "width": 0,
+          },
+          "shadowOpacity": 1,
+          "shadowRadius": 6,
+          "width": 6,
+        },
+      ]
+    }
+    transition={
+      {
+        "delay": 693,
+        "duration": 2400,
+        "easing": [Function],
+        "loop": false,
+        "type": "timing",
+      }
+    }
+  />
+  <View
+    animate={
+      {
+        "opacity": 1,
+        "translateX": 249.81852032705643,
+        "translateY": 884,
+      }
+    }
+    from={
+      {
+        "opacity": 0,
+        "translateX": 238.93232942068306,
+        "translateY": -48.86198047754867,
+      }
+    }
+    style={
+      [
+        {
+          "position": "absolute",
+        },
+        {
+          "backgroundColor": "#fbbf24",
+          "borderRadius": 5,
+          "height": 10,
+          "shadowColor": "#fbbf24",
+          "shadowOffset": {
+            "height": 0,
+            "width": 0,
+          },
+          "shadowOpacity": 1,
+          "shadowRadius": 10,
+          "width": 10,
+        },
+      ]
+    }
+    transition={
+      {
+        "delay": 192,
+        "duration": 2400,
+        "easing": [Function],
+        "loop": false,
+        "type": "timing",
+      }
+    }
+  />
+  <View
+    animate={
+      {
+        "opacity": 1,
+        "translateX": 154.79222135497076,
+        "translateY": 884,
+      }
+    }
+    from={
+      {
+        "opacity": 0,
+        "translateX": 136.93331570525964,
+        "translateY": -42.97503660036601,
+      }
+    }
+    style={
+      [
+        {
+          "position": "absolute",
+        },
+        {
+          "backgroundColor": "#fbbf24",
+          "borderRadius": 5,
+          "height": 10,
+          "shadowColor": "#fbbf24",
+          "shadowOffset": {
+            "height": 0,
+            "width": 0,
+          },
+          "shadowOpacity": 1,
+          "shadowRadius": 10,
+          "width": 10,
+        },
+      ]
+    }
+    transition={
+      {
+        "delay": 605,
+        "duration": 2400,
+        "easing": [Function],
+        "loop": false,
+        "type": "timing",
+      }
+    }
+  />
+  <View
+    pointerEvents="none"
+    style={
+      [
+        {
+          "bottom": 0,
+          "left": 0,
+          "position": "absolute",
+          "right": 0,
+          "top": 0,
+        },
+        {
+          "backgroundColor": "rgba(251,191,36,0.04)",
+        },
+      ]
+    }
+  />
+</View>
+`;

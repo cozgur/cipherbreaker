@@ -16,18 +16,10 @@ interface GlassCardProps {
  * the matchmaking opponent reveal. Falls back gracefully on Android
  * where `BlurView` maps to a translucent colour tint.
  */
-export function GlassCard({
-  children,
-  padding = 24,
-  style,
-}: GlassCardProps): React.JSX.Element {
+export function GlassCard({ children, padding = 24, style }: GlassCardProps): React.JSX.Element {
   return (
     <View style={[styles.shadow, style]}>
-      <BlurView
-        intensity={Platform.OS === 'ios' ? 40 : 20}
-        tint="dark"
-        style={styles.surface}
-      >
+      <BlurView intensity={Platform.OS === 'ios' ? 40 : 20} tint="dark" style={styles.surface}>
         <View style={[styles.inner, { padding }]}>{children}</View>
       </BlurView>
     </View>

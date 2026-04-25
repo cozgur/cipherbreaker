@@ -39,6 +39,13 @@ export type ModeGradient = readonly [string, string];
 export interface ModeMeta {
   readonly section: ModeSection;
   readonly name: string;
+  /**
+   * Single-word abbreviation for tight surfaces (Profile BY MODE grid,
+   * future Match header chips). The full `name` (`"SUDDEN DEATH"`)
+   * truncates with an ellipsis in narrow tiles; `shortLabel`
+   * (`"SUDDEN"`) always fits.
+   */
+  readonly shortLabel: string;
   readonly description: string;
   /** Token stake to enter a match in this mode. */
   readonly stake: number;
@@ -89,4 +96,96 @@ export interface ModeCatalogEntry {
   readonly id: number;
   readonly meta: ModeMeta;
   readonly rules: ModeRules;
+}
+
+// ─────────────────────────────────────────────────────────────
+// Guess feedback + timeline shapes (Phase 1B; finalised in Phase 2)
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * Which side of the timeline a guess belongs to. `self` = local player,
+ * `opponent` = remote. UI converts this to `'left' | 'right'` via the
+ * adaptor so the component layer stays free of player-identity logic.
+ */
+export type GuessSide = 'self' | 'opponent';
+
+/** Per-position digit paint states the `DigitTile` primitive understands. */
+export type DigitTileVisualState = 'neutral' | 'green' | 'yellow' | 'gray' | 'violet' | 'blackout';
+
+/**
+ * Mode-agnostic feedback shape produced by engines (Phase 2+) and
+ * consumed by per-mode row components. Discriminated on `kind` so each
+ * renderer can do an exhaustive switch — `noFallthroughCasesInSwitch`
+ * (ARCHITECTURE §Phase 0) turns a missed branch into a compile error.
+ *
+ * Phase 1B mock history produces these shapes directly. Phase 2
+ * engines will produce the *same* shapes — no adaptor refactor.
+ */
+export type NormalizedFeedback =
+  | {
+      /** Modes 1, 4, 6, 7 — per-position Wordle-style colouring. */
+      readonly kind: 'colorMatch';
+      readonly states: readonly DigitTileVisualState[];
+    }
+  | {
+      /** Mode 2 — is the secret higher or lower than the guess. */
+      readonly kind: 'direction';
+      readonly dir: 'higher' | 'lower';
+    }
+  | {
+      /** Mode 3 — count of right-spot (+) and wrong-spot (−) hits. */
+      readonly kind: 'precision';
+      readonly plus: number;
+      readonly minus: number;
+    }
+  | {
+      /** Mode 5 — digits stay blacked out except for locked-in matches. */
+      readonly kind: 'blackout';
+      readonly states: readonly DigitTileVisualState[];
+      readonly locked: number;
+    };
+
+/**
+ * Single entry in a match timeline. `guessIndex` is 1-based so Mode 6
+ * can render "3/5" directly; `elapsedMs` is the Blitz clock delta the
+ * Mode 4 row surfaces as a monospace extra label.
+ *
+ * Phase 2 engines produce `GuessEntry[]` on every `submitGuess`.
+ * Phase 1B mocks produce the same shape so the MatchScreen consumer
+ * path is identical.
+ */
+export interface GuessEntry {
+  readonly side: GuessSide;
+  readonly guessIndex: number;
+  readonly digits: readonly number[];
+  readonly feedback: NormalizedFeedback;
+  /** Mode 4 — time the guess took. Omitted for non-Blitz modes. */
+  readonly elapsedMs?: number;
+}
+
+/**
+ * Context the adaptor needs to turn a `GuessEntry` into row props:
+ * which avatar to paint per side, and which mode the row belongs to
+ * (Mode 6 surfaces `guessIndex/totalGuesses` as the `extra` chip).
+ */
+export interface GuessRowAdaptorContext {
+  readonly selfAvatar: string;
+  readonly opponentAvatar: string;
+  readonly modeId: number;
+}
+
+/**
+ * Props consumed by every per-mode row component in
+ * `src/components/game/rows/*`. Intentionally mode-agnostic at the
+ * type level — each row casts `feedback.kind` and handles what it
+ * cares about. `extra` is a pre-formatted mode-specific sublabel
+ * (e.g. `"0:08s"` for Blitz, `"3/5"` for Sudden Death) so the row
+ * component never formats time or counts itself.
+ */
+export interface GuessRowProps {
+  readonly side: 'left' | 'right';
+  readonly avatar: string;
+  readonly digits: ReadonlyArray<{ val: number; state: DigitTileVisualState }>;
+  readonly feedback?: NormalizedFeedback;
+  readonly extra?: string;
 }

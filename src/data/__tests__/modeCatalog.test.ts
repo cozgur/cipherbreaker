@@ -17,6 +17,14 @@ describe('modeCatalog', () => {
     }
   });
 
+  it('exposes a non-empty shortLabel on every mode for the Profile grid', () => {
+    for (const entry of modeCatalog) {
+      expect(entry.meta.shortLabel).toBeTruthy();
+      // Single token (no spaces) so narrow tiles never need to truncate.
+      expect(entry.meta.shortLabel.includes(' ')).toBe(false);
+    }
+  });
+
   it('pairs every mode with one of the seven supported icon keys', () => {
     const allowed = new Set([
       'color-match',

@@ -16,11 +16,7 @@ interface LevelBarProps {
  * clamped to `[0, 1]` so a degenerate target doesn't produce a
  * negative width.
  */
-export function LevelBar({
-  level,
-  currentXP,
-  targetXP,
-}: LevelBarProps): React.JSX.Element {
+export function LevelBar({ level, currentXP, targetXP }: LevelBarProps): React.JSX.Element {
   const ratio = targetXP > 0 ? Math.min(1, Math.max(0, currentXP / targetXP)) : 0;
   const percent = `${Math.round(ratio * 100)}%` as const;
 

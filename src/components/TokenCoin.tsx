@@ -25,8 +25,23 @@ export function TokenCoin({ size = 16 }: TokenCoinProps): React.JSX.Element {
           <Stop offset="100%" stopColor="#b45309" />
         </RadialGradient>
       </Defs>
-      <Circle cx="10" cy="10" r="9" fill={`url(#${gradientId})`} stroke="#78350f" strokeWidth="0.6" />
-      <Circle cx="10" cy="10" r="6.5" fill="none" stroke="#78350f" strokeWidth="0.6" opacity="0.5" />
+      <Circle
+        cx="10"
+        cy="10"
+        r="9"
+        fill={`url(#${gradientId})`}
+        stroke="#78350f"
+        strokeWidth="0.6"
+      />
+      <Circle
+        cx="10"
+        cy="10"
+        r="6.5"
+        fill="none"
+        stroke="#78350f"
+        strokeWidth="0.6"
+        opacity="0.5"
+      />
       <SvgText
         x="10"
         y="13.5"

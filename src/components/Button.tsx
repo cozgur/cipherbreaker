@@ -54,7 +54,10 @@ const VARIANT: Record<ButtonVariant, VariantPaint> = {
   },
 };
 
-const SIZE: Record<ButtonSize, { readonly height: number; readonly fontSize: number; readonly padding: number }> = {
+const SIZE: Record<
+  ButtonSize,
+  { readonly height: number; readonly fontSize: number; readonly padding: number }
+> = {
   md: { height: 50, fontSize: 14, padding: 22 },
   lg: { height: 56, fontSize: 15, padding: 24 },
 };
@@ -95,10 +98,7 @@ export function Button({
     <View style={styles.content}>
       {icon ? <View style={styles.icon}>{icon}</View> : null}
       <Text
-        style={[
-          styles.label,
-          { color: paint.foreground, fontSize: spec.fontSize },
-        ]}
+        style={[styles.label, { color: paint.foreground, fontSize: spec.fontSize }]}
         numberOfLines={1}
       >
         {children}
