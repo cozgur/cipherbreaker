@@ -267,34 +267,188 @@ Phase 2 replaces the read with a Zustand selector that hydrates from AsyncStorag
 
 ---
 
-## Upcoming sections
+## Phase 2 decisions
 
-The following decisions are specified in `specs/CipherBreaker-ROADMAP-v4.md` and will be filled in as each phase lands.
+Phase 2 ships the engine skeleton, the four state stores, and the test infra that holds them together. **No mode is implemented in this phase** — Phase 3 lands Mode 1 against this scaffolding. The 1B `mockUser` mock is preserved as a facade routing to Zustand under the hood, so all 1B screens and tests keep working unchanged.
 
-### Plugin mode system
+### Plug-in mode system — three layers
 
-_(Phase 2–3)_ Three-layer split: pure-domain mode files → shared helpers → per-mode row components, wired through `modeRegistry` and a `renderers` map keyed by `modeId`. `ModeDefinition` carries `meta`, `rules`, `generateSecret`, `validateGuess`, `evaluate`, and a `bot` subtree. Adding a new mode is three files plus a registry call.
+Modes live in three files apiece, with strict directional dependencies:
+
+```
+src/game/modes/mode{N}{Name}.ts        ← pure domain, NO React import
+src/components/game/rows/Mode{N}Row.tsx ← UI feedback rendering
+src/game/renderers.ts                   ← modeId → row component registry
+```
+
+Every `ModeDefinition` is registered with `modeRegistry.register(mode)` at module load. The registry's `get(id)` throws `ModeNotFoundError` so a missing registration surfaces at the call site, not deep in an undefined-property dereference. `getOrNull(id)` is the non-throwing variant for fallback paths.
+
+Adding a mode is mechanical (see "Adding a new mode" below): one domain file, one row component, one registry call, one renderers entry, one catalog entry. A switch statement nowhere.
+
+### Domain vs Presentation invariant
+
+`src/game/**` *never* imports React. The engine layer is pure TS so it runs identically in Jest, on a server (future replay/leaderboard tooling), and in the device runtime. The boundary is enforced by convention today; a CI grep can be added once Phase 3 introduces the first mode file:
+
+```sh
+grep -r "from 'react'" src/game/   # must be empty
+```
+
+The reverse is not symmetric — `src/components/game/rows/*` does import React, but never imports from `src/game/modes/*`. Rows take `GuessRowProps` and render; the mode file is what produced those props.
+
+### Hata stratejisi — net çizgi
+
+Two distinct failure modes, two distinct mechanisms:
+
+| Origin | Mechanism | Example |
+|---|---|---|
+| User input | `ValidationResult` discriminated union → `{ ok: false, error }` | `validateGuess('12a4')` fails with `code: 'NOT_DIGITS'` |
+| Engine submit return | `{ state, feedback: null, error }` | `submitGuess` propagates the validation error in-band |
+| Architectural | `throw` a typed `Error` subclass | `modeRegistry.get(99) → ModeNotFoundError` |
+| State corruption | `throw InvalidEngineStateError` | `applyTimeout` called when no end condition is satisfied |
+| Solver mismatch | `throw SolverStateMismatchError` | Mode hands back a `mirror` solver to a non-Mirror engine |
+
+**Rule of thumb:** user-facing errors never throw. A throw is the dev's signal that *this code path should not have executed in a healthy build*.
+
+`ValidationResult` lives in `src/game/types.ts`; the three error classes in `src/game/errors.ts`. Each carries a stable `code` field for analytics and an optional `cause` so wrapping a lower-level throw preserves the chain.
+
+### Adding a new mode — five steps
+
+1. **Mode file** — `src/game/modes/mode{N}{Name}.ts` exporting a single `ModeDefinition`. **No React import.** Implements `generateSecret`, `validateGuess`, `evaluate`, and the `bot` subtree (`initSolverState`, `makeGuess`, `thinkingTime`).
+2. **Row component** — `src/components/game/rows/Mode{N}Row.tsx`, consumes `GuessRowProps`, switches on `feedback.kind` for the mode-specific painting.
+3. **Registry call** — `modeRegistry.register(mode{N}{Name})` at import time (typically from a barrel that the app entry imports during boot).
+4. **Renderers map** — entry in `src/game/renderers.ts` keying the new `modeId` to the row component. `renderers.test.ts` cross-checks this against the catalog.
+5. **Catalog entry** — append to `src/data/modeCatalog.ts`. The numeric `id` lives **only** at the entry root; never inside `meta` or `rules`. `modeCatalog.test.ts` enforces uniqueness + the closed `iconKey` set.
+
+### Engine vs orchestration
+
+Engines are **event-driven only**. There is intentionally no `tick(state, deltaMs)` method. Wall-clock orchestration — Mode 4 Blitz countdown — is owned by:
+
+- `liveMatchStore.tickClock(deltaMs)` — TRANSIENT in-memory decrement at ~10Hz
+- `MatchScreen` `useEffect` setInterval — drives the tick + checks the live clock for zero
+- On zero: the screen calls `matchStore.applyTimeout(snapshot)`, which updates the durable snapshot and routes through `engine.applyTimeout` → `checkEndConditions`
+
+Engines see structural events (`createMatch`, `startMatch`, `submitGuess`, `applyTimeout`, `applyClockSnapshot`) and nothing else. This makes them trivially replayable and unit-testable without timers.
+
+### SolverState pattern
+
+`SolverState` is a discriminated union over the three shapes a bot needs to carry between turns:
+
+```ts
+type SolverState =
+  | { kind: 'candidatePool'; pool: readonly string[] }            // Modes 1, 2, 4, 6, 7
+  | { kind: 'blackoutConstraints'; pool; constraints }            // Mode 5
+  | { kind: 'mirror'; pool; targetTurn: number }                  // Mode 7 race tracking
+```
+
+Solver pool members are 4-character digit strings (`'1234'`) — half the memory of `number[]`, identity-comparable, easy to dedupe. Conversion to/from `number[]` happens at the engine's `parseDigits` boundary.
+
+`SolverStates` is a `{ player?, opponent? }` envelope — both optional so only the bot side carries one today, but the player slot is reserved for hint mode (Phase 7B) and AI-vs-AI replay (post-launch). Solver state is part of `MatchState` and persists with it.
+
+If a mode hands back a solver whose `kind` doesn't match what the engine expects, the engine throws `SolverStateMismatchError` with `expected` and `actual` filled.
 
 ### Durable vs transient state
 
-_(Phase 2)_ `matchStore` (persisted to AsyncStorage, mutated only on guess/timeout/phase changes) vs `liveMatchStore` (in-memory only, updated every 100ms for the Blitz clock). Design goal: never write to AsyncStorage at clock-tick frequency.
+Two stores, two different write frequencies:
+
+| Store | Persisted | Update cadence | What lives here |
+|---|---|---|---|
+| `useUserStore` | AsyncStorage (`cipherbreaker.user.v1`) | Match results, Shop, Ad reward | tokens, username, level, XP, stats |
+| `useSettingsStore` | AsyncStorage (`cipherbreaker.settings.v1`) | Settings toggles | sound, haptics, hasSeenBlitzTip |
+| `useMatchStore` | AsyncStorage (`cipherbreaker.match.v1`) | Per guess + timeout + phase change | `MatchState | null` |
+| `useLiveMatchStore` | **NOT persisted** | ~10Hz clock tick | `LiveClockState | null` |
+
+**AsyncStorage frequency rule:** never write at tick frequency. A 10Hz persist would burn IO and drop frames; the live clock therefore lives in `liveMatchStore` (transient) and the durable snapshot is captured to `matchStore.matchState.clockSnapshot` only on structural events.
+
+`useLiveMatchStore` is asserted not to expose a `persist` field by `liveMatchStore.test.ts` — a future change that wraps it in `persist(...)` fails CI loudly.
+
+`createMatch` on `useMatchStore` is **no-op-guarded**: a second call while a match is already in flight returns `false` and does nothing. Prevents navigation re-entries from clobbering an in-progress match.
 
 ### RNG state serialization
 
-_(Phase 2)_ `createRNG` accepts either a seed or a `{seed, callCount}` snapshot. Every bot move persists `rng.getState()` so hydration on app resume continues the exact deterministic sequence — and replay/snapshot tests are trivial.
+`src/lib/random.ts` exposes `createRNG(stateOrSeed: RNGState | number): RNG`. The algorithm is mulberry32 over a uint32 state; every `next()` increments a `callCount`, and `getState()` returns the `{seed, callCount}` cursor.
 
-### Chunked filtering pattern
+The resume contract:
 
-_(Phase 2, exercised in Phase 4 for Mode 3)_ `filterByFeedbackChunked` breaks candidate-pool filtering into ~500-item chunks separated by `await yieldToUI()` (a `setTimeout(0)` wrapper). Bot `makeGuess` and engine `submitGuess` are `async` throughout so pools of 5040 permutations never block the JS thread.
+```ts
+createRNG(42).next() x 5       // produces sequence S
+createRNG({ seed: 42, callCount: 5 }).next()   // continues from S[5]
+```
 
-### `checkEndConditions` helper
+`turnBasedEngine.submitGuess` writes `state.rngState = rng.getState()` after every consuming step, so a hydrated `MatchState` produces bit-identical bot moves. Replay tests, post-mortem debugging, and resume-after-suspend all use the same primitive.
 
-_(Phase 2)_ Single source of truth for match end: returns a `MatchResult | null` after evaluating crack, simultaneous-crack, timeout, guess-limit, and stalemate in a fixed order. Invoked from both `submitGuess` and `applyTimeout` — win/draw/loss logic lives in exactly one place.
+`int`, `pick`, `shuffle`, `weightedPick` all funnel through `next()` so call-count bookkeeping covers every consumer. Empty arrays / non-positive weights / inverted ranges throw `RangeError`.
 
-### Error strategy
+### Heavy filtering — chunking pattern
 
-_(Phase 2)_ User errors (invalid guess input, non-unique digits in Mode 3/5) return a structured `ValidationResult` and propagate through the engine as `{ state, feedback: null, error }`. Architectural errors (unknown mode id, corrupt match state, solver/rules mismatch) `throw` a typed `Error` subclass. Rule of thumb: user-facing errors never throw.
+`src/game/shared/asyncHelpers.ts` ships a one-line `yieldToUI()` that resolves on the next macrotask (`setTimeout(0)`, deliberately not `queueMicrotask` — microtasks run before render flushes).
 
-### Engine separation
+`filterByFeedbackChunked(pool, evaluator, chunkSize=500)` slices a pool into `FILTER_CHUNK_SIZE` batches and `await`s `yieldToUI()` between them. Mode 3 (5040 permutations) and Mode 5 (constraint sweep) are the targeted consumers; Modes 1, 2, 4, 6, 7 with a < 1000 narrowed pool can use the synchronous `filterByFeedback` instead.
 
-_(Phase 2 scaffolded, Phase 3/4/5 populate turn-based, Phase 6 populates parallel)_ `turnBasedEngine` covers modes 1–6; `parallelEngine` covers Mode 7 (Mirror). A `selectEngine(mode)` router switches on `rules.flags.parallelMode`. Engines are event-driven only — time-based behaviour (clock tick, timeout) is owned by `liveMatchStore` and the `MatchScreen` effect, which call back into the engine via `applyTimeout`.
+`bot.makeGuess` therefore returns `Promise<{ guess, newSolverState }>` and `engine.submitGuess` is async throughout — so the heavy modes don't force a wider interface refactor when their day arrives.
+
+### `checkEndConditions` — single source of truth
+
+`src/game/engines/checkEndConditions.ts` is *the* function that converts in-flight match state to a terminal `MatchResult`. Every engine path that could end a match — `submitGuess` after evaluate, `applyTimeout` after a clock-zero — funnels through it. Order of checks is fixed:
+
+1. Both sides cracked this turn → `draw / simultaneous_crack`
+2. Player cracked → `player_won / cracked`
+3. Opponent cracked → `opponent_won / cracked`
+4. Mode 4 — `clockSnapshot.playerMs <= 0` → `opponent_won / player_time_out`
+5. Mode 4 — `clockSnapshot.opponentMs <= 0` → `player_won / opponent_time_out`
+6. Mode 6 — both exhausted → `stalemate / both_exhausted`
+7. Mode 6 — one side exhausted → other side wins by `_guess_limit`
+8. Otherwise → `null` (match continues)
+
+The helper is **pure** — no clocks, no stores, no side effects. The caller passes the prospective state, the helper says yes/no.
+
+**Engine invariant** (asserted by the CP3 invariant test): `phase === 'completed'` ⇔ `result !== null` ⇔ the `feedback.isWin` chain led to an `outcome`. The engine NEVER returns `isWin === true` while `phase` stays `'active_*'` — `submitGuess` always promotes the state to `'completed'` in the same call.
+
+### Phase model
+
+```
+setup → active_turn_player ↔ active_turn_opponent → completed
+        active_parallel ────────────────────────→ completed
+```
+
+`MatchState.phase` and `MatchState.result` carry a strict invariant: `phase === 'completed'` iff `result !== null`. `submitGuess` and `applyTimeout` are the only transitions to `'completed'`. `startMatch` is the only transition out of `'setup'`. Calling `startMatch` on a non-setup state throws `InvalidEngineStateError`; calling `submitGuess` on `'setup'` or `'completed'` throws the same.
+
+### parallelEngine — soft-fail strategy
+
+Mode 7 (Mirror) ships in Phase 6. Until then `src/game/engines/parallelEngine.ts` is a soft-fail stub: every operation returns a sensible no-op result and emits a single `console.warn('parallelEngine: Faz 6 implementation pending — call ignored')`.
+
+**No throws.** The reasoning: "feature not implemented yet" is not a programmer error — it's a known gap. Throwing would force every screen-level navigation flow to wrap calls in try/catch defensively. A warn lets dev tooling surface the call without breaking the screen, and the test (`parallelEngine.test.ts`) asserts both the no-throw contract (`expect(...).not.toThrow`) and the warn signal (`jest.spyOn(console, 'warn')`).
+
+`selectEngine(mode)` routes on `mode.rules.flags.parallelRace === true` — that's the canonical flag name (matches the existing 1B catalog and `modeRouter.ts`). The ROADMAP mentions `parallelMode` informally; renaming would cascade through the catalog and router for no behavioural gain.
+
+### isWin contract
+
+`NormalizedFeedback.isWin?: boolean` is **optional** at the type level, but **required when produced by `engine.evaluate`**. Phase 1B mock fixtures and the `mockSecrets`/`mockMatchHistory` data continue to ship without it — they never represent a winning state. Helpers (`isWinningFeedback`, `checkEndConditions`) read defensively with `?? false` so undefined never crashes a check.
+
+The CP3 invariant test pins this contract at the engine boundary: a stub mode whose `evaluate` always returns `isWin: true` must produce `phase: 'completed'` with `result.outcome` set on the same `submitGuess` call. The engine cannot leak `isWin: true` into an active phase.
+
+### Mock facade pattern (Phase 1B → Phase 2 bridge)
+
+`src/data/mockUser.ts` is now a façade. The exported `mockUser` object uses `Object.defineProperty` getter/setter chains; reads pull from `useUserStore.getState()` / `useSettingsStore.getState()`, writes call `setState({...})`. The `settings` field is itself a sub-facade with three nested getter/setter pairs. `enumerable: true` on every property preserves `JSON.stringify` and `console.log` behaviour so debug surfaces look unchanged.
+
+Why a façade rather than a rip-and-replace: Phase 1B ships 11 test files and 8 production components that read `mockUser.X` or write `mockUser.X = Y`. Migrating them all in one PR would have meant 60+ files of diff for zero behaviour change. The façade lets each consumer migrate to direct store usage on its own schedule.
+
+`useMockUser()` subscribes to *both* stores via the Zustand hook so a settings toggle still triggers a re-render in components that key off `mockUser`. It's `useMemo`-stabilised so the returned reference is stable across re-renders that don't change either slice.
+
+**Phase 7 deprecation plan**: replace `useMockUser()` consumers with direct `useUserStore` / `useSettingsStore` selectors as each screen gets polish, and delete the façade once the import count hits zero.
+
+### Test infra — AsyncStorage mock + global hydration hygiene
+
+Two pieces:
+
+1. **AsyncStorage mock** (in `jest.setup.js`). v3 ships `./jest` exports but the path isn't reachable through `jest-expo`'s resolver matrix; we ship an inline 30-line in-memory shim covering the surface the persist middleware exercises (get/set/remove/clear + multi variants).
+
+2. **Global `beforeEach`** (`setupFilesAfterEnv` — not `setupFiles`, since `beforeEach` needs the test framework to be installed first). Each test starts with `AsyncStorage.clear()`, then `await store.persist.clearStorage()` for each persisted store, then `setState({...DEFAULTS})`, then `await waitForHydration(store)` for each persisted store. The hydration wait uses `store.persist.onFinishHydration` — Zustand's persist middleware hydrates asynchronously, so a fast post-clear read can race the hydrate callback otherwise. The helper lives in `src/test-utils/zustandHydration.ts` (deliberately outside `__tests__/` so jest doesn't try to run it as a suite).
+
+### Future Work — RNG forward compatibility
+
+The current `RNGState = { seed, callCount }` is sufficient for in-version resume but breaks if engine call counts shift across versions (a refactor that adds an extra `rng.int(...)` somewhere upstream changes every downstream draw). If deterministic replay across versions becomes a feature (post-v0.2), two paths:
+
+- **Per-operation sub-seeds** — `deriveSubRng(parent, namespace)` derives child generators per operation (`'opponentSecret'`, `'startMatch'`, `'bot.move.3'`). Each named operation has its own cursor, so adding a draw upstream doesn't invalidate downstream sequences.
+- **Schema versions on saved match states** — bump a `replayVersion` field on `MatchState` and refuse to replay across versions. Simpler but loses cross-version replay value.
+
+Defer the decision until a replay use case exists. The current mulberry32 + flat callCount is the right default for resume.

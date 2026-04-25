@@ -1,24 +1,43 @@
 /**
- * Mock player profile used by every Phase 1B screen that needs the
- * current user's tokens, level, username, or settings. Shape is
- * deliberately aligned with the Phase 2 `PlayerProfile` + settings
- * store so swapping in `useMatchStore()` / `useSettingsStore()` means
- * changing the import, not the consumer.
+ * Phase 1B → Phase 2 facade. The exported `mockUser` object, the
+ * `useMockUser()` hook, and the writer helpers (`grantTokens`,
+ * `chargeTokens`, `setUsername`, `toggleSetting`, `markOnboarded`,
+ * `__resetMockUserForTests`) keep the *exact* surface Phase 1B
+ * screens and tests already depend on. Underneath every read/write
+ * is now routed to `useUserStore` + `useSettingsStore`.
  *
- * This module is *mutable* on purpose: the Shop dev-only token boost
- * and the ProfileScreen username edit both need a local-memory update
- * path until Phase 2 wires a real store. The exported `mockUser` is
- * the single source of truth; helper writers mutate its fields in
- * place. Components that want to re-render after a write must pull
- * the value through `useSyncExternalStore` (provided here) so they
- * don't cache a stale snapshot.
+ * Why a facade rather than a rip-and-replace:
+ *   - Consumers do `mockUser.tokens = 100` (test fixtures), call
+ *     `useMockUser()` (screens), and reach into `mockUser.settings.X`
+ *     (Profile + reset). All of those work unchanged.
+ *   - The facade is the boundary where Phase 1B's mutable mock meets
+ *     Phase 2's persisted store; once Phase 7 polishes a real screen
+ *     to consume `useUserStore`/`useSettingsStore` directly, the
+ *     consumer can drop its `useMockUser()` import without touching
+ *     siblings.
+ *
+ * Implementation rules:
+ *   - Top-level data fields: `Object.defineProperty` getters read
+ *     `useUserStore.getState()`, setters call `useUserStore.setState`.
+ *     Action-named fields (`addTokens`, etc.) live on the store, not
+ *     the facade.
+ *   - `settings` is a sub-facade — its own object with three
+ *     getter/setter pairs routing to `useSettingsStore`. Phase 1B
+ *     never replaces the whole `settings` object (verified by grep
+ *     before this rewrite), so no full-object setter is needed.
+ *   - `stats` and `perMode` are snapshot getters; reads return the
+ *     current store value, writes are unsupported (no caller).
  */
 
-import { useSyncExternalStore } from 'react';
+import { useMemo } from 'react';
 
+import { SETTINGS_STORE_DEFAULTS, useSettingsStore } from '@state/settingsStore';
+import { USER_STORE_DEFAULTS, useUserStore } from '@state/userStore';
+
+// Re-export the Phase 1B types so existing consumers keep working.
 export interface MockUserStats {
   readonly gamesPlayed: number;
-  readonly winRate: number; // 0..100
+  readonly winRate: number;
   readonly currentStreak: number;
   readonly bestStreak: number;
   readonly avgTurns: number;
@@ -28,7 +47,6 @@ export interface MockUserStats {
 export interface MockUserSettings {
   sound: boolean;
   haptics: boolean;
-  /** Phase 2 onboarding — Blitz tip shown once per install. */
   hasSeenBlitzTip: boolean;
 }
 
@@ -40,126 +58,186 @@ export interface MockUser {
   targetXP: number;
   hasOnboarded: boolean;
   stats: MockUserStats;
-  /** Per-mode win rate (0..100) keyed by catalog id. */
   perMode: Record<number, { winRate: number }>;
   settings: MockUserSettings;
 }
 
-export const mockUser: MockUser = {
-  username: 'nova_code',
-  tokens: 1840,
-  level: 12,
-  currentXP: 2340,
-  targetXP: 3200,
-  hasOnboarded: true,
-  stats: {
-    gamesPlayed: 247,
-    winRate: 68,
-    currentStreak: 4,
-    bestStreak: 11,
-    avgTurns: 5.3,
-    tokensEarned: 12_400,
-  },
-  perMode: {
-    1: { winRate: 72 },
-    2: { winRate: 64 },
-    3: { winRate: 58 },
-    4: { winRate: 55 },
-    5: { winRate: 49 },
-    6: { winRate: 61 },
-    7: { winRate: 52 },
-  },
-  settings: {
-    sound: true,
-    haptics: true,
-    hasSeenBlitzTip: false,
-  },
-};
-
 // ─────────────────────────────────────────────────────────────
-// Minimal reactive layer — components subscribe via `useMockUser`.
-// Replaced in Phase 2 by Zustand/AsyncStorage; the hook signature
-// (returns a `MockUser`) does not change.
+// settings sub-facade — nested getter/setter routing to settingsStore.
 // ─────────────────────────────────────────────────────────────
 
-type Listener = () => void;
-const listeners = new Set<Listener>();
+const settingsFacade = {} as MockUserSettings;
+Object.defineProperty(settingsFacade, 'sound', {
+  enumerable: true,
+  configurable: true,
+  get: () => useSettingsStore.getState().sound,
+  set: (value: boolean) => {
+    useSettingsStore.setState({ sound: value });
+  },
+});
+Object.defineProperty(settingsFacade, 'haptics', {
+  enumerable: true,
+  configurable: true,
+  get: () => useSettingsStore.getState().haptics,
+  set: (value: boolean) => {
+    useSettingsStore.setState({ haptics: value });
+  },
+});
+Object.defineProperty(settingsFacade, 'hasSeenBlitzTip', {
+  enumerable: true,
+  configurable: true,
+  get: () => useSettingsStore.getState().hasSeenBlitzTip,
+  set: (value: boolean) => {
+    useSettingsStore.setState({ hasSeenBlitzTip: value });
+  },
+});
 
-function emit(): void {
-  for (const listener of listeners) listener();
-}
+// ─────────────────────────────────────────────────────────────
+// top-level facade — routes to userStore.
+// ─────────────────────────────────────────────────────────────
 
-function subscribe(listener: Listener): () => void {
-  listeners.add(listener);
-  return () => {
-    listeners.delete(listener);
-  };
-}
+export const mockUser = {} as MockUser;
 
-function getSnapshot(): MockUser {
-  return mockUser;
-}
+Object.defineProperty(mockUser, 'username', {
+  enumerable: true,
+  configurable: true,
+  get: () => useUserStore.getState().username,
+  set: (value: string) => {
+    useUserStore.setState({ username: value });
+  },
+});
+Object.defineProperty(mockUser, 'tokens', {
+  enumerable: true,
+  configurable: true,
+  get: () => useUserStore.getState().tokens,
+  set: (value: number) => {
+    useUserStore.setState({ tokens: value });
+  },
+});
+Object.defineProperty(mockUser, 'level', {
+  enumerable: true,
+  configurable: true,
+  get: () => useUserStore.getState().level,
+  set: (value: number) => {
+    useUserStore.setState({ level: value });
+  },
+});
+Object.defineProperty(mockUser, 'currentXP', {
+  enumerable: true,
+  configurable: true,
+  get: () => useUserStore.getState().currentXP,
+  set: (value: number) => {
+    useUserStore.setState({ currentXP: value });
+  },
+});
+Object.defineProperty(mockUser, 'targetXP', {
+  enumerable: true,
+  configurable: true,
+  get: () => useUserStore.getState().targetXP,
+  set: (value: number) => {
+    useUserStore.setState({ targetXP: value });
+  },
+});
+Object.defineProperty(mockUser, 'hasOnboarded', {
+  enumerable: true,
+  configurable: true,
+  get: () => useUserStore.getState().hasOnboarded,
+  set: (value: boolean) => {
+    useUserStore.setState({ hasOnboarded: value });
+  },
+});
+Object.defineProperty(mockUser, 'stats', {
+  enumerable: true,
+  configurable: true,
+  get: () => useUserStore.getState().stats,
+});
+Object.defineProperty(mockUser, 'perMode', {
+  enumerable: true,
+  configurable: true,
+  get: () => useUserStore.getState().perMode,
+});
+Object.defineProperty(mockUser, 'settings', {
+  enumerable: true,
+  configurable: true,
+  get: () => settingsFacade,
+});
 
+// ─────────────────────────────────────────────────────────────
+// Hook — combines both stores into the Phase 1B `MockUser` shape.
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * `useMockUser` — every screen that read the Phase 1B mock keeps
+ * working. Subscribes to *both* stores so a settings toggle still
+ * triggers a re-render in components that key off `mockUser`.
+ */
 export function useMockUser(): MockUser {
-  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+  const userState = useUserStore();
+  const settingsState = useSettingsStore();
+  // useMemo keeps reference stable across re-renders that don't
+  // change either slice — important for downstream useEffect deps.
+  return useMemo<MockUser>(
+    () => ({
+      username: userState.username,
+      tokens: userState.tokens,
+      level: userState.level,
+      currentXP: userState.currentXP,
+      targetXP: userState.targetXP,
+      hasOnboarded: userState.hasOnboarded,
+      stats: userState.stats,
+      perMode: userState.perMode as Record<number, { winRate: number }>,
+      settings: {
+        sound: settingsState.sound,
+        haptics: settingsState.haptics,
+        hasSeenBlitzTip: settingsState.hasSeenBlitzTip,
+      },
+    }),
+    [
+      userState.username,
+      userState.tokens,
+      userState.level,
+      userState.currentXP,
+      userState.targetXP,
+      userState.hasOnboarded,
+      userState.stats,
+      userState.perMode,
+      settingsState.sound,
+      settingsState.haptics,
+      settingsState.hasSeenBlitzTip,
+    ],
+  );
 }
 
-/**
- * Grant tokens (Shop dev-only + AdWatch reward). Emits a tick so
- * subscribers re-render with the new balance.
- */
+// ─────────────────────────────────────────────────────────────
+// Writer helpers — same names as Phase 1B, route to store actions.
+// ─────────────────────────────────────────────────────────────
+
 export function grantTokens(amount: number): void {
-  mockUser.tokens += amount;
-  emit();
+  useUserStore.getState().addTokens(amount);
 }
 
-/**
- * Deduct tokens (forfeit penalty + match-start stake in later phases).
- * Clamps the balance at zero so an over-spend never goes negative —
- * the engine in Phase 7B will assert affordability *before* calling
- * this; the clamp is a defensive layer for the mock.
- */
 export function chargeTokens(amount: number): void {
-  if (amount <= 0) return;
-  mockUser.tokens = Math.max(0, mockUser.tokens - amount);
-  emit();
+  useUserStore.getState().subtractTokens(amount);
 }
 
-/** Flip the persisted onboarding flag once the intro is completed. */
 export function markOnboarded(): void {
-  mockUser.hasOnboarded = true;
-  emit();
+  useUserStore.getState().setHasOnboarded(true);
 }
 
-/** Rename the current user (ProfileScreen username edit). */
 export function setUsername(next: string): void {
-  const trimmed = next.trim();
-  if (trimmed.length === 0) return;
-  mockUser.username = trimmed;
-  emit();
+  useUserStore.getState().setUsername(next);
 }
 
-/** Flip a boolean setting key. */
 export function toggleSetting(key: keyof MockUserSettings): void {
-  const current = mockUser.settings[key];
-  mockUser.settings[key] = !current;
-  emit();
+  useSettingsStore.getState().toggleSetting(key);
 }
 
 /**
- * Test-only reset — rehydrates fields from a fresh default so each
- * test starts from a known baseline. Not exported from the barrel
- * but importable directly from this file.
+ * Test-only — restores both stores to their documented defaults.
+ * Used by every Phase 1B test's `beforeEach`. Keeps the exported
+ * name so the existing 11 test files import it unchanged.
  */
 export function __resetMockUserForTests(): void {
-  mockUser.username = 'nova_code';
-  mockUser.tokens = 1840;
-  mockUser.level = 12;
-  mockUser.currentXP = 2340;
-  mockUser.targetXP = 3200;
-  mockUser.hasOnboarded = true;
-  mockUser.settings.sound = true;
-  mockUser.settings.haptics = true;
-  mockUser.settings.hasSeenBlitzTip = false;
-  emit();
+  useUserStore.setState({ ...USER_STORE_DEFAULTS });
+  useSettingsStore.setState({ ...SETTINGS_STORE_DEFAULTS });
 }

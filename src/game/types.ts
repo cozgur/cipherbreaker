@@ -126,23 +126,33 @@ export type NormalizedFeedback =
       /** Modes 1, 4, 6, 7 — per-position Wordle-style colouring. */
       readonly kind: 'colorMatch';
       readonly states: readonly DigitTileVisualState[];
+      /**
+       * Phase 2+ engines set this to `true` when the guess matched the
+       * secret exactly. Optional so Phase 1B mock entries (which never
+       * win) stay valid without backfilling the field. Helpers must
+       * read defensively (`?.isWin === true`).
+       */
+      readonly isWin?: boolean;
     }
   | {
       /** Mode 2 — is the secret higher or lower than the guess. */
       readonly kind: 'direction';
       readonly dir: 'higher' | 'lower';
+      readonly isWin?: boolean;
     }
   | {
       /** Mode 3 — count of right-spot (+) and wrong-spot (−) hits. */
       readonly kind: 'precision';
       readonly plus: number;
       readonly minus: number;
+      readonly isWin?: boolean;
     }
   | {
       /** Mode 5 — digits stay blacked out except for locked-in matches. */
       readonly kind: 'blackout';
       readonly states: readonly DigitTileVisualState[];
       readonly locked: number;
+      readonly isWin?: boolean;
     };
 
 /**
@@ -188,4 +198,202 @@ export interface GuessRowProps {
   readonly digits: ReadonlyArray<{ val: number; state: DigitTileVisualState }>;
   readonly feedback?: NormalizedFeedback;
   readonly extra?: string;
+}
+
+// ─────────────────────────────────────────────────────────────
+// Phase 2 — engine + match contracts
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * Validation outcome returned by `mode.validateGuess(...)`. Per ROADMAP
+ * §Hata Stratejisi, *user-facing* failures never throw — they propagate
+ * through this discriminated union so the UI can surface a clean
+ * message. Architectural failures (unknown mode id, corrupt state) use
+ * the typed `Error` subclasses in `errors.ts`.
+ */
+export type ValidationResult =
+  | { readonly ok: true }
+  | { readonly ok: false; readonly error: ValidationError };
+
+export interface ValidationError {
+  readonly code: 'WRONG_LENGTH' | 'NOT_DIGITS' | 'NOT_UNIQUE' | 'OUT_OF_RANGE';
+  /** Human-readable, surfaceable in the UI as-is. */
+  readonly message: string;
+}
+
+/** Phases the match cycles through. `'completed'` is terminal — `result` is non-null. */
+export type MatchPhase =
+  | 'setup'
+  | 'active_turn_player'
+  | 'active_turn_opponent'
+  | 'active_parallel'
+  | 'completed';
+
+/** Discriminated union of every terminal match outcome. */
+export type MatchResult =
+  | {
+      readonly outcome: 'player_won';
+      readonly reason: 'cracked' | 'opponent_time_out' | 'opponent_guess_limit';
+      readonly turns: number;
+    }
+  | {
+      readonly outcome: 'opponent_won';
+      readonly reason: 'cracked' | 'player_time_out' | 'player_guess_limit';
+      readonly turns: number;
+    }
+  | {
+      readonly outcome: 'draw';
+      readonly reason: 'simultaneous_crack';
+      readonly turns: number;
+    }
+  | {
+      readonly outcome: 'stalemate';
+      readonly reason: 'both_exhausted';
+      readonly turns: number;
+    };
+
+/** Mode 6 — remaining guess budget per side (decremented post-evaluate). */
+export interface GuessLimits {
+  readonly playerRemaining: number;
+  readonly opponentRemaining: number;
+}
+
+/**
+ * Mode 4 — DURABLE clock state, persisted with `MatchState`. Captured
+ * at every guess + at app suspend; the live tick value lives in
+ * `LiveClockState` (transient store, no AsyncStorage write).
+ */
+export interface ClockSnapshot {
+  readonly playerMs: number;
+  readonly opponentMs: number;
+  readonly activeOwner: 'player' | 'opponent' | null;
+  readonly snapshotTimestamp: number;
+}
+
+/**
+ * Mode 4 — TRANSIENT live clock owned by `liveMatchStore`. Updated at
+ * tick frequency (~10Hz) without persisting; resync from
+ * `ClockSnapshot` on hydrate.
+ */
+export interface LiveClockState {
+  readonly playerMs: number;
+  readonly opponentMs: number;
+  readonly activeOwner: 'player' | 'opponent' | null;
+  readonly lastTickAt: number;
+}
+
+/** Mode 5 — single locked-in digit constraint accumulated over guesses. */
+export interface BlackoutConstraint {
+  readonly position: number;
+  readonly digit: number;
+}
+
+/**
+ * Internal state a bot's solver keeps between turns. Discriminated on
+ * `kind` so the engine can `SolverStateMismatchError` if a registered
+ * mode hands back a shape that doesn't match what its bot expects.
+ *
+ * Pool members are 4-character digit strings (`'1234'`) to keep the
+ * candidate pool compact (`string` is half the size of `number[]` in
+ * memory and identity-comparable). Convert at the boundary via
+ * `secretGeneration` / candidate pool helpers.
+ */
+export type SolverState =
+  | { readonly kind: 'candidatePool'; readonly pool: readonly string[] }
+  | {
+      readonly kind: 'blackoutConstraints';
+      readonly pool: readonly string[];
+      readonly constraints: readonly BlackoutConstraint[];
+    }
+  | { readonly kind: 'mirror'; readonly pool: readonly string[]; readonly targetTurn: number };
+
+/** Optional per-side solver state — both sides for hint mode / replay. */
+export interface SolverStates {
+  readonly player?: SolverState;
+  readonly opponent?: SolverState;
+}
+
+/** Inputs a mode's `bot.makeGuess` consumes; immutable per turn. */
+export interface BotContext {
+  readonly previousGuesses: readonly GuessEntry[];
+  readonly mySecret: string;
+  readonly difficulty: 'easy' | 'normal' | 'hard';
+  readonly turnNumber: number;
+  readonly solverState: SolverState;
+}
+
+/** Persisted RNG cursor — see `src/lib/random.ts`. */
+export interface RNGStateSnapshot {
+  readonly seed: number;
+  readonly callCount: number;
+}
+
+/**
+ * The full durable match shape. Everything bot-resume-relevant lives
+ * here so AsyncStorage hydration on cold-start is a single deserialise.
+ * Live-tick fields (clock display) live in `LiveClockState`.
+ */
+export interface MatchState {
+  readonly modeId: number;
+  readonly playerSecret: string;
+  readonly opponentSecret: string;
+  readonly playerGuesses: readonly GuessEntry[];
+  readonly opponentGuesses: readonly GuessEntry[];
+
+  readonly phase: MatchPhase;
+  readonly result: MatchResult | null;
+
+  readonly guessLimits?: GuessLimits;
+  readonly solverStates?: SolverStates;
+
+  /** Always reflects the cursor *after* the last RNG-consuming step. */
+  readonly rngState: RNGStateSnapshot;
+
+  /** Mode 4 only — last persisted clock reading (live values are transient). */
+  readonly clockSnapshot?: ClockSnapshot;
+
+  readonly startedAt: number;
+  readonly lastUpdatedAt: number;
+}
+
+/**
+ * Forward declaration of the RNG interface so `ModeDefinition` can
+ * reference it without `src/game/*` importing `src/lib/random.ts`
+ * (kept domain-pure: `lib/` is the boundary). The concrete impl is in
+ * `src/lib/random.ts`; see ROADMAP §RNG State for the contract.
+ */
+export interface RNG {
+  next(): number;
+  int(min: number, max: number): number;
+  pick<T>(arr: readonly T[]): T;
+  shuffle<T>(arr: readonly T[]): T[];
+  weightedPick<T extends string>(weights: Readonly<Record<T, number>>): T;
+  getState(): RNGStateSnapshot;
+}
+
+/**
+ * The plug-in mode contract. Each mode file in `src/game/modes/`
+ * exports a single `ModeDefinition`, which the registry indexes by
+ * `id`. *No checkWinCondition* — `feedback.isWin` is the single
+ * source of truth, evaluated by the engine (not the mode).
+ */
+export interface ModeDefinition {
+  readonly id: number;
+  readonly meta: ModeMeta;
+  readonly rules: ModeRules;
+
+  generateSecret(rng: RNG): string;
+  validateGuess(guess: string): ValidationResult;
+  evaluate(guess: string, secret: string): NormalizedFeedback;
+
+  readonly bot: {
+    initSolverState(secret: string, rules: ModeRules): SolverState;
+    /**
+     * Phase 2 leaves this returning a `Promise` so heavy modes (Mode 3,
+     * Mode 5) can chunk their candidate filtering with `yieldToUI()`
+     * without an interface refactor.
+     */
+    makeGuess(context: BotContext): Promise<{ guess: string; newSolverState: SolverState }>;
+    thinkingTime(context: BotContext): number;
+  };
 }
