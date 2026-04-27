@@ -1,6 +1,5 @@
 import { act, fireEvent } from '@testing-library/react-native';
 
-import { modeCatalog } from '@data/modeCatalog';
 import { __resetMockUserForTests } from '@data/mockUser';
 import { RouteStubScreen } from '@/test-utils/RouteStubScreen';
 import { SecretSetupScreen } from '../SecretSetupScreen';
@@ -78,44 +77,22 @@ describe('SecretSetupScreen', () => {
     expect(utils.navRef.current?.getCurrentRoute()?.name).toBe('SecretSetup');
   });
 
-  // Modes 3 and 5 enforce digitsUnique — but the catalog currently
-  // ships them with `digitsUnique: false`. Force the Phase 1B rule
-  // we promised the user (Mode 3 + Mode 5 should require unique
-  // digits) by patching the catalog entry for the duration of the
-  // test. When Phase 2 lands, the catalog is the source of truth and
-  // these tests document the intended behaviour.
+  // Mode 3 ships with `digitsUnique: true` as of Phase 4 — the catalog
+  // is now the source of truth and SecretSetup reads it directly.
   it('shows the unique-digit error for repeats and blocks Lock In', () => {
-    // Mode 3 in the catalog: temporarily flip digitsUnique so the
-    // screen surfaces the inline validation as designed.
-    const mode3Rules = modeCatalog[2]?.rules as { digitsUnique: boolean } | undefined;
-    if (mode3Rules == null) throw new Error('mode 3 missing from catalog');
-    const original = mode3Rules.digitsUnique;
-    mode3Rules.digitsUnique = true;
-    try {
-      const utils = renderSecretSetup(3);
-      pressDigits(utils, [1, 1, 2, 2]);
-      expect(utils.queryByText('All digits must be unique')).toBeTruthy();
-      act(() => {
-        fireEvent.press(utils.getByText('Lock In Code'));
-      });
-      // Lock In disabled — still on SecretSetup.
-      expect(utils.navRef.current?.getCurrentRoute()?.name).toBe('SecretSetup');
-    } finally {
-      mode3Rules.digitsUnique = original;
-    }
+    const utils = renderSecretSetup(3);
+    pressDigits(utils, [1, 1, 2, 2]);
+    expect(utils.queryByText('All digits must be unique')).toBeTruthy();
+    act(() => {
+      fireEvent.press(utils.getByText('Lock In Code'));
+    });
+    // Lock In disabled — still on SecretSetup.
+    expect(utils.navRef.current?.getCurrentRoute()?.name).toBe('SecretSetup');
   });
 
   it('hides the unique-digit error when all four digits differ', () => {
-    const mode3Rules = modeCatalog[2]?.rules as { digitsUnique: boolean } | undefined;
-    if (mode3Rules == null) throw new Error('mode 3 missing from catalog');
-    const original = mode3Rules.digitsUnique;
-    mode3Rules.digitsUnique = true;
-    try {
-      const utils = renderSecretSetup(3);
-      pressDigits(utils, [3, 8, 4, 7]);
-      expect(utils.queryByText('All digits must be unique')).toBeNull();
-    } finally {
-      mode3Rules.digitsUnique = original;
-    }
+    const utils = renderSecretSetup(3);
+    pressDigits(utils, [3, 8, 4, 7]);
+    expect(utils.queryByText('All digits must be unique')).toBeNull();
   });
 });

@@ -5272,7 +5272,7 @@ exports[`MatchResultScreen snapshots the defeat variant 1`] = `
                                                     "fontWeight": "700",
                                                   },
                                                   {
-                                                    "color": "#5a5a7a",
+                                                    "color": "#f5f5f7",
                                                     "fontSize": 25,
                                                   },
                                                 ],
@@ -5289,8 +5289,8 @@ exports[`MatchResultScreen snapshots the defeat variant 1`] = `
                                               },
                                               null,
                                               {
-                                                "backgroundColor": "rgba(90,90,122,0.2)",
-                                                "borderColor": "#5a5a7a",
+                                                "backgroundColor": "#15172e",
+                                                "borderColor": "#2a2c54",
                                                 "borderRadius": 11,
                                                 "height": 52,
                                                 "width": 52,
@@ -5313,7 +5313,7 @@ exports[`MatchResultScreen snapshots the defeat variant 1`] = `
                                                     "fontWeight": "700",
                                                   },
                                                   {
-                                                    "color": "#5a5a7a",
+                                                    "color": "#f5f5f7",
                                                     "fontSize": 25,
                                                   },
                                                 ],
@@ -5330,8 +5330,8 @@ exports[`MatchResultScreen snapshots the defeat variant 1`] = `
                                               },
                                               null,
                                               {
-                                                "backgroundColor": "rgba(90,90,122,0.2)",
-                                                "borderColor": "#5a5a7a",
+                                                "backgroundColor": "#15172e",
+                                                "borderColor": "#2a2c54",
                                                 "borderRadius": 11,
                                                 "height": 52,
                                                 "width": 52,
@@ -5354,7 +5354,7 @@ exports[`MatchResultScreen snapshots the defeat variant 1`] = `
                                                     "fontWeight": "700",
                                                   },
                                                   {
-                                                    "color": "#5a5a7a",
+                                                    "color": "#f5f5f7",
                                                     "fontSize": 25,
                                                   },
                                                 ],
@@ -5371,8 +5371,8 @@ exports[`MatchResultScreen snapshots the defeat variant 1`] = `
                                               },
                                               null,
                                               {
-                                                "backgroundColor": "rgba(90,90,122,0.2)",
-                                                "borderColor": "#5a5a7a",
+                                                "backgroundColor": "#15172e",
+                                                "borderColor": "#2a2c54",
                                                 "borderRadius": 11,
                                                 "height": 52,
                                                 "width": 52,
@@ -5395,7 +5395,7 @@ exports[`MatchResultScreen snapshots the defeat variant 1`] = `
                                                     "fontWeight": "700",
                                                   },
                                                   {
-                                                    "color": "#5a5a7a",
+                                                    "color": "#f5f5f7",
                                                     "fontSize": 25,
                                                   },
                                                 ],
@@ -5412,8 +5412,8 @@ exports[`MatchResultScreen snapshots the defeat variant 1`] = `
                                               },
                                               null,
                                               {
-                                                "backgroundColor": "rgba(90,90,122,0.2)",
-                                                "borderColor": "#5a5a7a",
+                                                "backgroundColor": "#15172e",
+                                                "borderColor": "#2a2c54",
                                                 "borderRadius": 11,
                                                 "height": 52,
                                                 "width": 52,
@@ -11641,7 +11641,7 @@ exports[`MatchResultScreen snapshots the draw variant 1`] = `
                                                     "fontWeight": "700",
                                                   },
                                                   {
-                                                    "color": "#5a5a7a",
+                                                    "color": "#f5f5f7",
                                                     "fontSize": 25,
                                                   },
                                                 ],
@@ -11658,8 +11658,8 @@ exports[`MatchResultScreen snapshots the draw variant 1`] = `
                                               },
                                               null,
                                               {
-                                                "backgroundColor": "rgba(90,90,122,0.2)",
-                                                "borderColor": "#5a5a7a",
+                                                "backgroundColor": "#15172e",
+                                                "borderColor": "#2a2c54",
                                                 "borderRadius": 11,
                                                 "height": 52,
                                                 "width": 52,
@@ -11682,7 +11682,7 @@ exports[`MatchResultScreen snapshots the draw variant 1`] = `
                                                     "fontWeight": "700",
                                                   },
                                                   {
-                                                    "color": "#5a5a7a",
+                                                    "color": "#f5f5f7",
                                                     "fontSize": 25,
                                                   },
                                                 ],
@@ -11699,8 +11699,8 @@ exports[`MatchResultScreen snapshots the draw variant 1`] = `
                                               },
                                               null,
                                               {
-                                                "backgroundColor": "rgba(90,90,122,0.2)",
-                                                "borderColor": "#5a5a7a",
+                                                "backgroundColor": "#15172e",
+                                                "borderColor": "#2a2c54",
                                                 "borderRadius": 11,
                                                 "height": 52,
                                                 "width": 52,
@@ -11723,7 +11723,7 @@ exports[`MatchResultScreen snapshots the draw variant 1`] = `
                                                     "fontWeight": "700",
                                                   },
                                                   {
-                                                    "color": "#5a5a7a",
+                                                    "color": "#f5f5f7",
                                                     "fontSize": 25,
                                                   },
                                                 ],
@@ -11740,8 +11740,8 @@ exports[`MatchResultScreen snapshots the draw variant 1`] = `
                                               },
                                               null,
                                               {
-                                                "backgroundColor": "rgba(90,90,122,0.2)",
-                                                "borderColor": "#5a5a7a",
+                                                "backgroundColor": "#15172e",
+                                                "borderColor": "#2a2c54",
                                                 "borderRadius": 11,
                                                 "height": 52,
                                                 "width": 52,
@@ -11764,7 +11764,7 @@ exports[`MatchResultScreen snapshots the draw variant 1`] = `
                                                     "fontWeight": "700",
                                                   },
                                                   {
-                                                    "color": "#5a5a7a",
+                                                    "color": "#f5f5f7",
                                                     "fontSize": 25,
                                                   },
                                                 ],
@@ -11781,8 +11781,8 @@ exports[`MatchResultScreen snapshots the draw variant 1`] = `
                                               },
                                               null,
                                               {
-                                                "backgroundColor": "rgba(90,90,122,0.2)",
-                                                "borderColor": "#5a5a7a",
+                                                "backgroundColor": "#15172e",
+                                                "borderColor": "#2a2c54",
                                                 "borderRadius": 11,
                                                 "height": 52,
                                                 "width": 52,
@@ -18010,7 +18010,7 @@ exports[`MatchResultScreen snapshots the stalemate variant 1`] = `
                                                     "fontWeight": "700",
                                                   },
                                                   {
-                                                    "color": "#5a5a7a",
+                                                    "color": "#f5f5f7",
                                                     "fontSize": 25,
                                                   },
                                                 ],
@@ -18027,8 +18027,8 @@ exports[`MatchResultScreen snapshots the stalemate variant 1`] = `
                                               },
                                               null,
                                               {
-                                                "backgroundColor": "rgba(90,90,122,0.2)",
-                                                "borderColor": "#5a5a7a",
+                                                "backgroundColor": "#15172e",
+                                                "borderColor": "#2a2c54",
                                                 "borderRadius": 11,
                                                 "height": 52,
                                                 "width": 52,
@@ -18051,7 +18051,7 @@ exports[`MatchResultScreen snapshots the stalemate variant 1`] = `
                                                     "fontWeight": "700",
                                                   },
                                                   {
-                                                    "color": "#5a5a7a",
+                                                    "color": "#f5f5f7",
                                                     "fontSize": 25,
                                                   },
                                                 ],
@@ -18068,8 +18068,8 @@ exports[`MatchResultScreen snapshots the stalemate variant 1`] = `
                                               },
                                               null,
                                               {
-                                                "backgroundColor": "rgba(90,90,122,0.2)",
-                                                "borderColor": "#5a5a7a",
+                                                "backgroundColor": "#15172e",
+                                                "borderColor": "#2a2c54",
                                                 "borderRadius": 11,
                                                 "height": 52,
                                                 "width": 52,
@@ -18092,7 +18092,7 @@ exports[`MatchResultScreen snapshots the stalemate variant 1`] = `
                                                     "fontWeight": "700",
                                                   },
                                                   {
-                                                    "color": "#5a5a7a",
+                                                    "color": "#f5f5f7",
                                                     "fontSize": 25,
                                                   },
                                                 ],
@@ -18109,8 +18109,8 @@ exports[`MatchResultScreen snapshots the stalemate variant 1`] = `
                                               },
                                               null,
                                               {
-                                                "backgroundColor": "rgba(90,90,122,0.2)",
-                                                "borderColor": "#5a5a7a",
+                                                "backgroundColor": "#15172e",
+                                                "borderColor": "#2a2c54",
                                                 "borderRadius": 11,
                                                 "height": 52,
                                                 "width": 52,
@@ -18133,7 +18133,7 @@ exports[`MatchResultScreen snapshots the stalemate variant 1`] = `
                                                     "fontWeight": "700",
                                                   },
                                                   {
-                                                    "color": "#5a5a7a",
+                                                    "color": "#f5f5f7",
                                                     "fontSize": 25,
                                                   },
                                                 ],
@@ -18150,8 +18150,8 @@ exports[`MatchResultScreen snapshots the stalemate variant 1`] = `
                                               },
                                               null,
                                               {
-                                                "backgroundColor": "rgba(90,90,122,0.2)",
-                                                "borderColor": "#5a5a7a",
+                                                "backgroundColor": "#15172e",
+                                                "borderColor": "#2a2c54",
                                                 "borderRadius": 11,
                                                 "height": 52,
                                                 "width": 52,
@@ -25893,7 +25893,7 @@ exports[`MatchResultScreen snapshots the victory variant 1`] = `
                                                     "fontWeight": "700",
                                                   },
                                                   {
-                                                    "color": "#d1fae5",
+                                                    "color": "#f5f5f7",
                                                     "fontSize": 25,
                                                   },
                                                 ],
@@ -25908,18 +25908,10 @@ exports[`MatchResultScreen snapshots the victory variant 1`] = `
                                                 "borderWidth": 1.5,
                                                 "justifyContent": "center",
                                               },
+                                              null,
                                               {
-                                                "shadowColor": "rgba(16,185,129,0.55)",
-                                                "shadowOffset": {
-                                                  "height": 0,
-                                                  "width": 0,
-                                                },
-                                                "shadowOpacity": 1,
-                                                "shadowRadius": 12,
-                                              },
-                                              {
-                                                "backgroundColor": "rgba(16,185,129,0.18)",
-                                                "borderColor": "#10b981",
+                                                "backgroundColor": "#15172e",
+                                                "borderColor": "#2a2c54",
                                                 "borderRadius": 11,
                                                 "height": 52,
                                                 "width": 52,
@@ -25942,7 +25934,7 @@ exports[`MatchResultScreen snapshots the victory variant 1`] = `
                                                     "fontWeight": "700",
                                                   },
                                                   {
-                                                    "color": "#d1fae5",
+                                                    "color": "#f5f5f7",
                                                     "fontSize": 25,
                                                   },
                                                 ],
@@ -25957,18 +25949,10 @@ exports[`MatchResultScreen snapshots the victory variant 1`] = `
                                                 "borderWidth": 1.5,
                                                 "justifyContent": "center",
                                               },
+                                              null,
                                               {
-                                                "shadowColor": "rgba(16,185,129,0.55)",
-                                                "shadowOffset": {
-                                                  "height": 0,
-                                                  "width": 0,
-                                                },
-                                                "shadowOpacity": 1,
-                                                "shadowRadius": 12,
-                                              },
-                                              {
-                                                "backgroundColor": "rgba(16,185,129,0.18)",
-                                                "borderColor": "#10b981",
+                                                "backgroundColor": "#15172e",
+                                                "borderColor": "#2a2c54",
                                                 "borderRadius": 11,
                                                 "height": 52,
                                                 "width": 52,
@@ -25991,7 +25975,7 @@ exports[`MatchResultScreen snapshots the victory variant 1`] = `
                                                     "fontWeight": "700",
                                                   },
                                                   {
-                                                    "color": "#d1fae5",
+                                                    "color": "#f5f5f7",
                                                     "fontSize": 25,
                                                   },
                                                 ],
@@ -26006,18 +25990,10 @@ exports[`MatchResultScreen snapshots the victory variant 1`] = `
                                                 "borderWidth": 1.5,
                                                 "justifyContent": "center",
                                               },
+                                              null,
                                               {
-                                                "shadowColor": "rgba(16,185,129,0.55)",
-                                                "shadowOffset": {
-                                                  "height": 0,
-                                                  "width": 0,
-                                                },
-                                                "shadowOpacity": 1,
-                                                "shadowRadius": 12,
-                                              },
-                                              {
-                                                "backgroundColor": "rgba(16,185,129,0.18)",
-                                                "borderColor": "#10b981",
+                                                "backgroundColor": "#15172e",
+                                                "borderColor": "#2a2c54",
                                                 "borderRadius": 11,
                                                 "height": 52,
                                                 "width": 52,
@@ -26040,7 +26016,7 @@ exports[`MatchResultScreen snapshots the victory variant 1`] = `
                                                     "fontWeight": "700",
                                                   },
                                                   {
-                                                    "color": "#d1fae5",
+                                                    "color": "#f5f5f7",
                                                     "fontSize": 25,
                                                   },
                                                 ],
@@ -26055,18 +26031,10 @@ exports[`MatchResultScreen snapshots the victory variant 1`] = `
                                                 "borderWidth": 1.5,
                                                 "justifyContent": "center",
                                               },
+                                              null,
                                               {
-                                                "shadowColor": "rgba(16,185,129,0.55)",
-                                                "shadowOffset": {
-                                                  "height": 0,
-                                                  "width": 0,
-                                                },
-                                                "shadowOpacity": 1,
-                                                "shadowRadius": 12,
-                                              },
-                                              {
-                                                "backgroundColor": "rgba(16,185,129,0.18)",
-                                                "borderColor": "#10b981",
+                                                "backgroundColor": "#15172e",
+                                                "borderColor": "#2a2c54",
                                                 "borderRadius": 11,
                                                 "height": 52,
                                                 "width": 52,

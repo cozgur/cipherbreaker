@@ -25,6 +25,7 @@ import { Screen } from '@components/Screen';
 import { TinyTag } from '@components/TinyTag';
 import { findMode } from '@data/modeCatalog';
 import { modeRegistry } from '@game/modeRegistry';
+import { ERROR_NOT_UNIQUE } from '@game/shared/validation';
 import type { RootStackParamList } from '@navigation/routes';
 import { useMatchStore } from '@state/matchStore';
 import { colors, fonts } from '@theme/tokens';
@@ -147,7 +148,7 @@ export function SecretSetupScreen(): React.JSX.Element {
 
       {hasUniquenessViolation ? (
         <Text accessibilityRole="alert" style={styles.error}>
-          All digits must be unique
+          {ERROR_NOT_UNIQUE}
         </Text>
       ) : null}
 

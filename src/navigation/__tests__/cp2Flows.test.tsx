@@ -7,7 +7,6 @@
 
 import { act, fireEvent } from '@testing-library/react-native';
 
-import { modeCatalog } from '@data/modeCatalog';
 import { __resetMockUserForTests, mockUser } from '@data/mockUser';
 import { AdWatchScreen } from '@screens/AdWatchScreen';
 import { HomeScreen } from '@screens/HomeScreen';
@@ -163,44 +162,35 @@ describe('CP2 flows', () => {
 
   // 6
   it('Mode 3 SecretSetup shows the unique-digit error and blocks Lock In', () => {
-    // Force Mode 3's digitsUnique on for this assertion (Phase 1B
-    // catalog still ships it false; Phase 2 makes it canonical).
-    const mode3Rules = modeCatalog[2]?.rules as { digitsUnique: boolean } | undefined;
-    if (mode3Rules == null) throw new Error('mode 3 missing from catalog');
-    const original = mode3Rules.digitsUnique;
-    mode3Rules.digitsUnique = true;
+    // Mode 3 ships with `digitsUnique: true` as of Phase 4 — the catalog
+    // is canonical, no per-test patch needed.
+    mockUser.tokens = 1000;
+    jest.useFakeTimers();
+    jest.spyOn(Math, 'random').mockReturnValue(0.5);
 
-    try {
-      mockUser.tokens = 1000;
-      jest.useFakeTimers();
-      jest.spyOn(Math, 'random').mockReturnValue(0.5);
+    const utils = renderWithNavigation('Home', fullStack);
+    act(() => {
+      fireEvent.press(utils.getByLabelText('PRECISION — 50 tokens'));
+    });
+    act(() => {
+      jest.advanceTimersByTime(2700);
+    });
+    act(() => {
+      jest.advanceTimersByTime(1000);
+    });
+    expect(utils.navRef.current?.getCurrentRoute()?.name).toBe('SecretSetup');
 
-      const utils = renderWithNavigation('Home', fullStack);
+    for (const digit of [1, 1, 2, 2]) {
       act(() => {
-        fireEvent.press(utils.getByLabelText('PRECISION — 50 tokens'));
+        fireEvent.press(utils.getByLabelText(String(digit)));
       });
-      act(() => {
-        jest.advanceTimersByTime(2700);
-      });
-      act(() => {
-        jest.advanceTimersByTime(1000);
-      });
-      expect(utils.navRef.current?.getCurrentRoute()?.name).toBe('SecretSetup');
-
-      for (const digit of [1, 1, 2, 2]) {
-        act(() => {
-          fireEvent.press(utils.getByLabelText(String(digit)));
-        });
-      }
-
-      expect(utils.queryByText('All digits must be unique')).toBeTruthy();
-      act(() => {
-        fireEvent.press(utils.getByText('Lock In Code'));
-      });
-      // Lock In was disabled → still on SecretSetup.
-      expect(utils.navRef.current?.getCurrentRoute()?.name).toBe('SecretSetup');
-    } finally {
-      mode3Rules.digitsUnique = original;
     }
+
+    expect(utils.queryByText('All digits must be unique')).toBeTruthy();
+    act(() => {
+      fireEvent.press(utils.getByText('Lock In Code'));
+    });
+    // Lock In was disabled → still on SecretSetup.
+    expect(utils.navRef.current?.getCurrentRoute()?.name).toBe('SecretSetup');
   });
 });

@@ -52,8 +52,17 @@ interface OutcomeViewModel {
   readonly xp: number;
   readonly confetti: boolean;
   readonly tagLabel: string;
-  readonly secretTileState: 'green' | 'gray';
 }
+
+/**
+ * The secret reveal renders as `'neutral'` on every outcome. VICTORY
+ * previously used `'green'` (Mode 1's Wordle palette) — fine for
+ * Mode 1, misleading for Modes 2/3 which paint no per-digit colours
+ * in the timeline. Confetti + the gold VICTORY title + the token
+ * chip are already enough win-state signal; the tile colour adds
+ * inconsistency without information.
+ */
+const SECRET_TILE_STATE = 'neutral' as const;
 
 const OUTCOMES: Readonly<Record<MatchResultOutcome, OutcomeViewModel>> = {
   victory: {
@@ -66,7 +75,6 @@ const OUTCOMES: Readonly<Record<MatchResultOutcome, OutcomeViewModel>> = {
     xp: 30,
     confetti: true,
     tagLabel: 'MATCH RESULT',
-    secretTileState: 'green',
   },
   defeat: {
     title: 'DEFEAT',
@@ -78,7 +86,6 @@ const OUTCOMES: Readonly<Record<MatchResultOutcome, OutcomeViewModel>> = {
     xp: 5,
     confetti: false,
     tagLabel: 'MATCH RESULT',
-    secretTileState: 'gray',
   },
   draw: {
     title: 'DRAW',
@@ -90,7 +97,6 @@ const OUTCOMES: Readonly<Record<MatchResultOutcome, OutcomeViewModel>> = {
     xp: 15,
     confetti: false,
     tagLabel: 'DRAW',
-    secretTileState: 'gray',
   },
   stalemate: {
     title: 'STALEMATE',
@@ -102,7 +108,6 @@ const OUTCOMES: Readonly<Record<MatchResultOutcome, OutcomeViewModel>> = {
     xp: 0,
     confetti: false,
     tagLabel: 'STALEMATE',
-    secretTileState: 'gray',
   },
 };
 
@@ -193,7 +198,7 @@ export function MatchResultScreen(): React.JSX.Element {
           <Text style={styles.secretLabel}>{view.secretLabel}</Text>
           <View style={styles.secretRow}>
             {digits.map((digit, i) => (
-              <DigitTile key={i} digit={digit} state={view.secretTileState} size={52} />
+              <DigitTile key={i} digit={digit} state={SECRET_TILE_STATE} size={52} />
             ))}
           </View>
         </View>

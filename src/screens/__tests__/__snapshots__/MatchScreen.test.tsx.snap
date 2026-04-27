@@ -5146,7 +5146,7 @@ exports[`MatchScreen — Modes 1-6 snapshots the Mode 1 layout 1`] = `
                               "children": [
                                 {
                                   "children": [
-                                    "ROUND 5 · COLOR MATCH",
+                                    "ROUND 3 · COLOR MATCH",
                                   ],
                                   "props": {
                                     "style": [
@@ -6951,7 +6951,7 @@ exports[`MatchScreen — Modes 1-6 snapshots the Mode 1 layout 1`] = `
                                     {
                                       "children": [
                                         "Guess #",
-                                        "5",
+                                        "3",
                                       ],
                                       "props": {
                                         "style": {

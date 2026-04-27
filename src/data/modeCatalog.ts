@@ -61,7 +61,11 @@ export const modeCatalog: readonly ModeCatalogEntry[] = [
     },
     rules: {
       secretLength: 4,
-      digitsUnique: false,
+      // Phase 4: flipped to true once the engine landed. SPEC §3.4
+      // requires unique digits in the secret AND the guess —
+      // `validateGuess` chains `validateUnique` so the keypad rejects
+      // repeats inline.
+      digitsUnique: true,
       flags: {},
     },
   },

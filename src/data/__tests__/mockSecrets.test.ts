@@ -14,10 +14,10 @@ describe('mockSecretByMode', () => {
     for (let id = 1; id <= 7; id += 1) {
       const mode = findMode(id);
       if (!mode) continue;
-      // Phase 1B: the catalog still ships Modes 3+5 with
-      // digitsUnique=false (until Phase 4 lands the engine). The mock
-      // secrets must already obey the *intended* rule so the reveal
-      // animation never paints repeats for those modes.
+      // Mode 3 + 5 unique invariant — enforced by catalog from Phase 4
+      // onwards (Mode 3's flag flipped with the engine; Mode 5 still
+      // ships false until Phase 5 but the mock secret obeys the
+      // intended rule already so the reveal never paints repeats).
       if (id === 3 || id === 5) {
         const secret = mockSecretByMode[id]!;
         const set = new Set(secret.split(''));

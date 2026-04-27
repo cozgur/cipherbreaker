@@ -43,6 +43,10 @@ import { findMode } from '@data/modeCatalog';
 import { buildMockTimeline } from '@data/mockMatchHistory';
 import { chargeTokens, useMockUser } from '@data/mockUser';
 import { findOpponent } from '@data/mockOpponents';
+import {
+  currentGuessNumberFromMatch,
+  currentGuessNumberFromMockTimeline,
+} from '@game/adapters/currentGuessNumber';
 import { guessEntryToRowProps } from '@game/adapters/guessEntryToRowProps';
 import { interleaveTimeline } from '@game/adapters/interleaveTimeline';
 import { matchOutcomeToRoute } from '@game/adapters/matchOutcomeToRoute';
@@ -286,7 +290,15 @@ export function MatchScreen(): React.JSX.Element {
     ]);
   }, [mode?.meta.stake, navigation, isEngineMode]);
 
-  const roundLabel = mode != null ? `ROUND ${timeline.length + 1} · ${mode.meta.name}` : 'ROUND';
+  // Both ROUND (header chip) and "Guess #N" (sub-counter) read the
+  // same active-side count so the number you see while playing equals
+  // the number `MatchResultScreen` reports as `in N guesses`. See
+  // `currentGuessNumber.ts` for the rationale.
+  const guessNumber =
+    isEngineMode && matchState !== null
+      ? currentGuessNumberFromMatch(matchState)
+      : currentGuessNumberFromMockTimeline(timeline);
+  const roundLabel = mode != null ? `ROUND ${guessNumber} · ${mode.meta.name}` : 'ROUND';
   const turnLabel = isMirror
     ? 'RACING'
     : isOpponentTurn
@@ -359,7 +371,7 @@ export function MatchScreen(): React.JSX.Element {
       <View style={[styles.inputArea, { paddingBottom: insets.bottom + 18 }]}>
         <View style={styles.turnHeader}>
           <SectionLabel color={turnColor}>{turnLabel}</SectionLabel>
-          <Text style={styles.guessCounter}>Guess #{timeline.length + 1}</Text>
+          <Text style={styles.guessCounter}>Guess #{guessNumber}</Text>
         </View>
 
         {showBotTyping ? (

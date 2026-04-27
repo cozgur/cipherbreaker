@@ -11,7 +11,11 @@
 
 import { modeRegistry } from '../modeRegistry';
 import { mode1ColorMatch } from './mode1ColorMatch';
+import { mode2HighLow } from './mode2HighLow';
+import { mode3Precision } from './mode3Precision';
 
 modeRegistry.register(mode1ColorMatch);
+modeRegistry.register(mode2HighLow);
+modeRegistry.register(mode3Precision);
 
-export { mode1ColorMatch };
+export { mode1ColorMatch, mode2HighLow, mode3Precision };

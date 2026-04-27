@@ -305,7 +305,19 @@ export type SolverState =
       readonly pool: readonly string[];
       readonly constraints: readonly BlackoutConstraint[];
     }
-  | { readonly kind: 'mirror'; readonly pool: readonly string[]; readonly targetTurn: number };
+  | { readonly kind: 'mirror'; readonly pool: readonly string[]; readonly targetTurn: number }
+  | {
+      /**
+       * Mode 2 — bot tracks the binary-search interval `[low, high]`
+       * of integers (0..9999) the secret could still be. Each guess+
+       * feedback narrows one bound; `pickInRange` chooses the next
+       * guess by difficulty (hard → midpoint, normal → uniform, easy
+       * → biased toward the edges).
+       */
+      readonly kind: 'directionRange';
+      readonly low: number;
+      readonly high: number;
+    };
 
 /** Optional per-side solver state — both sides for hint mode / replay. */
 export interface SolverStates {

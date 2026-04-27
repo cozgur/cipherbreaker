@@ -2,6 +2,12 @@
  * Mode 2 — High & Low. Digits render neutral; a Higher/Lower pill
  * sits below the row and colours on the direction (cyan = lower,
  * pink = higher) matching the reference prototype.
+ *
+ * The pill is suppressed when `feedback.isWin === true`. The Mode 2
+ * evaluator must still pick a `dir` value on an exact match (the
+ * `direction` feedback union requires it), but rendering an arrow on
+ * the winning row would mislead — the timeline shows neutral digits
+ * instead, and `MatchResultScreen` handles the celebration.
  */
 
 import { StyleSheet, Text, View } from 'react-native';
@@ -12,7 +18,10 @@ import { GuessRowShell } from './GuessRowShell';
 
 export function Mode2Row(props: GuessRowProps): React.JSX.Element {
   const feedback = props.feedback;
-  const pill = feedback?.kind === 'direction' ? <DirectionPill dir={feedback.dir} /> : null;
+  const pill =
+    feedback?.kind === 'direction' && feedback.isWin !== true ? (
+      <DirectionPill dir={feedback.dir} />
+    ) : null;
 
   return (
     <GuessRowShell

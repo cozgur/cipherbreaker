@@ -1,9 +1,31 @@
 import {
   composeValidators,
+  ERROR_NOT_DIGITS,
+  ERROR_NOT_UNIQUE,
+  ERROR_WRONG_LENGTH,
   validateDigitsOnly,
   validateLength,
   validateUnique,
 } from '../validation';
+
+// SPEC §UI: every error message surfaced to the player ships in
+// English. The Phase 4 audit caught a Turkish "Tüm basamaklar farklı
+// olmalı." leaking into the MatchScreen inline error while
+// SecretSetup hardcoded the English version. These constants are now
+// the single source for both surfaces — the regex below makes a
+// future Turkish-string regression obvious.
+const ASCII_LETTERS_AND_PUNCT = /^[\x20-\x7e]+$/;
+
+describe('error messages — English single source (no Turkish leakage)', () => {
+  it.each([
+    ['ERROR_WRONG_LENGTH(4)', ERROR_WRONG_LENGTH(4), 'Guess must be 4 digits.'],
+    ['ERROR_NOT_DIGITS', ERROR_NOT_DIGITS, 'Use digits 0-9 only.'],
+    ['ERROR_NOT_UNIQUE', ERROR_NOT_UNIQUE, 'All digits must be unique'],
+  ])('%s is the canonical English copy', (_label, actual, expected) => {
+    expect(actual).toBe(expected);
+    expect(actual).toMatch(ASCII_LETTERS_AND_PUNCT);
+  });
+});
 
 describe('atomic validators', () => {
   it('validateLength', () => {

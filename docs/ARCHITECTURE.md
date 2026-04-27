@@ -551,3 +551,89 @@ The CP3 engine path passed every unit and integration test but failed the device
 3. **Auto-scroll to the latest timeline row.** The engine path appends rows faster than the player can scroll; without auto-scroll, the freshest feedback sits below the fold. A `ScrollView` `ref` + a `useEffect` keyed on `playerGuesses.length + opponentGuesses.length` calls `scrollToEnd({ animated: true })` after a 100ms layout grace period. Mock-mode timeline is static so the effect runs once at mount with no visible change. The 100ms grace period exists because firing the scroll synchronously inside the effect can race the row's first layout pass — `scrollToEnd` then measures a stale content size and lands one row short.
 
 These three are wiring fixes, not architectural changes — but they're the kind of mistake that's mechanical to repeat in Phase 4-5 if the lesson isn't recorded.
+
+---
+
+## Phase 4 decisions
+
+Phase 4 lands Mode 2 (High & Low) and Mode 3 (Precision) end-to-end against the Phase 3 scaffolding. Both modes copied `mode1ColorMatch.ts` as the template — façade ≤ 60 lines, helpers in `mode{N}/{evaluate,bot}.ts`, registered in `src/game/modes/index.ts`. The five-step recipe survived the second and third execution unchanged; the only Phase 4-specific entry below the `Adding a new mode` section is "audit existing tests for Phase-1B-era language".
+
+CP1 was Mode 2, CP2 was Mode 3, CP3 was the iOS walkthrough that surfaced three production bugs (round/guess number mismatch, Turkish validation message leak, MatchResult tile colours), CP4 was this doc + the closing commit.
+
+### Mode 2 — `directionRange` solver state
+
+Mode 2's bot keeps a binary-search interval `{ low: number; high: number }` instead of a candidate-string pool. The interval collapses by one bound per feedback round, so the post-hydrate working set is two integers — orders of magnitude smaller than the 10 000-entry `candidatePool` it would otherwise need. The new `SolverState` variant lives next to the existing three:
+
+```ts
+| { kind: 'directionRange'; low: number; high: number }
+```
+
+Adding a fourth `kind` cost zero updates elsewhere in the codebase: there is no exhaustive switch on `SolverState.kind` in production code (each mode's `bot.makeGuess` narrows on its own expected kind and throws on mismatch). That property is what lets the engine-shared types absorb mode-specific solver shapes without forcing a registry refactor every time. The same property will make Mode 5's `blackoutConstraints` extension and any future shape additions cheap.
+
+The bot's `pickInRange` mirrors Mode 1's "hard never consumes from `rng`" invariant — hard returns the midpoint deterministically, normal samples uniformly via `rng.int(low, high)`, easy biases toward the outer thirds (analogous to Mode 1's "bottom-third on easy"). The "hard makes no rng draws" property is what keeps the `deterministic-on-equal-cursor` test pattern portable from Mode 1 to Mode 2 with no change.
+
+### Mode 2 — turn count is intentional, not a bot tuning bug
+
+Average Mode 2 matches run 6–12 player turns (hard bot) and longer on easy. The 12-guess Mode 2 victory the iOS walkthrough produced is the *intended* tension curve, not a bot-strength regression — SPEC §3.3 explicitly notes "Mod 1 ve Mod 3'e göre daha uzundur, ama mekanik daha analitik/matematiksel". A future "feels too long" complaint should NOT lower the bot's binary-search rigour; the right knob is matchmaking (e.g. shorter sessions for new players via difficulty selection in Phase 7A) or per-mode reward weighting in Phase 7C.
+
+### Mode 3 — chunked filter is mandatory, not optional
+
+Mode 3 opens with the 5040-entry unique-digit pool — well above the 1000-entry `HEAVY_FILTER_THRESHOLD` that ROADMAP §Heavy Filtering pins as the chunked-vs-synchronous boundary. `mode3/bot.ts` therefore ALWAYS uses `filterByFeedbackChunked` for the opening narrow; only after the pool drops below the threshold does the synchronous `filterByFeedback` get a chance to run. A naive port of Mode 1's "≥ threshold → chunked" branching kept that property accidentally; we added an explicit comment so a future "performance optimization" PR that swaps the chunked path for the synchronous one trips a code-review flag.
+
+### `digitsUnique` flip — Mode 3 ships it, Mode 5 still pending
+
+Phase 1B shipped Mode 3 with `digitsUnique: false` in the catalog. The mock secrets (`mockSecretByMode[3]`) already obeyed the *intended* invariant via a manual choice; `mockSecrets.test.ts` enforced this even though the catalog disagreed. Phase 4 flipped the flag to `true` and removed the per-test mutation dance from three suites (`SecretSetupScreen.test.tsx` × 2, `cp2Flows.test.tsx` × 1). Mode 5 stays at `false` until Phase 5; its mock-secret unique-digit invariant remains a test-only assertion until the engine ships.
+
+The lesson: when a Phase 1B mock simulates a future-Phase rule, leave a `// flip this in Phase N` comment on the catalog entry plus a test that locks the *intended* shape. The flip then becomes a one-line change with the test catching any drift in between.
+
+### `thinkingTime` triplication — deferred to Phase 5
+
+`mode2/bot.ts` and `mode3/bot.ts` both copy `mode1/bot.ts`'s `thinkingTime` body verbatim — the same `BOT_THINK_*` band logic, the same `Math.random()` source (deliberately NOT `ctx.rng`, so resume-after-suspend doesn't re-roll the durable cursor for a cosmetic delay), the same 8% phone-down outlier branch. Three copies of identical logic is the inflection point for the standard refactor, but Phase 4 deferred it on purpose:
+
+- Each mode currently *can* tweak its band — `bot.thinkingTime(ctx)` could return mode-specific delay shapes once a mode demands it (Mode 4 Blitz, with its chess clock, almost certainly will).
+- Lifting before that demand would force a `ThinkingTimeOptions` parameter on the helper to keep flexibility, which adds API surface for a benefit that's not yet load-bearing.
+- Phase 5 will see Modes 4-6 land with their own tuning needs; the shared helper extraction happens *then*, with concrete divergence informing the API shape.
+
+The three copies are tagged with `// Body copied verbatim from Mode 1; Phase 5 promotes …` comments so the refactor moment is grep-able.
+
+### Three CP3 walkthrough fixes
+
+The iOS device test caught three production bugs the unit + integration suite missed. Each is documented here so Phase 5 modes don't re-encounter them.
+
+#### 1. Round number formula — active-side count, not combined timeline
+
+The Phase 3 MatchScreen header read `ROUND ${timeline.length + 1}`, where `timeline = interleaveTimeline(state)` is the chronological merge of both sides' guesses. After a 12-player-guess Mode 2 victory (player=12, opponent=11), the header showed `ROUND 23` while `MatchResultScreen` celebrated "in 12 guesses" — the same number reported through `result.turns`. Two counters, two answers, both visible on the same flow.
+
+The fix is `src/game/adapters/currentGuessNumber.ts` — a single helper that returns the *active* side's current move number:
+
+```
+active_turn_player    → playerGuesses.length + 1
+active_turn_opponent  → opponentGuesses.length + 1
+active_parallel       → playerGuesses.length + 1   (Mode 7 — player POV)
+setup / completed     → max(p, o)                  (matches result.turns)
+```
+
+Both the header chip and the "Guess #N" sub-counter call this. At the moment of a winning guess the value equals `result.turns`, so the header you saw on the last turn equals the number `MatchResultScreen` reads back.
+
+The intuitive `Math.max(p, o) + 1` formula was considered and rejected. It reads correct on the player_first opening but breaks the walkthrough for both first-author cases:
+
+- **player_first** after P1 (1/0, opponent's turn): `max(1,0)+1 = 2` says ROUND 2, but the round semantic ("P1 → O1 → both done → round complete") says ROUND 1 is still in progress until opponent plays.
+- **opponent_first** after O1 (0/1, player's turn): `max(0,1)+1 = 2` again — but ROUND 1 hasn't finished.
+
+`activeSideCount + 1` gives the right answer in every case (player_first, opponent_first, mid-round, completed) AND matches `result.turns` at completion. Tests in `currentGuessNumber.test.ts` cover both first-author flows + completed + mirror parallel.
+
+#### 2. Validation messages — single English source, no per-screen drift
+
+`validation.ts` shipped its `ValidationError.message` strings in Turkish (developer's first-language defaults), but `SecretSetupScreen.tsx` hardcoded the English version inline in JSX. Two surfaces, two languages — the iOS walkthrough caught Mode 3's MatchScreen inline error reading "TÜM BASAMAKLAR FARKLI OLMALI." while the same error in SecretSetup read "ALL DIGITS MUST BE UNIQUE".
+
+Phase 4 collapsed the two onto a single source: `validation.ts` exports `ERROR_NOT_UNIQUE`, `ERROR_NOT_DIGITS`, `ERROR_WRONG_LENGTH(n)` constants in English. `validateUnique` etc. consume them; `SecretSetupScreen` imports `ERROR_NOT_UNIQUE` instead of repeating the literal string. A regression test in `validation.test.ts` asserts the canonical copy and pins the strings to ASCII via regex — a future Turkish leakage trips CI.
+
+The lesson: any UI copy that has both a "data" version (validator output) and a "JSX" version (screen template) is a drift hazard. Centralise the constant the *first* time you reach for the hardcoded string in JSX, not the third. SPEC §UI is English throughout; per-language i18n is post-launch.
+
+#### 3. Secret-reveal tile state is mode-agnostic
+
+`MatchResultScreen` painted the secret reveal with `'green'` tiles on VICTORY and `'gray'` on every other outcome. Fine for Mode 1 (Wordle palette = "all green = won"), misleading for Mode 2/3 where the in-match timeline never paints per-digit colours. A Mode 2 victory showing four green tiles for `'1448'` reads as Wordle feedback the player would have to ignore.
+
+Phase 4 collapsed `OutcomeViewModel.secretTileState: 'green' | 'gray'` into a single `SECRET_TILE_STATE = 'neutral'` constant. Confetti + the gold VICTORY title + the `+100 tokens` chip carry every signal needed; the tile colour was a fourth redundant cue with mode-specific semantic baggage. The same change ripples down identically to DEFEAT/DRAW/STALEMATE — the variant model gets simpler, not more conditional.
+
+A wider rule fell out: any `MatchResultScreen` view-model field that's keyed off `outcome` should encode *outcome-specific* meaning (title text, tint, copy, reward). Anything that wants to encode *mode-specific* meaning belongs in the per-mode row component, not in the result-screen viewmodel.
