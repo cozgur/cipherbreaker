@@ -320,6 +320,16 @@ export interface BotContext {
   readonly difficulty: 'easy' | 'normal' | 'hard';
   readonly turnNumber: number;
   readonly solverState: SolverState;
+  /**
+   * Per-turn RNG handed in by the orchestrator (`matchStore.runOpponentTurn`).
+   * The orchestrator passes the *same* instance to `engine.submitGuess`
+   * after `makeGuess` returns so the persisted `rngState` reflects every
+   * draw the bot made — that's the resume-identity contract.
+   *
+   * `bot.thinkingTime` deliberately does NOT consume from this RNG —
+   * UI delay is not part of resume identity. See ARCHITECTURE §Phase 3.
+   */
+  readonly rng: RNG;
 }
 
 /** Persisted RNG cursor — see `src/lib/random.ts`. */
@@ -345,6 +355,30 @@ export interface MatchState {
 
   readonly guessLimits?: GuessLimits;
   readonly solverStates?: SolverStates;
+
+  /**
+   * Bot difficulty rolled at `startMatch` and frozen for the lifetime of
+   * the match — must be durable so resume produces the same bot
+   * behaviour. Phase 3 hardcodes `'normal'`; Phase 7A wires SPEC §5.5
+   * dynamic difficulty adjustment from `userStore` stats.
+   *
+   * Optional: pre-Phase-3 persisted match states hydrate with
+   * `botDifficulty=undefined`, which the orchestrator falls back to
+   * `'normal'` for — no persist version bump needed.
+   */
+  readonly botDifficulty?: 'easy' | 'normal' | 'hard';
+
+  /**
+   * Side that took the very first turn — used by the UI to interleave
+   * `playerGuesses` and `opponentGuesses` into a chronological timeline
+   * for the MatchScreen scrollback. Set by `startMatch` from the same
+   * RNG roll that picks the initial phase.
+   *
+   * Optional: pre-Phase-3 persisted states hydrate with `undefined`,
+   * which the UI helper treats as "self" (the safe Mode 1 default —
+   * Phase 3 is the first phase that surfaces this field).
+   */
+  readonly firstAuthor?: GuessSide;
 
   /** Always reflects the cursor *after* the last RNG-consuming step. */
   readonly rngState: RNGStateSnapshot;

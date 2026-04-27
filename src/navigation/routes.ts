@@ -12,7 +12,18 @@ export type RootStackParamList = {
   Matchmaking: { modeId: number };
   SecretSetup: { modeId: number; opponentId: string };
   Match: { modeId: number; opponentId: string };
-  MatchResult: { modeId: number; outcome: MatchResultOutcome };
+  MatchResult: {
+    modeId: number;
+    outcome: MatchResultOutcome;
+    /** Engine path — real opponent secret for the reveal. Mock path omits. */
+    secret?: string;
+    /** Engine path — winner's per-side guess count for the headline copy. */
+    guessCount?: number;
+    /** Engine path — token reward computed from the mode's stake table. */
+    reward?: number;
+    /** Engine path — XP earned this match. */
+    xpGain?: number;
+  };
   Shop: undefined;
   AdWatch: undefined;
   Profile: undefined;

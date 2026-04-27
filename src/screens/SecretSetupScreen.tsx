@@ -24,7 +24,9 @@ import { DigitTile } from '@components/DigitTile';
 import { Screen } from '@components/Screen';
 import { TinyTag } from '@components/TinyTag';
 import { findMode } from '@data/modeCatalog';
+import { modeRegistry } from '@game/modeRegistry';
 import type { RootStackParamList } from '@navigation/routes';
+import { useMatchStore } from '@state/matchStore';
 import { colors, fonts } from '@theme/tokens';
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'SecretSetup'>;
@@ -78,8 +80,22 @@ export function SecretSetupScreen(): React.JSX.Element {
 
   const handleLockIn = useCallback((): void => {
     if (!canSubmit) return;
+    // Engine cutover gate: if the mode is registered with the runtime
+    // registry, wire the secret into `matchStore` (engine-driven path).
+    // Otherwise fall through to navigation only — Phase 1B's mock
+    // timeline + DevResultPicker still runs for unregistered modes.
+    // Phase 4-5 will register the remaining modes incrementally; each
+    // registration flips the corresponding flow into the engine path
+    // without changes here.
+    if (modeRegistry.getOrNull(modeId) !== null) {
+      const secretStr = digits.map((d) => String(d ?? 0)).join('');
+      const store = useMatchStore.getState();
+      store.clearMatch();
+      store.createMatch(modeId, secretStr);
+      store.startMatch();
+    }
     navigation.replace('Match', { modeId, opponentId });
-  }, [canSubmit, navigation, modeId, opponentId]);
+  }, [canSubmit, digits, navigation, modeId, opponentId]);
 
   const handleBack = useCallback((): void => {
     if (navigation.canGoBack()) {

@@ -22,6 +22,7 @@ import { createRNG } from '@/lib/random';
 import { selectEngine } from '../game/engines';
 import { modeRegistry } from '../game/modeRegistry';
 import type {
+  BotContext,
   ClockSnapshot,
   GuessSide,
   MatchResult,
@@ -44,6 +45,17 @@ export interface MatchStoreActions {
   createMatch(modeId: number, playerSecret: string): boolean;
   startMatch(): void;
   submitGuess(guess: string, author: GuessSide): Promise<SubmitGuessOutcome>;
+  /**
+   * Drive one bot turn: build `BotContext` from durable state, call
+   * `mode.bot.makeGuess`, then funnel the resulting guess through
+   * `engine.submitGuess` using the *same* RNG instance. The single-RNG
+   * threading is the resume-identity contract — see ARCHITECTURE
+   * §Phase 3. No-op when phase ≠ `'active_turn_opponent'`.
+   *
+   * The wall-clock thinking delay is a screen concern; this action
+   * runs synchronously after the screen's `setTimeout` fires.
+   */
+  runOpponentTurn(): Promise<SubmitGuessOutcome>;
   applyTimeout(snapshot: ClockSnapshot): void;
   endMatch(result: MatchResult): void;
   clearMatch(): void;
@@ -88,6 +100,52 @@ export const useMatchStore = create<MatchStoreState & MatchStoreActions>()(
         const engine = selectEngine(mode);
         const rng = createRNG(current.rngState);
         const out = await engine.submitGuess(current, guess, author, rng);
+        set({ matchState: out.state });
+        return { feedback: out.feedback, error: out.error };
+      },
+
+      runOpponentTurn: async () => {
+        const current = get().matchState;
+        if (current === null || current.phase !== 'active_turn_opponent') {
+          return { feedback: null, error: null };
+        }
+        const mode = modeRegistry.get(current.modeId);
+        const engine = selectEngine(mode);
+
+        // ONE RNG instance threads through both `bot.makeGuess` (which
+        // may consume from it for selectByDifficulty etc.) and
+        // `engine.submitGuess` (which writes the final cursor back to
+        // `rngState`). Splitting these into two `createRNG` calls would
+        // re-roll the cursor mid-turn and break resume identity.
+        const rng = createRNG(current.rngState);
+        const solver =
+          current.solverStates?.opponent ??
+          mode.bot.initSolverState(current.opponentSecret, mode.rules);
+        const ctx: BotContext = {
+          previousGuesses: current.opponentGuesses,
+          mySecret: current.opponentSecret,
+          difficulty: current.botDifficulty ?? 'normal',
+          turnNumber: current.opponentGuesses.length + 1,
+          solverState: solver,
+          rng,
+        };
+
+        const { guess, newSolverState } = await mode.bot.makeGuess(ctx);
+
+        // Write the new solver state onto the snapshot we hand to the
+        // engine — `submitGuess` ignores it but the engine's output
+        // state preserves it as a passthrough field, so the resulting
+        // `matchState.solverStates.opponent` reflects the post-filter
+        // pool the next turn needs.
+        const stateWithSolver: MatchState = {
+          ...current,
+          solverStates: {
+            ...(current.solverStates ?? {}),
+            opponent: newSolverState,
+          },
+        };
+
+        const out = await engine.submitGuess(stateWithSolver, guess, 'opponent', rng);
         set({ matchState: out.state });
         return { feedback: out.feedback, error: out.error };
       },

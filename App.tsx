@@ -5,6 +5,11 @@ import { useCallback, useEffect } from 'react';
 import { View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+// Side-effect import: every mode in `src/game/modes/index.ts` registers
+// its `ModeDefinition` with `modeRegistry` at module load. Doing this
+// at the entry point (before `RootNavigator` mounts) guarantees that
+// `modeRegistry.get(modeId)` is hot by the time any screen calls it.
+import '@/game/modes';
 import { RootNavigator } from '@navigation/RootNavigator';
 import { colors } from '@theme/index';
 

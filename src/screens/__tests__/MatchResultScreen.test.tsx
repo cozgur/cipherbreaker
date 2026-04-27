@@ -4,7 +4,7 @@ import { __resetMockUserForTests, mockUser } from '@data/mockUser';
 import { MatchResultScreen } from '../MatchResultScreen';
 import { RouteStubScreen } from '@/test-utils/RouteStubScreen';
 import { renderWithNavigation, stableTreeForSnapshot } from '@/test-utils/renderWithNavigation';
-import type { MatchResultOutcome } from '@navigation/routes';
+import type { MatchResultOutcome, RootStackParamList } from '@navigation/routes';
 
 function renderResult(modeId: number, outcome: MatchResultOutcome) {
   return renderWithNavigation(
@@ -15,6 +15,18 @@ function renderResult(modeId: number, outcome: MatchResultOutcome) {
       Home: RouteStubScreen,
     },
     { modeId, outcome },
+  );
+}
+
+function renderEngineResult(params: RootStackParamList['MatchResult']) {
+  return renderWithNavigation(
+    'MatchResult',
+    {
+      MatchResult: MatchResultScreen,
+      Matchmaking: RouteStubScreen,
+      Home: RouteStubScreen,
+    },
+    params,
   );
 }
 
@@ -105,5 +117,126 @@ describe('MatchResultScreen', () => {
     // increments by exactly one rewardWin.
     renderResult(1, 'victory').unmount();
     expect(mockUser.tokens).toBe(before + 100);
+  });
+
+  it('mock path (no params) does NOT bump gamesPlayed', () => {
+    const before = mockUser.stats.gamesPlayed;
+    renderResult(1, 'victory').unmount();
+    expect(mockUser.stats.gamesPlayed).toBe(before);
+  });
+});
+
+describe('MatchResultScreen — engine path (route params)', () => {
+  beforeEach(() => {
+    __resetMockUserForTests();
+  });
+
+  it('renders the route-supplied secret instead of the catalog mock', () => {
+    const utils = renderEngineResult({
+      modeId: 1,
+      outcome: 'victory',
+      secret: '5021',
+      guessCount: 4,
+      reward: 100,
+      xpGain: 30,
+    });
+    // Catalog mock for Mode 1 is "3847" — none of those digits are 5/0/2/1.
+    expect(utils.queryByText('5')).toBeTruthy();
+    expect(utils.queryByText('0')).toBeTruthy();
+    expect(utils.queryByText('2')).toBeTruthy();
+    expect(utils.queryByText('1')).toBeTruthy();
+    // The mock secret's exclusive digits should not appear as the reveal.
+    // (3 and 8 sit only in the mock; if we accidentally fell back, both
+    // would render.)
+    expect(utils.queryByText('3')).toBeNull();
+    expect(utils.queryByText('8')).toBeNull();
+  });
+
+  it('uses route.params.guessCount in the headline copy', () => {
+    const utils = renderEngineResult({
+      modeId: 1,
+      outcome: 'victory',
+      secret: '1234',
+      guessCount: 3,
+      reward: 100,
+      xpGain: 30,
+    });
+    expect(utils.queryByText('You cracked the code in 3 guesses')).toBeTruthy();
+  });
+
+  it('uses route.params.reward instead of the catalog default', () => {
+    const before = mockUser.tokens;
+    renderEngineResult({
+      modeId: 1,
+      outcome: 'victory',
+      secret: '1234',
+      guessCount: 4,
+      reward: 250, // higher than Mode 1's catalog rewardWin (100)
+      xpGain: 30,
+    }).unmount();
+    expect(mockUser.tokens).toBe(before + 250);
+  });
+
+  it('uses route.params.xpGain in the chip', () => {
+    const utils = renderEngineResult({
+      modeId: 1,
+      outcome: 'victory',
+      secret: '1234',
+      guessCount: 4,
+      reward: 100,
+      xpGain: 42,
+    });
+    expect(utils.queryByText('+42')).toBeTruthy();
+  });
+
+  it('victory grants reward + xp + records the match (gamesPlayed +1)', () => {
+    const beforeTokens = mockUser.tokens;
+    const beforeXp = mockUser.currentXP;
+    const beforeGames = mockUser.stats.gamesPlayed;
+
+    renderEngineResult({
+      modeId: 1,
+      outcome: 'victory',
+      secret: '1234',
+      guessCount: 4,
+      reward: 100,
+      xpGain: 30,
+    }).unmount();
+
+    expect(mockUser.tokens).toBe(beforeTokens + 100);
+    expect(mockUser.currentXP).toBe(beforeXp + 30);
+    expect(mockUser.stats.gamesPlayed).toBe(beforeGames + 1);
+  });
+
+  it('defeat grants 0 tokens but +5 xp + records the match', () => {
+    const beforeTokens = mockUser.tokens;
+    const beforeXp = mockUser.currentXP;
+    const beforeGames = mockUser.stats.gamesPlayed;
+
+    renderEngineResult({
+      modeId: 1,
+      outcome: 'defeat',
+      secret: '1234',
+      guessCount: 6,
+      reward: 0,
+      xpGain: 5,
+    }).unmount();
+
+    expect(mockUser.tokens).toBe(beforeTokens);
+    expect(mockUser.currentXP).toBe(beforeXp + 5);
+    expect(mockUser.stats.gamesPlayed).toBe(beforeGames + 1);
+  });
+
+  it('engine path is idempotent — a single mount records exactly one match', () => {
+    const beforeGames = mockUser.stats.gamesPlayed;
+    renderEngineResult({
+      modeId: 1,
+      outcome: 'victory',
+      secret: '1234',
+      guessCount: 4,
+      reward: 100,
+      xpGain: 30,
+    }).unmount();
+    expect(mockUser.stats.gamesPlayed).toBe(beforeGames + 1);
   });
 });

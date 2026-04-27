@@ -128,6 +128,100 @@ describe('useMatchStore', () => {
     });
   });
 
+  describe('runOpponentTurn', () => {
+    it('no-ops when phase is not active_turn_opponent', async () => {
+      registerStub(1);
+      useMatchStore.getState().createMatch(1, '1234');
+      useMatchStore.getState().startMatch();
+      useMatchStore.setState((s) => ({
+        matchState: s.matchState ? { ...s.matchState, phase: 'active_turn_player' } : null,
+      }));
+      const before = useMatchStore.getState().matchState;
+      const out = await useMatchStore.getState().runOpponentTurn();
+      expect(out.feedback).toBeNull();
+      expect(useMatchStore.getState().matchState).toBe(before);
+    });
+
+    it('appends an opponent guess and rotates phase back to player', async () => {
+      registerStub(1);
+      useMatchStore.getState().createMatch(1, '1234');
+      useMatchStore.getState().startMatch();
+      // Pin phase so the assertion is deterministic regardless of which
+      // side `startMatch` randomly chose to start.
+      useMatchStore.setState((s) => ({
+        matchState: s.matchState ? { ...s.matchState, phase: 'active_turn_opponent' } : null,
+      }));
+      const out = await useMatchStore.getState().runOpponentTurn();
+      expect(out.error).toBeNull();
+      expect(out.feedback).not.toBeNull();
+      const state = useMatchStore.getState().matchState!;
+      expect(state.opponentGuesses).toHaveLength(1);
+      expect(state.phase).toBe('active_turn_player');
+    });
+
+    it("writes the bot's newSolverState through to matchState.solverStates.opponent", async () => {
+      // Stub returns a different solverState shape so we can confirm
+      // the writeback path actually touched it.
+      registerStub(1);
+      const mode = modeRegistry.get(1);
+      // Patch the stub bot in place — Jest doesn't run two registers in
+      // the same test, so the existing fixture is mutable.
+      (mode as { bot: typeof mode.bot }).bot = {
+        ...mode.bot,
+        makeGuess: async () => ({
+          guess: '1234',
+          newSolverState: { kind: 'candidatePool', pool: ['1234'] },
+        }),
+      };
+      useMatchStore.getState().createMatch(1, '1234');
+      useMatchStore.getState().startMatch();
+      useMatchStore.setState((s) => ({
+        matchState: s.matchState ? { ...s.matchState, phase: 'active_turn_opponent' } : null,
+      }));
+      await useMatchStore.getState().runOpponentTurn();
+      const state = useMatchStore.getState().matchState!;
+      const opp = state.solverStates?.opponent;
+      expect(opp?.kind).toBe('candidatePool');
+      if (opp?.kind === 'candidatePool') {
+        expect(opp.pool).toEqual(['1234']);
+      }
+    });
+
+    it('produces an identical sequence on a serialized + restored state (resume identity)', async () => {
+      // Drives the contract that AsyncStorage hydration ⇒ bit-identical
+      // bot continuation. We serialize, set state from JSON, run the
+      // turn, and compare to a fresh-from-create run on the same seed.
+      registerStub(1);
+      useMatchStore.getState().createMatch(1, '1234');
+      useMatchStore.getState().startMatch();
+      // Force opponent turn from a known seed.
+      useMatchStore.setState((s) => ({
+        matchState: s.matchState
+          ? {
+              ...s.matchState,
+              phase: 'active_turn_opponent',
+              rngState: { seed: 7777, callCount: 0 },
+            }
+          : null,
+      }));
+      const liveBefore = useMatchStore.getState().matchState!;
+
+      // Run #1 — direct.
+      await useMatchStore.getState().runOpponentTurn();
+      const liveAfter = useMatchStore.getState().matchState!;
+
+      // Run #2 — round-trip through JSON to mimic AsyncStorage rehydrate.
+      const restored = JSON.parse(JSON.stringify(liveBefore)) as typeof liveBefore;
+      useMatchStore.setState({ matchState: restored });
+      await useMatchStore.getState().runOpponentTurn();
+      const restoredAfter = useMatchStore.getState().matchState!;
+
+      // Same guess + same RNG cursor + same opponent guesses count.
+      expect(restoredAfter.opponentGuesses).toEqual(liveAfter.opponentGuesses);
+      expect(restoredAfter.rngState).toEqual(liveAfter.rngState);
+    });
+  });
+
   describe('endMatch', () => {
     it('marks the current match completed with the supplied result', () => {
       registerStub(1);

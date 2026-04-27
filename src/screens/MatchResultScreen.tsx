@@ -1,13 +1,16 @@
 /**
  * Match epilogue. Variant-driven layout (`outcome` route param drives
- * everything: tint, title, copy, reward, XP). The reward token grant
- * fires once per mount via a ref-guarded `useEffect` so a re-render
- * (e.g. after a font load tick) cannot double-pay the player.
+ * everything: tint, title, copy, reward, XP). The reward token grant,
+ * stat record, and XP gain all fire once per mount via the same
+ * `grantedRef`-guarded `useEffect` so a re-render (e.g. after a font
+ * load tick) cannot double-pay the player or double-bump stats.
  *
- * Phase 1B carries no engine, so the secret reveal pulls from
- * `mockSecretByMode`. Phase 2 will deliver the secret on the route
- * params; the consumer change is one `secretFor(modeId)` swap for
- * `route.params.secret`.
+ * Engine path (Mode 1 today; Modes 2-7 land in Phase 4-5) delivers the
+ * real opponent secret, the winner's per-side guess count, the reward,
+ * and the XP gain on the route params. Mock path leaves them
+ * undefined; we fall back to the catalog defaults so the dev-picker
+ * loop still grants the tokens it always did, and stats updates are
+ * skipped entirely (the mock player isn't really playing a match).
  *
  * Reward policy (sourced from SPEC §6 and §7.2):
  *   victory   → +rewardWin tokens, +30 XP
@@ -29,10 +32,11 @@ import { Screen } from '@components/Screen';
 import { TinyTag } from '@components/TinyTag';
 import { TokenCoin } from '@components/TokenCoin';
 import { findMode } from '@data/modeCatalog';
-import { secretDigits } from '@data/mockSecrets';
+import { secretFor } from '@data/mockSecrets';
 import { findOpponent } from '@data/mockOpponents';
 import { grantTokens, useMockUser } from '@data/mockUser';
 import type { MatchResultOutcome, RootStackParamList } from '@navigation/routes';
+import { useUserStore } from '@state/userStore';
 import { colors, fonts, withAlpha } from '@theme/tokens';
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'MatchResult'>;
@@ -107,29 +111,38 @@ export function MatchResultScreen(): React.JSX.Element {
   const route = useRoute<RouteParams>();
   const insets = useSafeAreaInsets();
   const user = useMockUser();
-  const { modeId, outcome } = route.params;
+  const { modeId, outcome, secret: routeSecret } = route.params;
 
   const view = OUTCOMES[outcome];
   const mode = useMemo(() => findMode(modeId), [modeId]);
-  // Phase 1B: opponent name + turn count come from the mock layer.
-  // Phase 2 routes the real engine summary in via params.
   const opponent = useMemo(() => findOpponent(`opp-1`), []);
-  const turns = 6;
 
-  const reward = view.tokens({
+  const fallbackReward = view.tokens({
     rewardWin: mode?.meta.rewardWin ?? 0,
     rewardDraw: mode?.meta.rewardDraw ?? 0,
     stake: mode?.meta.stake ?? 0,
   });
+  const reward = route.params.reward ?? fallbackReward;
+  const xpGain = route.params.xpGain ?? view.xp;
+  const turns = route.params.guessCount ?? 6;
+  const isEnginePath = route.params.guessCount !== undefined;
 
-  // Idempotent reward grant — guarded so a re-mount under React Strict
-  // Mode (or any future Suspense boundary) never double-pays.
+  // Idempotent post-match grants — single ref guards all three writes
+  // so a re-mount under React Strict Mode (or any future Suspense
+  // boundary) never double-pays, double-bumps, or double-records.
   const grantedRef = useRef<boolean>(false);
   useEffect(() => {
     if (grantedRef.current) return;
     grantedRef.current = true;
     if (reward > 0) grantTokens(reward);
-  }, [reward]);
+    // Stats + XP only fire on the engine path. The mock dev-picker
+    // path is a synthetic outcome — recording it would inflate
+    // gamesPlayed every time the developer opens the result screen.
+    if (isEnginePath) {
+      useUserStore.getState().recordMatchResult({ modeId, outcome, turns });
+      if (xpGain > 0) useUserStore.getState().addXp(xpGain);
+    }
+  }, [reward, xpGain, isEnginePath, modeId, outcome, turns]);
 
   const playAgain = useCallback(
     () => navigation.replace('Matchmaking', { modeId }),
@@ -137,7 +150,11 @@ export function MatchResultScreen(): React.JSX.Element {
   );
   const goHome = useCallback(() => navigation.popToTop(), [navigation]);
 
-  const digits = secretDigits(modeId);
+  const revealSecret = routeSecret ?? secretFor(modeId);
+  const digits = useMemo(
+    () => Array.from(revealSecret, (c) => Number.parseInt(c, 10)),
+    [revealSecret],
+  );
   const sub = view.subTemplate({
     opponentName: opponent?.username ?? 'Opponent',
     turns,
@@ -188,7 +205,7 @@ export function MatchResultScreen(): React.JSX.Element {
             color={colors.gold}
             label={view.tokenLabel}
           />
-          <RewardChip value={`+${view.xp}`} color={colors.violet} label="XP" />
+          <RewardChip value={`+${xpGain}`} color={colors.violet} label="XP" />
         </View>
 
         <View style={styles.statsGrid}>

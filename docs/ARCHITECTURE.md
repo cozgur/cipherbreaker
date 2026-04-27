@@ -452,3 +452,102 @@ The current `RNGState = { seed, callCount }` is sufficient for in-version resume
 - **Schema versions on saved match states** — bump a `replayVersion` field on `MatchState` and refuse to replay across versions. Simpler but loses cross-version replay value.
 
 Defer the decision until a replay use case exists. The current mulberry32 + flat callCount is the right default for resume.
+
+---
+
+## Phase 3 decisions
+
+Phase 3 lands the first real mode (Color Match) end-to-end against the Phase 2 scaffolding and produces the canonical template every Phase 4-5 mode copies. CP1 was the pure-domain core (evaluator + bot + secret generation, no React), CP2 was the bot strategy and difficulty bands, CP3 wired the engine through `useMatchStore` and added the `runOpponentTurn` orchestration, CP4 cut MatchScreen + MatchResultScreen over from the mock path to the engine path and fixed three production-wiring bugs surfaced by the device walkthrough.
+
+### Mode 1 as reference template
+
+`src/game/modes/mode1ColorMatch.ts` is intentionally a thin façade — under 60 lines — and every helper lives in `src/game/modes/mode1/`. The split is load-bearing for Phase 4-5: `evaluate.ts` and `bot.ts` are individually grep-able units of strategy, and the parent file's only job is to wire `meta` + `rules` from the catalog into a `ModeDefinition` shape. Mode 6 (Sudden Death) and Mode 4 (Blitz) reuse `evaluateColorMatch` directly via re-export from their own folders; without the file split, that re-use would mean importing a façade and discarding everything but one symbol.
+
+Catalog is the single source of truth for `meta` + `rules` — `mode1ColorMatch.ts` reads the catalog entry at module load and explodes (via `ModeNotFoundError`) if it's missing. Hardcoding `meta`/`rules` in the mode file would create two places to keep in sync whenever a `stake` or `rewardWin` changes, so the mode file deliberately holds zero presentation data.
+
+The `mode1` sub-folder respects the same domain-purity rule as the parent: `mode1/bot.ts` and `mode1/evaluate.ts` import nothing from React. `mode1ColorMatch.test.ts` enforces this with a filesystem grep across all four files.
+
+### Adding a new mode — concrete checklist
+
+The Phase 2 five-step recipe is generic; Phase 3's Mode 1 makes it concrete. For Phase 4-5:
+
+1. **Mode façade** — `src/game/modes/mode{N}{Name}.ts`. Copy `mode1ColorMatch.ts`. Read catalog via `findMode(N)`, throw on absence. Pick the validators that fit (`validateLength`, `validateDigitsOnly`, `validateUniqueDigits` for unique-digit modes). Assemble the `ModeDefinition` literal. **Keep it under ~60 lines.**
+2. **Strategy folder** — `src/game/modes/mode{N}/{evaluate,bot}.ts`. `evaluate.ts` is pure `(guess, secret) => NormalizedFeedback`. `bot.ts` exports `makeGuess` (async, returns `{ guess, newSolverState }`) and `thinkingTime` (sync, `Math.random` only). Re-import the evaluator inside `bot.ts` so the bot can verify candidate consistency without a circular dep on the façade.
+3. **Row component** — `src/components/game/rows/Mode{N}Row.tsx`. Switch on `feedback.kind`; render via `GuessRowShell`.
+4. **Registry + renderers** — append `import + register` to `src/game/modes/index.ts`; add the row entry to `src/game/renderers.ts`. `renderers.test.ts` cross-checks against the catalog and fails CI on a missing pair.
+5. **Domain-purity test** — extend the file list in `mode{N}{Name}.test.ts`'s "imports no React" `it.each` block to cover the new files.
+
+Once these five touchpoints land, the existing `MatchScreen` engine path lights up automatically — there is no per-mode UI fork to add (the conditional cutover gate is mode-id-agnostic).
+
+### Wordle two-pass evaluator + duplicate handling
+
+`evaluateColorMatch` (SPEC §3.2) runs in two strict passes against a `used[]` ledger. Pass 1 paints exact-position matches green and marks the secret slot consumed. Pass 2 paints unmatched guess positions yellow if their digit appears in any *unconsumed* secret slot. The ledger is what makes the duplicate cases — `'1919'` vs `'1122'` → 🟢⚫🟡⚫ — produce SPEC-correct feedback: a single-pass evaluator that just searches the secret would paint position 0 green AND position 2 yellow off the same secret slot, double-counting the `'1'`.
+
+A one-pass implementation that just searches the secret per guess position would fail the multi-duplicate cases — `'5455'` vs `'5544'` would paint position 3 yellow off the same `'5'` already claimed at position 0. The two-pass approach with the `used[]` ledger is canonical Wordle; the test table in `mode1ColorMatch.test.ts` pins ten duplicate edge cases. Every Phase 4-5 mode that surfaces colour feedback (Mode 4 Blitz, Mode 6 Sudden Death, Mode 7 Mirror) re-uses this evaluator unchanged.
+
+### Bot solver pool — synchronous below 1000
+
+`mode1/bot.ts` defines `HEAVY_FILTER_THRESHOLD = 1000`. Pools at or above the threshold go through `filterByFeedbackChunked` (yields between 500-element batches); pools below go through `filterByFeedback` (sync). Mode 1 hits the threshold exactly once per match — the 10 000-strong opening pool — and drops to the low hundreds after the first feedback round, so subsequent turns pay the sync path's lower per-call overhead.
+
+The threshold is per-mode by design (lives in `mode1/bot.ts`, not in `@game/constants`) — Mode 3's 5040 unique-digit pool hits the chunked path *every* turn and Mode 5's blackout-constraint sweep is heavier still. Hardcoding 1000 globally would either over-yield Mode 1 (4 frame drops per match for no perceptible benefit) or under-yield Mode 3 (visible jank on the device).
+
+### `BotContext.rng` — single-instance threading
+
+`matchStore.runOpponentTurn` constructs **one** RNG via `createRNG(current.rngState)` and threads it into both `mode.bot.makeGuess(ctx)` (where `ctx.rng` is the same instance) and `engine.submitGuess(stateWithSolver, guess, 'opponent', rng)`. The persisted `rngState` after the action reflects every draw the bot made.
+
+Splitting these into two `createRNG(current.rngState)` calls — one for the bot, one for the engine — would reset the cursor to the pre-bot snapshot on the second call. On the next turn the bot would re-draw the same numbers, and the resume contract (deserialise the persisted state ⇒ produce the same continuation) would silently break. Two RNG instances ⇒ two independent cursors ⇒ broken resume identity. The single-instance threading is therefore the resume contract; `BotContext.rng` carries a doc-comment naming this and the resume-identity test in `matchStore.test.ts` pins it at the seam.
+
+`bot.thinkingTime` deliberately does *not* receive the threaded RNG — it's a UI delay, not a domain quantity. See below.
+
+### `thinkingTime` — `Math.random` asymmetry
+
+`mode.bot.thinkingTime(ctx)` is the only `Math.random` consumer in the whole game layer. Every other RNG draw goes through the seeded `BotContext.rng`. The asymmetry is intentional: think time is a cosmetic UI delay (2–12s, SPEC §4.4 phone-down outlier band), and a resume after suspend should not re-roll the durable RNG cursor just to re-derive how long the bot pretends to think. Using the threaded RNG would mean the cursor advances on every `thinkingTime` call, polluting the bot's actual move sequence.
+
+The price is that thinking-time tests can't pin a specific value without `jest.spyOn(Math, 'random')` — the test in `mode1ColorMatch.test.ts` settles for "stays inside the 2–12s band over 200 samples" instead. Worth it: a single `Math.random` import keeps `thinkingTime` a one-line rule the next mode can copy verbatim.
+
+### `MatchState.botDifficulty` + `firstAuthor` — durable, defaulted, optional
+
+Two new optional fields on `MatchState`. Both are durable (persist with the rest of the snapshot) so resume produces the same bot behaviour and timeline ordering. Both are optional so the persist version doesn't have to bump for hydrated Phase 2 states.
+
+- **`botDifficulty`** — frozen at `startMatch` (Phase 3 hardcodes `'normal'`; Phase 7A wires SPEC §5.5 dynamic-difficulty adjustment from `userStore.stats`). The field exists today so the wiring change is one line in `startMatch` and zero everywhere else. `runOpponentTurn` falls back to `'normal'` for `undefined`, so a hydrated pre-Phase-3 state still works.
+- **`firstAuthor`** — set by the same RNG roll in `startMatch` that picks the initial phase. The MatchScreen UI consumes this through `interleaveTimeline(state)` to round-robin `playerGuesses` + `opponentGuesses` into chronological order. Without it, the UI would have to assume "player always goes first" and Mode 4 (Blitz, where the opponent often cracks first) would render the timeline backwards.
+
+Both fields use the `state.X ?? default` idiom in their consumers — adding a third optional field in a future phase (e.g. `replayVersion`) follows the same pattern with no migration overhead.
+
+### `matchStore.runOpponentTurn` — orchestration site
+
+`runOpponentTurn` is where the bot ↔ engine ↔ persist contract lives. The action:
+
+1. Reads `current` and no-ops if `phase !== 'active_turn_opponent'` (idempotent — the screen's `useEffect` cleanup may fire it twice on rapid re-renders).
+2. Constructs the **single** RNG instance + the `BotContext` (with the bot's previous guesses, frozen difficulty, and the carry-forward solver state).
+3. Awaits `mode.bot.makeGuess(ctx)` to get the guess + the post-filter solver pool.
+4. Writes `newSolverState` onto a snapshot before calling `engine.submitGuess` — `submitGuess` ignores `solverStates` (it's a passthrough field) but the engine's output state preserves it, so the next turn picks up the already-narrowed pool.
+5. Calls `engine.submitGuess(stateWithSolver, guess, 'opponent', rng)` with the same RNG instance.
+6. `set({ matchState: out.state })` — the persist middleware writes this synchronously to AsyncStorage.
+
+The screen's bot-turn `useEffect` is a thin wrapper around this: pick a `thinkingTime`, fire `setShowTyping(true)` at 40% of the delay, fire `runOpponentTurn` at 100%. The screen never reads or constructs an RNG — that responsibility is fully owned by the store action.
+
+### MatchScreen — conditional engine cutover gate
+
+The screen runs in two modes, gated by:
+
+```ts
+const isEngineMode =
+  modeRegistry.getOrNull(modeId) !== null && matchState?.modeId === modeId;
+```
+
+Both halves of the `&&` matter. The first guards against Modes 2-7 (still on the mock `DevResultPicker` path until Phase 4-5-6). The second catches the navigation re-entry where `SecretSetup` hasn't yet seeded the store for an unregistered mode — without it, an unregistered mode that was registered later in the session would briefly try to run the engine path against a stale `matchState` from a previous match.
+
+Forking into `MatchScreenEngine.tsx` and `MatchScreenMock.tsx` was considered and rejected: the two paths share ~90% of the rendering (header, player cards, timeline, draft tiles, keypad). A fork would mean every Phase 4-5 visual tweak lands twice, and the mock fork is supposed to *shrink* as more modes register. The conditional shrinks toward zero on the same timeline.
+
+The bot-turn effect, the completion-watcher effect, and the `submitGuess` callback are all early-returned on `!isEngineMode` so the mock path pays zero overhead. The dev-picker overlay is `__DEV__`-gated and only allocated when `pickerOpen=true`, so production builds with the engine path active never even ship the picker code.
+
+### CP4 — three production-wiring fixes
+
+The CP3 engine path passed every unit and integration test but failed the device walkthrough on three counts. Each fix is recorded so Phase 4-5 modes don't re-encounter them:
+
+1. **`MatchResult` route params carry the engine summary, not catalog defaults.** CP3 left `MatchResult` reading `mockSecretByMode[modeId]` for the secret reveal and a hardcoded `turns = 6` for the headline copy. CP4 widened the route param shape with optional `secret`, `guessCount`, `reward`, `xpGain` fields and the engine completion-watcher fills them from `matchState.opponentSecret` / `matchState.result.turns` / `rewardForOutcome(result, mode)`. Mock path omits the fields and the screen falls back to catalog defaults — same Phase 1B behaviour. The optionality matters: a non-optional shape would mean every mock-path call site has to backfill, and the dev-picker is supposed to be deletable wholesale once Phase 4-5-6 lands.
+2. **`recordMatchResult` only fires on the engine path.** `MatchResultScreen`'s grant `useEffect` was extended to also call `userStore.recordMatchResult({ modeId, outcome, turns })` and `addXp(xpGain)` — but only when `route.params.guessCount !== undefined` (the engine-path discriminator). Without the gate, every dev-picker open in development inflates `gamesPlayed` and corrupts `winRate`. The same `grantedRef` guards all three writes (tokens, stats, XP) so a re-mount under React Strict Mode never double-pays or double-bumps.
+3. **Auto-scroll to the latest timeline row.** The engine path appends rows faster than the player can scroll; without auto-scroll, the freshest feedback sits below the fold. A `ScrollView` `ref` + a `useEffect` keyed on `playerGuesses.length + opponentGuesses.length` calls `scrollToEnd({ animated: true })` after a 100ms layout grace period. Mock-mode timeline is static so the effect runs once at mount with no visible change. The 100ms grace period exists because firing the scroll synchronously inside the effect can race the row's first layout pass — `scrollToEnd` then measures a stale content size and lands one row short.
+
+These three are wiring fixes, not architectural changes — but they're the kind of mistake that's mechanical to repeat in Phase 4-5 if the lesson isn't recorded.

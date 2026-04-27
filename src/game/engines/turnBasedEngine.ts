@@ -89,9 +89,15 @@ export function startMatch(state: MatchState, rng: RNG): MatchState {
   const playerStarts = rng.next() < 0.5;
   const phase = playerStarts ? 'active_turn_player' : 'active_turn_opponent';
   const opponentSolver = mode.bot.initSolverState(state.opponentSecret, mode.rules);
+  // TODO(phase-7A): replace with `selectDifficulty(userStore.stats)` per
+  // SPEC §5.5. Phase 3 hardcodes 'normal' so the bot is stable while the
+  // economy + DDA wiring is still mock-driven.
+  const botDifficulty = state.botDifficulty ?? 'normal';
   return {
     ...state,
     phase,
+    botDifficulty,
+    firstAuthor: state.firstAuthor ?? (playerStarts ? 'self' : 'opponent'),
     solverStates: {
       ...(state.solverStates ?? {}),
       opponent: opponentSolver,

@@ -14,6 +14,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
+import type { MatchResultOutcome } from '@navigation/routes';
+
 export interface UserStats {
   readonly gamesPlayed: number;
   readonly winRate: number;
@@ -34,6 +36,12 @@ export interface UserStoreState {
   readonly perMode: Readonly<Record<number, { readonly winRate: number }>>;
 }
 
+export interface RecordMatchResultInput {
+  readonly modeId: number;
+  readonly outcome: MatchResultOutcome;
+  readonly turns: number;
+}
+
 export interface UserStoreActions {
   /** Positive-only — Shop, ad reward, match win. */
   addTokens(amount: number): void;
@@ -42,6 +50,20 @@ export interface UserStoreActions {
   setHasOnboarded(value: boolean): void;
   /** Trims; rejects empty strings (matches Phase 1B mock contract). */
   setUsername(next: string): void;
+  /**
+   * Per-mount, per-completed-match. Increments `gamesPlayed`, recomputes
+   * `winRate` (treating only `'victory'` as a win), updates the streak
+   * pair (victory → +1; defeat → reset to 0; draw/stalemate keep the
+   * streak), folds `turns` into the running `avgTurns` mean, and nudges
+   * `perMode[modeId].winRate` by the same victory rule.
+   *
+   * Win counts aren't persisted as a primitive — `winRate * gamesPlayed`
+   * is reversed at call time. Phase 7A will replace this with a real
+   * record once stats are sourced from the server.
+   */
+  recordMatchResult(input: RecordMatchResultInput): void;
+  /** Positive-only. Raw counter — Phase 7A wires the level-up rollover. */
+  addXp(amount: number): void;
 }
 
 export const USER_STORE_DEFAULTS: UserStoreState = {
@@ -93,6 +115,59 @@ export const useUserStore = create<UserStoreState & UserStoreActions>()(
         const trimmed = next.trim();
         if (trimmed.length === 0) return;
         set({ username: trimmed });
+      },
+
+      recordMatchResult: ({ modeId, outcome, turns }) => {
+        set((s) => {
+          const stats = s.stats;
+          const isWin = outcome === 'victory';
+          const isLoss = outcome === 'defeat';
+
+          const wins = Math.round((stats.winRate / 100) * stats.gamesPlayed);
+          const newWins = isWin ? wins + 1 : wins;
+          const newGamesPlayed = stats.gamesPlayed + 1;
+          const newWinRate = Math.round((newWins / newGamesPlayed) * 100);
+
+          const nextStreak = isWin
+            ? stats.currentStreak + 1
+            : isLoss
+              ? 0
+              : stats.currentStreak;
+          const nextBestStreak = Math.max(stats.bestStreak, nextStreak);
+
+          // Running mean — exact for the new sample, rounded to 1 decimal
+          // to match the Profile screen's display fidelity.
+          const newAvgTurnsRaw =
+            (stats.avgTurns * stats.gamesPlayed + turns) / newGamesPlayed;
+          const newAvgTurns = Math.round(newAvgTurnsRaw * 10) / 10;
+
+          // perMode shares the same wins-from-rate trick. We don't track
+          // games-per-mode yet, so estimate from the totals; Phase 7A
+          // replaces this once the backend supplies authoritative counts.
+          const modeEntry = s.perMode[modeId] ?? { winRate: 50 };
+          const estModeGames = Math.max(1, Math.round(stats.gamesPlayed / 7));
+          const modeWins = Math.round((modeEntry.winRate / 100) * estModeGames);
+          const newModeWins = isWin ? modeWins + 1 : modeWins;
+          const newModeGames = estModeGames + 1;
+          const newModeWinRate = Math.round((newModeWins / newModeGames) * 100);
+
+          return {
+            stats: {
+              gamesPlayed: newGamesPlayed,
+              winRate: newWinRate,
+              currentStreak: nextStreak,
+              bestStreak: nextBestStreak,
+              avgTurns: newAvgTurns,
+              tokensEarned: stats.tokensEarned,
+            },
+            perMode: { ...s.perMode, [modeId]: { winRate: newModeWinRate } },
+          };
+        });
+      },
+
+      addXp: (amount) => {
+        if (amount <= 0) return;
+        set((s) => ({ currentXP: s.currentXP + amount }));
       },
     }),
     {

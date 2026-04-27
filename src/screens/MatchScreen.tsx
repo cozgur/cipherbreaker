@@ -4,17 +4,27 @@
  * scrollable timeline rendered through `guessRowRenderers`, and a
  * bottom input region (4 DigitTile + DigitKeypad + Guess CTA).
  *
- * Phase 1B carries no engine, so the Guess CTA opens the in-screen
- * `DevResultPicker` (development builds only) — the player chooses
- * the outcome, we replace into MatchResult. Production builds show a
- * "coming in phase 2" placeholder until Phase 3 wires the engine.
+ * The screen runs in two modes:
+ *
+ *   - **engine path** — `modeRegistry.getOrNull(modeId) !== null` AND
+ *     `useMatchStore.matchState.modeId === modeId`. The Guess CTA goes
+ *     through `matchStore.submitGuess('self')`; the bot turn is driven
+ *     by an effect that calls `mode.bot.thinkingTime` to pick a delay,
+ *     surfaces the typing indicator on the back 60%, then fires
+ *     `matchStore.runOpponentTurn`. Validation errors surface inline
+ *     and `draftDigits` is preserved. Phase=`'completed'` triggers a
+ *     navigation replace into MatchResult.
+ *
+ *   - **mock path (Phase 1B legacy)** — DevResultPicker overlay; the
+ *     player picks an outcome and we replace into MatchResult. This
+ *     stays alive for Modes 2-7 until Phase 4-5-6 register them.
  *
  * Mode 7 (Mirror) re-uses the same screen via a single conditional
  * fork; the only differences are the header sub-chip and the
  * player-area component.
  */
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
@@ -34,9 +44,20 @@ import { buildMockTimeline } from '@data/mockMatchHistory';
 import { chargeTokens, useMockUser } from '@data/mockUser';
 import { findOpponent } from '@data/mockOpponents';
 import { guessEntryToRowProps } from '@game/adapters/guessEntryToRowProps';
+import { interleaveTimeline } from '@game/adapters/interleaveTimeline';
+import { matchOutcomeToRoute } from '@game/adapters/matchOutcomeToRoute';
+import { modeRegistry } from '@game/modeRegistry';
 import { getRowRenderer } from '@game/renderers';
-import type { GuessEntry, GuessRowAdaptorContext, ModeCatalogEntry } from '@game/types';
+import type {
+  BotContext,
+  GuessEntry,
+  GuessRowAdaptorContext,
+  MatchResult as EngineMatchResult,
+  ModeCatalogEntry,
+} from '@game/types';
+import { createRNG } from '@/lib/random';
 import type { MatchResultOutcome, RootStackParamList } from '@navigation/routes';
+import { useMatchStore } from '@state/matchStore';
 import { colors, fonts, withAlpha } from '@theme/tokens';
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'Match'>;
@@ -56,7 +77,21 @@ export function MatchScreen(): React.JSX.Element {
   const opponent = useMemo(() => findOpponent(opponentId), [opponentId]);
   const isMirror = mode?.rules.flags.parallelRace === true;
 
-  const timeline = useMemo(() => buildMockTimeline(modeId), [modeId]);
+  // Engine cutover gate — engine path lights up only when the mode is
+  // registered AND the live `matchState` belongs to this mode. The
+  // second guard catches the navigation re-entry where SecretSetup
+  // hasn't yet seeded the store (e.g. unregistered modes still use the
+  // mock path, no store entry exists).
+  const matchState = useMatchStore((s) => s.matchState);
+  const isEngineMode =
+    modeRegistry.getOrNull(modeId) !== null && matchState?.modeId === modeId;
+  const definition = isEngineMode ? modeRegistry.get(modeId) : null;
+
+  const mockTimeline = useMemo(() => buildMockTimeline(modeId), [modeId]);
+  const timeline: readonly GuessEntry[] = isEngineMode && matchState
+    ? interleaveTimeline(matchState)
+    : mockTimeline;
+
   const RowRenderer = useMemo(() => getRowRenderer(modeId), [modeId]);
   const adaptorCtx: GuessRowAdaptorContext = useMemo(
     () => ({
@@ -77,6 +112,16 @@ export function MatchScreen(): React.JSX.Element {
   const isComplete = filledCount === SECRET_LENGTH;
 
   const [pickerOpen, setPickerOpen] = useState<boolean>(false);
+  const [validationError, setValidationError] = useState<string | null>(null);
+  const [showTyping, setShowTyping] = useState<boolean>(false);
+
+  // In engine mode the player can only type when it's their turn;
+  // mock mode keeps the legacy "always allow" behaviour because the
+  // DevResultPicker is the substitute for turn rotation.
+  const isPlayerTurn = isEngineMode
+    ? matchState?.phase === 'active_turn_player'
+    : true;
+  const isOpponentTurn = isEngineMode && matchState?.phase === 'active_turn_opponent';
 
   const handleDigit = useCallback((digit: number): void => {
     setDraftDigits((current) => {
@@ -86,6 +131,7 @@ export function MatchScreen(): React.JSX.Element {
       updated[slot] = digit;
       return updated;
     });
+    setValidationError(null);
   }, []);
 
   const handleBackspace = useCallback((): void => {
@@ -96,16 +142,35 @@ export function MatchScreen(): React.JSX.Element {
       updated[current.length - 1 - lastFilled] = null;
       return updated;
     });
+    setValidationError(null);
   }, []);
 
   const submitGuess = useCallback((): void => {
     if (!isComplete) return;
+    if (isEngineMode) {
+      if (!isPlayerTurn) return;
+      const guessStr = draftDigits.map((d) => String(d ?? 0)).join('');
+      void useMatchStore
+        .getState()
+        .submitGuess(guessStr, 'self')
+        .then((out) => {
+          if (out.error !== null) {
+            // ValidationError is structured data — surface the message
+            // and keep `draftDigits` so the player can correct in place.
+            setValidationError(out.error.message);
+            return;
+          }
+          setValidationError(null);
+          setDraftDigits([null, null, null, null]);
+        });
+      return;
+    }
     if (__DEV__) {
       setPickerOpen(true);
       return;
     }
-    Alert.alert('Coming soon', 'Match logic ships in Phase 3.');
-  }, [isComplete]);
+    Alert.alert('Coming soon', 'This mode is still on the Phase 1B mock path.');
+  }, [isComplete, isEngineMode, isPlayerTurn, draftDigits]);
 
   const pickOutcome = useCallback(
     (outcome: MatchResultOutcome): void => {
@@ -115,7 +180,93 @@ export function MatchScreen(): React.JSX.Element {
     [modeId, navigation],
   );
 
+  // Auto-scroll the timeline to the latest entry whenever a new guess
+  // lands. Mirrors the chat-app convention — the player should not have
+  // to scroll manually to see the freshest feedback. Mock-mode timeline
+  // is static, so this only fires on the engine path; the small delay
+  // gives RN a frame to lay out the newly-mounted row before we measure.
+  const timelineRef = useRef<ScrollView>(null);
+  const playerGuessCount = matchState?.playerGuesses.length ?? 0;
+  const opponentGuessCount = matchState?.opponentGuesses.length ?? 0;
+  useEffect(() => {
+    const id = setTimeout(() => {
+      timelineRef.current?.scrollToEnd({ animated: true });
+    }, 100);
+    return () => clearTimeout(id);
+  }, [playerGuessCount, opponentGuessCount]);
+
   const closePicker = useCallback(() => setPickerOpen(false), []);
+
+  // Engine path — drive the bot turn. Phase change `→ active_turn_opponent`
+  // schedules typing-indicator + runOpponentTurn timers; cleanup on phase
+  // change / unmount cancels them so a forfeit-then-restart can't fire
+  // a stale bot turn into the new match.
+  //
+  // `setShowTyping(false)` lives in the cleanup function (not the body
+  // early-returns) — React's `react-hooks/set-state-in-effect` rule
+  // forbids in-body setState. Cleanup runs before every re-execution
+  // and on unmount, so the previous turn's `showTyping=true` always
+  // gets cleared as soon as the dependency array changes.
+  useEffect(() => {
+    if (!isEngineMode || matchState === null || definition === null) {
+      return undefined;
+    }
+    if (matchState.phase !== 'active_turn_opponent') {
+      return undefined;
+    }
+
+    // BotContext.rng is required by the type, but `thinkingTime`
+    // deliberately does NOT consume it (UI delay is decoupled from
+    // resume identity). Hand the bot a throwaway RNG snapshot here;
+    // the deterministic instance lives inside `runOpponentTurn`.
+    const ctx: BotContext = {
+      previousGuesses: matchState.opponentGuesses,
+      mySecret: matchState.opponentSecret,
+      difficulty: matchState.botDifficulty ?? 'normal',
+      turnNumber: matchState.opponentGuesses.length + 1,
+      solverState:
+        matchState.solverStates?.opponent ??
+        definition.bot.initSolverState(matchState.opponentSecret, definition.rules),
+      rng: createRNG(matchState.rngState),
+    };
+    const delay = definition.bot.thinkingTime(ctx);
+
+    const typingId = setTimeout(() => setShowTyping(true), Math.floor(delay * 0.4));
+    const turnId = setTimeout(() => {
+      void useMatchStore.getState().runOpponentTurn();
+    }, delay);
+
+    return () => {
+      clearTimeout(typingId);
+      clearTimeout(turnId);
+      setShowTyping(false);
+    };
+  }, [
+    isEngineMode,
+    definition,
+    matchState,
+  ]);
+
+  // Engine path — completion watcher. Engine writes phase='completed'
+  // and a `MatchResult` on the same submitGuess; mirror it into the
+  // route params the MatchResultScreen consumes. Reward + XP + the
+  // opponent's generated secret + the winner's per-side guess count
+  // ride along so the result screen never has to re-derive any of it
+  // (and the mock-path fallback keeps Modes 2-7 intact).
+  useEffect(() => {
+    if (!isEngineMode || matchState === null) return;
+    if (matchState.phase !== 'completed' || matchState.result === null) return;
+    if (mode === undefined) return;
+    const outcome = matchOutcomeToRoute(matchState.result);
+    navigation.replace('MatchResult', {
+      modeId,
+      outcome,
+      secret: matchState.opponentSecret,
+      guessCount: matchState.result.turns,
+      reward: rewardForOutcome(matchState.result, mode),
+      xpGain: XP_BY_OUTCOME[outcome],
+    });
+  }, [isEngineMode, matchState, modeId, mode, navigation]);
 
   const confirmForfeit = useCallback((): void => {
     const stake = mode?.meta.stake ?? 0;
@@ -126,13 +277,28 @@ export function MatchScreen(): React.JSX.Element {
         style: 'destructive',
         onPress: () => {
           chargeTokens(stake);
+          if (isEngineMode) {
+            useMatchStore.getState().clearMatch();
+          }
           navigation.popToTop();
         },
       },
     ]);
-  }, [mode?.meta.stake, navigation]);
+  }, [mode?.meta.stake, navigation, isEngineMode]);
 
   const roundLabel = mode != null ? `ROUND ${timeline.length + 1} · ${mode.meta.name}` : 'ROUND';
+  const turnLabel = isMirror
+    ? 'RACING'
+    : isOpponentTurn
+      ? "OPPONENT'S TURN"
+      : 'YOUR TURN';
+  const turnColor = isMirror
+    ? '#14b8a6'
+    : isOpponentTurn
+      ? colors.textSecondary
+      : colors.violet;
+  const keypadDisabled = pickerOpen || (isEngineMode ? !isPlayerTurn : false);
+  const showBotTyping = isEngineMode ? showTyping : true;
 
   return (
     <Screen ambientIntensity={0.15}>
@@ -173,10 +339,12 @@ export function MatchScreen(): React.JSX.Element {
           opponentFlag={opponent?.flag}
           mode={mode}
           timeline={timeline}
+          activeSide={isEngineMode ? (isPlayerTurn ? 'self' : 'opponent') : 'self'}
         />
       )}
 
       <ScrollView
+        ref={timelineRef}
         style={styles.timeline}
         contentContainerStyle={styles.timelineContent}
         showsVerticalScrollIndicator={false}
@@ -190,16 +358,16 @@ export function MatchScreen(): React.JSX.Element {
 
       <View style={[styles.inputArea, { paddingBottom: insets.bottom + 18 }]}>
         <View style={styles.turnHeader}>
-          <SectionLabel color={isMirror ? '#14b8a6' : colors.violet}>
-            {isMirror ? 'RACING' : 'YOUR TURN'}
-          </SectionLabel>
+          <SectionLabel color={turnColor}>{turnLabel}</SectionLabel>
           <Text style={styles.guessCounter}>Guess #{timeline.length + 1}</Text>
         </View>
 
-        <BotTypingFooter
-          name={opponent?.username ?? 'Opponent'}
-          verb={isMirror ? 'is guessing' : 'is typing'}
-        />
+        {showBotTyping ? (
+          <BotTypingFooter
+            name={opponent?.username ?? 'Opponent'}
+            verb={isMirror ? 'is guessing' : 'is typing'}
+          />
+        ) : null}
 
         <View style={styles.draftTiles}>
           {draftDigits.map((digit, index) => (
@@ -212,19 +380,31 @@ export function MatchScreen(): React.JSX.Element {
           ))}
         </View>
 
-        <DigitKeypad onDigit={handleDigit} onBackspace={handleBackspace} disabled={pickerOpen} />
+        {validationError !== null ? (
+          <Text accessibilityRole="alert" style={styles.errorText}>
+            {validationError}
+          </Text>
+        ) : null}
+
+        <DigitKeypad
+          onDigit={handleDigit}
+          onBackspace={handleBackspace}
+          disabled={keypadDisabled}
+        />
 
         <Button
           onPress={submitGuess}
-          disabled={!isComplete || pickerOpen}
+          disabled={!isComplete || keypadDisabled}
           size="lg"
           style={styles.guessButton}
         >
-          {__DEV__ ? 'Guess' : 'Coming in Phase 2'}
+          {isEngineMode ? 'Guess' : __DEV__ ? 'Guess' : 'Coming soon'}
         </Button>
       </View>
 
-      <DevResultPicker visible={pickerOpen} onPick={pickOutcome} onClose={closePicker} />
+      {!isEngineMode ? (
+        <DevResultPicker visible={pickerOpen} onPick={pickOutcome} onClose={closePicker} />
+      ) : null}
     </Screen>
   );
 }
@@ -263,6 +443,8 @@ interface PlayerCardPairProps {
   readonly opponentFlag?: string;
   readonly mode: ModeCatalogEntry | undefined;
   readonly timeline: readonly GuessEntry[];
+  /** Which side currently holds the turn — drives the active glow. */
+  readonly activeSide: 'self' | 'opponent';
 }
 
 function PlayerCardPair({
@@ -272,6 +454,7 @@ function PlayerCardPair({
   opponentFlag,
   mode,
   timeline,
+  activeSide,
 }: PlayerCardPairProps): React.JSX.Element {
   const turns = countTurns(timeline);
   const showClock = mode?.rules.flags.perPlayerClock === true;
@@ -282,7 +465,7 @@ function PlayerCardPair({
       <PlayerCard
         name={selfName}
         level={1}
-        active
+        active={activeSide === 'self'}
         clockText={showClock ? '0:58' : undefined}
         livesLeft={showLives ? SUDDEN_DEATH_BUDGET - turns.self : undefined}
       />
@@ -291,7 +474,7 @@ function PlayerCardPair({
         name={opponentName}
         level={opponentLevel}
         flag={opponentFlag}
-        active={false}
+        active={activeSide === 'opponent'}
         clockText={showClock ? '0:32' : undefined}
         livesLeft={showLives ? SUDDEN_DEATH_BUDGET - turns.opponent : undefined}
       />
@@ -516,6 +699,31 @@ function countTurns(timeline: readonly GuessEntry[]): { self: number; opponent: 
   return { self, opponent };
 }
 
+// Reward + XP table (mirrors MatchResultScreen OUTCOMES so the engine
+// path computes the same numbers the mock fallback already shows).
+const XP_BY_OUTCOME: Readonly<Record<MatchResultOutcome, number>> = {
+  victory: 30,
+  draw: 15,
+  defeat: 5,
+  stalemate: 0,
+};
+
+function rewardForOutcome(
+  result: EngineMatchResult,
+  mode: ModeCatalogEntry,
+): number {
+  switch (result.outcome) {
+    case 'player_won':
+      return mode.meta.rewardWin;
+    case 'draw':
+      return mode.meta.rewardDraw;
+    case 'stalemate':
+      return mode.meta.stake;
+    case 'opponent_won':
+      return 0;
+  }
+}
+
 const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
@@ -678,6 +886,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 8,
     justifyContent: 'center',
+  },
+  errorText: {
+    fontFamily: fonts.bodySemibold,
+    fontSize: 11,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+    color: colors.danger,
+    textAlign: 'center',
   },
   guessButton: {
     marginTop: 4,

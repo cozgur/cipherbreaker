@@ -102,6 +102,21 @@ describe('turnBasedEngine', () => {
       expect(started.solverStates?.opponent?.kind).toBe('candidatePool');
     });
 
+    it("freezes botDifficulty (Phase 3 hardcodes 'normal'; Phase 7A wires DDA)", () => {
+      registerStub(1);
+      const state = createMatch(1, '1234', { seed: 1, callCount: 0 });
+      const started = startMatch(state, createRNG(state.rngState));
+      expect(started.botDifficulty).toBe('normal');
+    });
+
+    it('preserves a botDifficulty already on state (resume scenario)', () => {
+      registerStub(1);
+      const created = createMatch(1, '1234', { seed: 1, callCount: 0 });
+      const withHard = { ...created, botDifficulty: 'hard' as const };
+      const started = startMatch(withHard, createRNG(withHard.rngState));
+      expect(started.botDifficulty).toBe('hard');
+    });
+
     it('throws InvalidEngineStateError when called on a non-setup state', () => {
       registerStub(1);
       const state = createMatch(1, '1234', { seed: 1, callCount: 0 });
