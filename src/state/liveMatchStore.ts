@@ -22,6 +22,15 @@ export interface LiveMatchStoreActions {
   syncFromMatchState(matchState: MatchState | null): void;
   /** `deltaMs` is positive — the active owner's remaining time decrements by it. */
   tickClock(deltaMs: number): void;
+  /**
+   * Catch-up subtraction after the screen returns from background.
+   * Decrements the *active owner's* clock by `ms` (the literal name
+   * comes from ROADMAP §App Lifecycle; semantically it's owner-aware
+   * so a bot-turn background fires against the bot's clock — see
+   * Phase 5 ARCHITECTURE for the rationale). Identical mechanics to
+   * `tickClock`; aliased for call-site readability.
+   */
+  subtractPlayerTime(ms: number): void;
   clear(): void;
 }
 
@@ -61,6 +70,8 @@ export const useLiveMatchStore = create<LiveMatchStoreState & LiveMatchStoreActi
         },
       });
     },
+
+    subtractPlayerTime: (ms) => get().tickClock(ms),
 
     clear: () => set({ liveClocks: null }),
   }),

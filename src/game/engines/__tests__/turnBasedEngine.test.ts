@@ -321,4 +321,127 @@ describe('turnBasedEngine', () => {
       expect(() => applyTimeout(withSnap, mode)).toThrow(InvalidEngineStateError);
     });
   });
+
+  // Phase 5 — Mode 4 clock wiring. `startMatch` seeds the snapshot,
+  // `advanceTurn` flips `activeOwner`, `submitGuess` writes
+  // `elapsedMs` from the snapshot delta. `liveMatchStore`
+  // `syncFromMatchState` reads `activeOwner` directly off the
+  // snapshot, so these three are the entire engine seam.
+  describe('Mode 4 — clock wiring', () => {
+    it('startMatch seeds clockSnapshot from rules.perPlayerTimeLimitMs', () => {
+      registerStub(4, { perPlayerTimeLimitMs: 60_000 });
+      const created = createMatch(4, '1234', { seed: 1, callCount: 0 });
+      const started = startMatch(created, createRNG(created.rngState));
+      expect(started.clockSnapshot).not.toBeUndefined();
+      expect(started.clockSnapshot?.playerMs).toBe(60_000);
+      expect(started.clockSnapshot?.opponentMs).toBe(60_000);
+      // activeOwner mirrors the picked phase ('player' or 'opponent').
+      const expectedOwner =
+        started.phase === 'active_turn_player' ? 'player' : 'opponent';
+      expect(started.clockSnapshot?.activeOwner).toBe(expectedOwner);
+    });
+
+    it('startMatch leaves clockSnapshot undefined for non-Blitz modes', () => {
+      registerStub(1);
+      const created = createMatch(1, '1234', { seed: 1, callCount: 0 });
+      const started = startMatch(created, createRNG(created.rngState));
+      expect(started.clockSnapshot).toBeUndefined();
+    });
+
+    it('submitGuess writes entry.elapsedMs from the snapshot delta when limit is set', async () => {
+      registerStub(4, {
+        perPlayerTimeLimitMs: 60_000,
+        evaluate: () => ({
+          kind: 'colorMatch',
+          states: ['gray', 'gray', 'gray', 'gray'],
+          isWin: false,
+        }),
+      });
+      const created = createMatch(4, '1234', { seed: 1, callCount: 0 });
+      let started = startMatch(created, createRNG(created.rngState));
+      // Pin player turn + simulate 8 seconds elapsed on the player clock.
+      started = applyClockSnapshot(
+        { ...started, phase: 'active_turn_player' },
+        {
+          playerMs: 52_000,
+          opponentMs: 60_000,
+          activeOwner: 'player',
+          snapshotTimestamp: 0,
+        },
+      );
+      const out = await submitGuess(started, '5555', 'self', createRNG(started.rngState));
+      const lastEntry = out.state.playerGuesses[out.state.playerGuesses.length - 1];
+      expect(lastEntry?.elapsedMs).toBe(8_000);
+    });
+
+    it('submitGuess omits elapsedMs for non-Blitz modes', async () => {
+      registerStub(1, {
+        evaluate: () => ({
+          kind: 'colorMatch',
+          states: ['gray', 'gray', 'gray', 'gray'],
+          isWin: false,
+        }),
+      });
+      const created = createMatch(1, '1234', { seed: 1, callCount: 0 });
+      const started = startMatch(
+        { ...createMatch(1, '1234', { seed: 1, callCount: 0 }), phase: 'setup' },
+        createRNG(created.rngState),
+      );
+      const playerStarted = { ...started, phase: 'active_turn_player' as const };
+      const out = await submitGuess(
+        playerStarted,
+        '5555',
+        'self',
+        createRNG(started.rngState),
+      );
+      const lastEntry = out.state.playerGuesses[out.state.playerGuesses.length - 1];
+      expect(lastEntry?.elapsedMs).toBeUndefined();
+    });
+
+    it('advanceTurn flips clockSnapshot.activeOwner in lockstep with phase rotation', async () => {
+      registerStub(4, {
+        perPlayerTimeLimitMs: 60_000,
+        evaluate: () => ({
+          kind: 'colorMatch',
+          states: ['gray', 'gray', 'gray', 'gray'],
+          isWin: false,
+        }),
+      });
+      const created = createMatch(4, '1234', { seed: 1, callCount: 0 });
+      let started = startMatch(created, createRNG(created.rngState));
+      started = { ...started, phase: 'active_turn_player' };
+      started = applyClockSnapshot(started, {
+        playerMs: 60_000,
+        opponentMs: 60_000,
+        activeOwner: 'player',
+        snapshotTimestamp: 0,
+      });
+      const out = await submitGuess(started, '5555', 'self', createRNG(started.rngState));
+      expect(out.state.phase).toBe('active_turn_opponent');
+      expect(out.state.clockSnapshot?.activeOwner).toBe('opponent');
+    });
+
+    it('advanceTurn is a no-op on clockSnapshot for modes that never set one', async () => {
+      registerStub(1, {
+        evaluate: () => ({
+          kind: 'colorMatch',
+          states: ['gray', 'gray', 'gray', 'gray'],
+          isWin: false,
+        }),
+      });
+      const created = createMatch(1, '1234', { seed: 1, callCount: 0 });
+      const started = startMatch(
+        { ...created, phase: 'setup' },
+        createRNG(created.rngState),
+      );
+      const playerStarted = { ...started, phase: 'active_turn_player' as const };
+      const out = await submitGuess(
+        playerStarted,
+        '5555',
+        'self',
+        createRNG(started.rngState),
+      );
+      expect(out.state.clockSnapshot).toBeUndefined();
+    });
+  });
 });

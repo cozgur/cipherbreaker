@@ -637,3 +637,161 @@ The lesson: any UI copy that has both a "data" version (validator output) and a 
 Phase 4 collapsed `OutcomeViewModel.secretTileState: 'green' | 'gray'` into a single `SECRET_TILE_STATE = 'neutral'` constant. Confetti + the gold VICTORY title + the `+100 tokens` chip carry every signal needed; the tile colour was a fourth redundant cue with mode-specific semantic baggage. The same change ripples down identically to DEFEAT/DRAW/STALEMATE — the variant model gets simpler, not more conditional.
 
 A wider rule fell out: any `MatchResultScreen` view-model field that's keyed off `outcome` should encode *outcome-specific* meaning (title text, tint, copy, reward). Anything that wants to encode *mode-specific* meaning belongs in the per-mode row component, not in the result-screen viewmodel.
+
+---
+
+## Phase 5 decisions
+
+Phase 5 lands Mode 4 (Blitz), Mode 5 (Blackout), and Mode 6 (Sudden Death) end-to-end. Mode 1's reference template now has five copies behind it (Modes 1, 2, 3, 4, 6 by direct evaluator/bot reuse + Mode 5 by sibling pattern) — the five-step recipe holds across every mode that landed since Phase 3, and the only mode left for Phase 6 is Mode 7 (Mirror) plus a parallel migration of Mode 6.
+
+iOS walkthrough surfaced **zero UX bugs** at Phase 5 — Phase 3 had three production-wiring fixes, Phase 4 had three iteration findings, Phase 5 shipped clean. The architecture matured: the `ModeDefinition` plug-in shape, the catalog-as-source-of-truth pattern, the engine ↔ liveStore seam, and the AppState lifecycle cleanly separate concerns enough that iteration debt stopped accumulating.
+
+CP1 was Mode 6, CP2 was Mode 5, CP3 was Mode 4 (split into a/b/c — façade, tick orchestration, AppState lifecycle). CP4 is this doc + the closing commit.
+
+### Reference-template reuse — cousins, not copies
+
+`mode6SuddenDeath.ts` (CP1) and `mode4Blitz.ts` (CP3a) both import `evaluateColorMatch` and Mode 1's `bot.{makeGuess, thinkingTime}` directly — no `mode6/` or `mode4/` subfolder. Phase 3's prediction said each mode would get its own subdirectory with re-export shims; Phase 5 disproved that. With three new modes reusing Mode 1's evaluator unchanged, the re-export folder structure became pure overhead — direct imports make the Mode 1 dependency visible in the mode file's import block, no extra wrapper files to maintain.
+
+The structural rule: a mode gets its own subfolder **iff** it has a mode-specific evaluator or bot. Modes 2, 3, and 5 do (each has its own `evaluate.ts` + `bot.ts`); Modes 4 and 6 don't, so they keep the façade-only shape. Mode 5 looks like Mode 3 (unique-digit pool, chunked filter), Mode 4 looks like Mode 6 (Mode 1 reuse) — the two clusters dictate the file layout.
+
+### Mode 6 — engine SPEC §3.10 alignment (bonus fix)
+
+CP1 was the simplest mode (façade + tests, ~30 min) but the integration test for stalemate caught a Phase 2 bug: `checkEndConditions` declared the match over the moment one side hit zero remaining guesses. With strict alternation Player's 5th guess always lands BEFORE Opponent's 5th (1 turn ahead), so the engine was firing `opponent_won/player_guess_limit` after Player's 5th and never reaching `stalemate/both_exhausted`.
+
+SPEC §3.10 explicitly says rounds give each side a full turn before exhaustion ends the match: "Bir taraf gizli sayıyı bulursa **turn tamamlanır** (karşı tarafın da aynı turda tahmin hakkı olur)." The fix collapsed `player_guess_limit` and `opponent_guess_limit` single-side branches in `checkEndConditions` — only `both_exhausted → stalemate` fires for the Mode 6 turn-based path. The single-side `MatchResult.reason` types stay in the union for future modes that might allow asymmetric budgets, but Mode 6 alone never produces them.
+
+### Mode 6 — UX deferral to Phase 6
+
+CP1 shipped Mode 6 turn-based per the initial SPEC §3.10 reading. Device walkthrough revealed sequential play undermines the "sudden death" tension — bot wait time during the 5-guess limit felt slow rather than dramatic. Decision: Phase 5 ships Mode 6 turn-based as-is; Phase 6 migrates it to `parallelEngine` alongside the new Mode 7. The current turn-based codebase persists through Phase 5; Phase 6's parity test will compare turn-based-legacy outcomes against parallel implementation to catch regressions.
+
+### Mode 5 — `candidatePool`, not a custom variant
+
+The user's CP2 sketch suggested a deductive solver shape (`{ kind: 'blackoutConstraints', knownAt, knownNotAt, usedDigits }`). Two reasons the simpler `{ kind: 'candidatePool', pool }` won:
+
+- SPEC §3.7 reveals only the **count** — never which positions or digits matched. `knownAt` and `knownNotAt` could only be filled by inference across multiple guesses, which the simpler filter-by-feedback-consistency approach gets for free without explicitly tracking positional knowledge.
+- The 5040-entry unique pool × 4-position constant-time count = 20K comparisons per turn through the chunked filter. No measurable performance pressure to justify the cleverer solver.
+
+A YAGNI win + the pattern stays uniform with Mode 3 (chunked filter mandatory on the opening narrow, both modes hit the `HEAVY_FILTER_THRESHOLD = 1000` invariant from ROADMAP §Heavy Filtering).
+
+### `BlackoutConstraint` — Phase 2 dead stub deleted
+
+`types.ts` shipped `interface BlackoutConstraint = { position; digit }` and a matching `blackoutConstraints` `SolverState` variant in Phase 2 as a forward-thinking guess about the Mode 5 solver. The shape was wrong: SPEC §3.7 reveals neither position nor digit, so the constraint shape was unreachable from feedback alone. CP2 deleted both the interface and the union variant. The lesson: forward-thinking type stubs that anticipate a SPEC reading are speculative; deleting them when the real implementation lands is cheaper than maintaining shapes that never get populated.
+
+### Mode 5 — information leak prevention via opaque `states`
+
+`NormalizedFeedback['blackout']` carries both `states: DigitTileVisualState[]` and `locked: number`. The evaluator (`evaluateBlackout`) always emits `states: ['blackout', 'blackout', 'blackout', 'blackout']` regardless of which positions actually matched — only the `locked` count carries data. This is structural, not stylistic: if the evaluator emitted per-position truth (`['green', 'blackout', ...]`) and `Mode5Row` happened to render the states array, a single per-mode UI tweak could leak SPEC §3.7's hidden info. Bricking the leak at the data source means future row redesigns can't accidentally violate the rule.
+
+The bot still solves the same puzzle the player does — its `narrowPool` filter recomputes `countLocked(lastGuess, candidate)` and matches against the visible count, not the hidden positions. Difficulty bands stay meaningful.
+
+### Mode 5 + 3 — catalog `digitsUnique` flips
+
+Phase 4 flipped Mode 3's `digitsUnique` to `true`; Phase 5 did the same for Mode 5. The pattern: Phase 1B mocks each mode with its intended invariant (mock secrets respect uniqueness for Modes 3+5) but ships the catalog flag with the conservative default. The flag flip lands when the engine ships, removing the SPEC-vs-catalog drift in one line. The three Phase 1B test files that ran a `digitsUnique = true` mutation dance for Mode 3 were simplified in Phase 4; Phase 5 didn't add new mutation dances because Mode 5 had no equivalent test infrastructure leaning on the mocked flag.
+
+### SPEC §3.7 arithmetic typo flagged
+
+The CP2 evaluator test caught a typo in SPEC §3.7's worked example: `secret='3847'`, `guess='3249'` claims "1 LOCKED", but pos 0 (`3`==`3`) **and** pos 2 (`4`==`4`) both match — actual is 2. The engine implements the *rule* correctly (the SPEC text is right; the worked example's count is wrong). The test pins the recomputed value with a comment for the typo so a future reader doesn't assume the test diverges from the SPEC.
+
+### Mode 4 — three-CP split rationale
+
+The user's initial plan lumped Mode 4 into one CP. CP3 split it on advisor input: the four subsystems (façade + bot, engine clock seeding, MatchScreen tick orchestration, AppState lifecycle) are largely independent and each carries its own test surface. Lumping them risked debugging four bugs at once during the iOS walkthrough. The split:
+
+- **CP3a** — `mode4Blitz.ts` façade + Mode 1 reuse + clock-naïve bot (1h)
+- **CP3b** — engine `clockSnapshot` seeding + `advanceTurn` activeOwner flip + `submitGuess` `elapsedMs` + matchStore live↔durable seam + MatchScreen tick interval + live clock display (1.5h)
+- **CP3c** — `appLifecycle.ts` AppState listener + grace period + `subtractPlayerTime` action (1.5h)
+
+Each landed with its own CI-green checkpoint. The bug count from the iOS walkthrough was zero — the split paid off.
+
+### `checkEndConditions` SPEC §3.6 timeout precedence fix
+
+Phase 2's `checkEndConditions` ordered crack checks before timeout checks. CP3b's audit caught the bug: SPEC §3.6 says "Süresi ilk biten oyuncu OTOMATİK KAYBEDER, gizli sayıyı çözmüş olsa bile" — a timeout on the submitter's side wins over their cracking guess. Fix is the same shape as the Mode 6 fix from CP1 (reorder branches in the same file). One regression test pins the new ordering: a player who submits a winning guess at clock=0 loses by `player_time_out`, not wins by `cracked`.
+
+The two `checkEndConditions` fixes (Mode 6 SPEC §3.10, Mode 4 SPEC §3.6) landed in Phase 5 because the device walkthrough is what revealed them — both are unreachable in unit tests built around isolated end-condition states. Phase 6 modes need the same kind of audit when their device walkthrough lands.
+
+### `captureLiveSnapshot` — the cross-store seam
+
+The Mode 4 clock has two homes: `liveMatchStore.liveClocks` (10Hz tick, transient, no persist) and `MatchState.clockSnapshot` (durable, written only on structural events — guess submission, timeout). The seam between them lives in `matchStore.submitGuess` / `runOpponentTurn` via `captureLiveSnapshot()`: read the live tick value, write it onto the prospective state, hand it to the engine. The engine stays clock-naïve — it only reads from the durable snapshot — and the matchStore is the single place that bridges the two stores.
+
+**The frequency rule held**: the persist middleware never fires at tick frequency because `tickClock` writes only to `liveMatchStore` (which has no `persist`). The durable snapshot picks up the live value at structural events — a guess submission per side, a timeout — which lands at most ~10Hz over the lifetime of a match.
+
+### Tick interval — three-layer cleanup defense
+
+The advisor flagged the `setInterval` cleanup as a footgun: a leaked interval would burn 10×/sec firing `applyTimeout` against a completed match. Three layers prevent the leak:
+
+1. **Phase dependency** — the effect's dependency array carries `isBlitzActive`, which is false on completion. React tears the interval down on the dependency change.
+2. **Unmount cleanup** — the returned function calls `clearInterval` on unmount.
+3. **In-tick guard** — every tick reads `useMatchStore.getState().matchState` and bails if `phase === 'completed'`. Defense in depth: even if both above layers fail (e.g. async race), the tick itself doesn't fire `applyTimeout` after the match ended.
+
+The unit test (`MatchScreenBlitz.test.tsx`) advances fake timers past completion and asserts the result reference doesn't change — the only way that holds is if every layer is doing its job.
+
+### `appLifecycle.ts` — `'background'` only, not `'inactive'`
+
+iOS fires `active → inactive → background` on real backgrounding, but `active → inactive → active` on Control Center pulls, push notification banners, and accepted-then-dismissed phone calls. The lifecycle handler listens **only** for `'background'` — `'inactive'` is a deliberate no-op. Treating `'inactive'` as backgrounding would start grace timers that get immediately canceled, churning state for nothing and burning the player's clock during transient interruptions.
+
+The `appLifecycle.ts` file header documents this and the iOS-vs-Android difference (Android skips the `'inactive'` intermediate; the same handler covers both because it only acts on `'background'`).
+
+### 5-second grace rationale
+
+`BLITZ_GRACE_PERIOD_MS = 5000` is the tradeoff midpoint between two failure modes:
+
+- **Too short** (≤ 2s): a push notification preview, a misdirected swipe, or a Control Center dismissal all forfeit the match. Retention damage from "I lost because my phone vibrated" is large; the SPEC §3.6 spirit is "süresi ilk biten kaybeder" — not "anyone who blinks loses".
+- **Too long** (≥ 30s): the player can read a notification, reply to a chat, then come back without their clock decrementing materially. Cheating-by-backgrounding becomes viable.
+
+5 seconds covers the realistic transient case (read a banner, dismiss, return) without enabling the abuse case (open a notification, reply at length, return). The grace period applies as a **subtraction**, not a free pause: even within the 5s window, the elapsed bg time is decremented from the active owner's clock so the player can't game it for free thinking time.
+
+### `subtractPlayerTime` — owner-aware despite the name
+
+The action takes the literal name from ROADMAP §App Lifecycle but **decrements the active owner's clock**, not always the player's. Bot turn + bg → opponent's clock decrements. SPEC: real-world time keeps moving, the active side's clock keeps draining, regardless of which side that is.
+
+The test pins this explicitly (a `subtracts from the active owner's clock — bot-turn background hits opponent's clock, not player's` case in `appLifecycle.test.ts`). The misleading name is documented in the JSDoc; renaming would fight the ROADMAP for no behavioural gain.
+
+### Multiple bg/fg cycles — independent, no accumulation
+
+Each `'background'` arrival sets `backgroundStartedAt = Date.now()` afresh and schedules a new timer. No "total time spent in background" accumulator. A user who backgrounds for 2s, returns, backgrounds for another 2s, returns — sees their clock decrement by 4s total (2 + 2), not by 6s (penalty for two cycles) or 12s (some squared accumulator). The test pins this with a `multiple bg/fg cycles stay independent` case.
+
+### Forfeit goes through `applyTimeout`, not a new action
+
+Auto-forfeit after grace expiration goes through the existing `matchStore.applyTimeout({ playerMs: 0, opponentMs: <whatever>, activeOwner: 'player', snapshotTimestamp: Date.now() })`. Same engine path, same `checkEndConditions` resolution to `opponent_won/player_time_out`, same telemetry. No new outcome reason. Even if the bot was the active owner when the bg started, the forfeit-by-abandonment is attributed to the player — the player is the one leaving the app.
+
+Adding `applyForfeit` would have multiplied surfaces (route param mapping, MatchResultScreen variant, telemetry stream); funneling through `applyTimeout` keeps the result paths uniform.
+
+### Cold-start resume — Phase 7B
+
+Phase 5 implements only the **in-session** `'background' → 'active'` grace (a backgrounded match the user returns to within 5s). Cold-start resume — the user kills the app, opens it later, sees an unfinished match in `useMatchStore.matchState` — is Phase 7B. ROADMAP §App Lifecycle defers it deliberately: the cold-start case has different UX shape (resume modal, "your match was interrupted" toast) and its own test surface. Phase 5's persist middleware will hydrate `matchState` on cold-start as before; the screens that consume it (HomeScreen, MatchScreen) keep their existing behaviour (Phase 5 doesn't add a resume modal).
+
+### Phase 7A polish — deferrals
+
+Three pieces deferred to Phase 7A:
+
+- **Bot panic mode** — SPEC §3.6 calls for clock-aware `thinkingTime` (bot guesses faster when clock < 10s). Phase 5 keeps Mode 4's `thinkingTime` identical to Mode 1's (default 2-12s band). The test pins the band so a future eager-optimisation PR can't quietly couple bot timing to clock state without a roadmap entry.
+- **Onboarding tip** — "Blitz pauses briefly if you switch apps" first-time tip. ROADMAP §App Lifecycle prescribes it; Phase 7A polish.
+- **`thinkingTime` triplication lift** — Mode 1's `thinkingTime` body is now copied verbatim in Mode 2, 3, 4, 5 bot files. Phase 4 explicitly deferred the shared-helper extraction; Phase 5 confirmed the deferral (the body stayed identical across all five). Phase 7A's panic-mode work is the natural trigger to lift it — the panic logic adds a clock-aware branch that breaks the "all five identical" invariant, which is the moment to extract a parameterised helper.
+
+---
+
+## Phase 6 — preview
+
+Phase 6 scope: **Mode 7 (Mirror, new) + Mode 6 (Sudden Death) parallel migration**. The two modes share `parallelEngine`; the parallel family becomes Mode 6 + Mode 7. `parallelEngine.ts` ships in Phase 6 to replace the soft-fail stub from Phase 2.
+
+### Mode 6 parallel migration — parity test
+
+Mode 6's Phase 5 turn-based codebase (`mode6SuddenDeath.ts` façade + the existing `turnBasedEngine` integration) persists through Phase 5. Phase 6 introduces a parallel implementation; the migration is gated on a parity assertion test:
+
+```
+For matched (mode, secret, player_guesses, opponent_guesses) inputs,
+turn-based-engine.run(...).result === parallel-engine.run(...).result
+```
+
+The parity test runs against a fixture set covering victory, defeat, draw (simultaneous_crack), and stalemate (both_exhausted). Once parity holds across the fixture set, Mode 6 swaps engines via `selectEngine(mode)`'s existing `flags.parallelRace` discriminator — same one Mode 7 will use.
+
+### `parallelEngine` shape — both modes share
+
+Mode 6 and Mode 7 share the parallel-race shape: both sides race the same secret (Mode 7) or their own secrets (Mode 6), submissions are independent, the first to crack wins. The differences are in `rules`:
+
+- **Mode 6** — `maxGuessesPerPlayer: 5` (carries over from Phase 5 catalog), `flags.suddenDeath: true`
+- **Mode 7** — no guess budget (unlimited), `flags.parallelRace: true`, single shared secret
+
+The engine handles both via the `rules` flags — no per-mode branching inside the engine. Phase 6 tests both modes against the same engine, with mode-specific fixture sets covering each rule combo.
+
+### What stays out of Phase 6
+
+Cold-start resume, panic-mode bots, onboarding tips, all explicitly Phase 7. Phase 6 is two engines (Mode 7 new, Mode 6 migrated) and the parity test — nothing else.

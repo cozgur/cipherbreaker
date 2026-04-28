@@ -30,6 +30,28 @@ import type {
   NormalizedFeedback,
   ValidationError,
 } from '../game/types';
+import { useLiveMatchStore } from './liveMatchStore';
+
+/**
+ * Mode 4 — capture the live tick value as a durable snapshot the
+ * engine consumes. Returns the input state untouched for non-Blitz
+ * modes (no live clocks → nothing to capture). Lives here, not in
+ * the engine, because the live ↔ durable seam is the matchStore's
+ * job — the engine stays clock-naïve.
+ */
+function captureLiveSnapshot(state: MatchState): MatchState {
+  const live = useLiveMatchStore.getState().liveClocks;
+  if (live === null) return state;
+  return {
+    ...state,
+    clockSnapshot: {
+      playerMs: live.playerMs,
+      opponentMs: live.opponentMs,
+      activeOwner: live.activeOwner,
+      snapshotTimestamp: Date.now(),
+    },
+  };
+}
 
 export interface SubmitGuessOutcome {
   readonly feedback: NormalizedFeedback | null;
@@ -88,7 +110,12 @@ export const useMatchStore = create<MatchStoreState & MatchStoreActions>()(
         const mode = modeRegistry.get(current.modeId);
         const engine = selectEngine(mode);
         const rng = createRNG(current.rngState);
-        set({ matchState: engine.startMatch(current, rng) });
+        const next = engine.startMatch(current, rng);
+        set({ matchState: next });
+        // Mode 4 — `engine.startMatch` seeds `clockSnapshot`; mirror
+        // it into the live store so the screen's tick interval has
+        // initial values to read. No-op for modes without a clock.
+        useLiveMatchStore.getState().syncFromMatchState(next);
       },
 
       submitGuess: async (guess, author) => {
@@ -99,8 +126,16 @@ export const useMatchStore = create<MatchStoreState & MatchStoreActions>()(
         const mode = modeRegistry.get(current.modeId);
         const engine = selectEngine(mode);
         const rng = createRNG(current.rngState);
-        const out = await engine.submitGuess(current, guess, author, rng);
+        // Mode 4 — capture the live tick onto the durable snapshot
+        // before the engine evaluates so `entry.elapsedMs` and the
+        // checkEndConditions timeout branch see the same number the
+        // player saw on screen. No-op for non-Blitz modes.
+        const stateWithSnapshot = captureLiveSnapshot(current);
+        const out = await engine.submitGuess(stateWithSnapshot, guess, author, rng);
         set({ matchState: out.state });
+        // Sync live clocks against the post-submit snapshot so the
+        // tick interval picks up the new active owner immediately.
+        useLiveMatchStore.getState().syncFromMatchState(out.state);
         return { feedback: out.feedback, error: out.error };
       },
 
@@ -144,9 +179,13 @@ export const useMatchStore = create<MatchStoreState & MatchStoreActions>()(
             opponent: newSolverState,
           },
         };
+        // Mode 4 — capture the live tick onto the durable snapshot
+        // before the engine evaluates (same reason as `submitGuess`).
+        const stateWithSnapshot = captureLiveSnapshot(stateWithSolver);
 
-        const out = await engine.submitGuess(stateWithSolver, guess, 'opponent', rng);
+        const out = await engine.submitGuess(stateWithSnapshot, guess, 'opponent', rng);
         set({ matchState: out.state });
+        useLiveMatchStore.getState().syncFromMatchState(out.state);
         return { feedback: out.feedback, error: out.error };
       },
 

@@ -282,12 +282,6 @@ export interface LiveClockState {
   readonly lastTickAt: number;
 }
 
-/** Mode 5 — single locked-in digit constraint accumulated over guesses. */
-export interface BlackoutConstraint {
-  readonly position: number;
-  readonly digit: number;
-}
-
 /**
  * Internal state a bot's solver keeps between turns. Discriminated on
  * `kind` so the engine can `SolverStateMismatchError` if a registered
@@ -297,14 +291,17 @@ export interface BlackoutConstraint {
  * candidate pool compact (`string` is half the size of `number[]` in
  * memory and identity-comparable). Convert at the boundary via
  * `secretGeneration` / candidate pool helpers.
+ *
+ * Mode 5 (Blackout) does NOT need a custom variant — the SPEC §3.7
+ * feedback is just a count of right-spot hits, so its bot filters a
+ * regular `candidatePool` by re-running the evaluator against each
+ * candidate and matching the `locked` count. A Phase 2-era stub
+ * `blackoutConstraints` variant with `{ position, digit }` records
+ * was deleted in Phase 5: the SPEC reveals neither, so the constraint
+ * shape was unreachable from feedback alone.
  */
 export type SolverState =
   | { readonly kind: 'candidatePool'; readonly pool: readonly string[] }
-  | {
-      readonly kind: 'blackoutConstraints';
-      readonly pool: readonly string[];
-      readonly constraints: readonly BlackoutConstraint[];
-    }
   | { readonly kind: 'mirror'; readonly pool: readonly string[]; readonly targetTurn: number }
   | {
       /**

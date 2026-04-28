@@ -120,28 +120,22 @@ describe('checkEndConditions', () => {
     expect(result).toEqual({ outcome: 'player_won', reason: 'opponent_time_out', turns: 0 });
   });
 
-  it('Mode 6 player_guess_limit when only the player exhausts', () => {
+  it('Mode 6 single-side player exhaustion does NOT end the match — SPEC §3.10 round fairness', () => {
+    // After P's 5th guess on a player_first match the state is (0,1);
+    // SPEC says the opponent still gets their final guess in the same
+    // round. The engine therefore returns null and lets the match
+    // continue; stalemate fires once both reach 0 (covered below).
     const mode = makeMode({ maxGuessesPerPlayer: 5 });
     const limits: GuessLimits = { playerRemaining: 0, opponentRemaining: 1 };
     const state = makeState({ guessLimits: limits });
-    const result = checkEndConditions(state, mode);
-    expect(result).toEqual({
-      outcome: 'opponent_won',
-      reason: 'player_guess_limit',
-      turns: 0,
-    });
+    expect(checkEndConditions(state, mode)).toBeNull();
   });
 
-  it('Mode 6 opponent_guess_limit when only the opponent exhausts', () => {
+  it('Mode 6 single-side opponent exhaustion does NOT end the match — SPEC §3.10 round fairness', () => {
     const mode = makeMode({ maxGuessesPerPlayer: 5 });
     const limits: GuessLimits = { playerRemaining: 2, opponentRemaining: 0 };
     const state = makeState({ guessLimits: limits });
-    const result = checkEndConditions(state, mode);
-    expect(result).toEqual({
-      outcome: 'player_won',
-      reason: 'opponent_guess_limit',
-      turns: 0,
-    });
+    expect(checkEndConditions(state, mode)).toBeNull();
   });
 
   it('Mode 6 stalemate/both_exhausted when both run out', () => {
@@ -161,6 +155,28 @@ describe('checkEndConditions', () => {
     const result = checkEndConditions(state, mode);
     expect(result?.outcome).toBe('player_won');
     expect(result?.reason).toBe('cracked');
+  });
+
+  it('SPEC §3.6 — Mode 4 timeout precedence: a crack on the timed-out side LOSES', () => {
+    // Player submitted a winning guess on the same frame the clock
+    // hit zero. SPEC §3.6 says timeout wins regardless of crack —
+    // the timed-out side loses. Without the precedence fix this
+    // would resolve as `player_won/cracked`.
+    const mode = makeMode({ perPlayerTimeLimitMs: 60_000 });
+    const state = makeState({
+      playerGuesses: [entry('self', true)],
+      clockSnapshot: {
+        playerMs: 0,
+        opponentMs: 30_000,
+        activeOwner: 'player',
+        snapshotTimestamp: 0,
+      },
+    });
+    expect(checkEndConditions(state, mode)).toEqual({
+      outcome: 'opponent_won',
+      reason: 'player_time_out',
+      turns: 1,
+    });
   });
 
   it('isWin defensive read — feedback without isWin is treated as no win', () => {

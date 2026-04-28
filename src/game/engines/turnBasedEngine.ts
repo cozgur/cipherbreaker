@@ -78,6 +78,12 @@ function buildModeBaseExtras(mode: ModeDefinition): Pick<MatchState, 'guessLimit
 /**
  * Move from `'setup'` to whichever side starts. Picks turn owner with
  * RNG and pre-builds the bot's solver state via `mode.bot.initSolverState`.
+ *
+ * Mode 4 — Blitz: also seeds `clockSnapshot` from the per-player time
+ * limit, with `activeOwner` matching the just-picked phase. The live
+ * `liveMatchStore.syncFromMatchState(...)` reads `activeOwner` from
+ * the snapshot, so this is the canonical wiring point. Other modes
+ * leave `clockSnapshot` undefined and the helper is a no-op for them.
  */
 export function startMatch(state: MatchState, rng: RNG): MatchState {
   if (state.phase !== 'setup') {
@@ -93,6 +99,17 @@ export function startMatch(state: MatchState, rng: RNG): MatchState {
   // SPEC §5.5. Phase 3 hardcodes 'normal' so the bot is stable while the
   // economy + DDA wiring is still mock-driven.
   const botDifficulty = state.botDifficulty ?? 'normal';
+  const now = Date.now();
+  const limit = mode.rules.perPlayerTimeLimitMs;
+  const clockSnapshot =
+    limit !== undefined
+      ? {
+          playerMs: limit,
+          opponentMs: limit,
+          activeOwner: (playerStarts ? 'player' : 'opponent') as 'player' | 'opponent',
+          snapshotTimestamp: now,
+        }
+      : state.clockSnapshot;
   return {
     ...state,
     phase,
@@ -102,8 +119,9 @@ export function startMatch(state: MatchState, rng: RNG): MatchState {
       ...(state.solverStates ?? {}),
       opponent: opponentSolver,
     },
+    ...(clockSnapshot !== undefined ? { clockSnapshot } : {}),
     rngState: rng.getState(),
-    lastUpdatedAt: Date.now(),
+    lastUpdatedAt: now,
   };
 }
 
@@ -132,11 +150,24 @@ export async function submitGuess(
 
   const guessIndex =
     (author === 'self' ? state.playerGuesses.length : state.opponentGuesses.length) + 1;
+  // Mode 4 — `elapsedMs` is what the active side spent on this turn:
+  // the delta between the per-player limit and what's left after the
+  // submission. Caller (`matchStore.submitGuess` / `runOpponentTurn`)
+  // is responsible for writing the live tick value into
+  // `state.clockSnapshot` BEFORE handing control to this engine
+  // function, otherwise the delta sees the snapshot from the previous
+  // turn's start (off by however long the player spent thinking).
+  const limitMs = mode.rules.perPlayerTimeLimitMs;
+  const elapsedMs =
+    limitMs !== undefined && state.clockSnapshot !== undefined
+      ? Math.max(0, limitMs - (author === 'self' ? state.clockSnapshot.playerMs : state.clockSnapshot.opponentMs))
+      : undefined;
   const entry: GuessEntry = {
     side: author,
     guessIndex,
     digits: parseDigits(guess),
     feedback,
+    ...(elapsedMs !== undefined ? { elapsedMs } : {}),
   };
 
   let newState: MatchState = {
@@ -171,13 +202,33 @@ export async function submitGuess(
   };
 }
 
-/** Flip the active-turn phase. No-op for parallel modes (engine isn't used there). */
+/**
+ * Flip the active-turn phase. No-op for parallel modes (engine isn't
+ * used there). Defensive for Mode 4: when `clockSnapshot` is set, the
+ * `activeOwner` is flipped in lockstep so the next tick decrements
+ * the right side. Other modes leave `clockSnapshot` undefined and the
+ * additional copy is a no-op.
+ */
 export function advanceTurn(state: MatchState): MatchState {
+  const flipOwner = (snap: typeof state.clockSnapshot): typeof state.clockSnapshot =>
+    snap === undefined
+      ? snap
+      : { ...snap, activeOwner: snap.activeOwner === 'player' ? 'opponent' : 'player' };
   if (state.phase === 'active_turn_player') {
-    return { ...state, phase: 'active_turn_opponent', lastUpdatedAt: Date.now() };
+    return {
+      ...state,
+      phase: 'active_turn_opponent',
+      clockSnapshot: flipOwner(state.clockSnapshot),
+      lastUpdatedAt: Date.now(),
+    };
   }
   if (state.phase === 'active_turn_opponent') {
-    return { ...state, phase: 'active_turn_player', lastUpdatedAt: Date.now() };
+    return {
+      ...state,
+      phase: 'active_turn_player',
+      clockSnapshot: flipOwner(state.clockSnapshot),
+      lastUpdatedAt: Date.now(),
+    };
   }
   return state;
 }

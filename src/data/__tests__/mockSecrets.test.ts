@@ -14,10 +14,11 @@ describe('mockSecretByMode', () => {
     for (let id = 1; id <= 7; id += 1) {
       const mode = findMode(id);
       if (!mode) continue;
-      // Mode 3 + 5 unique invariant — enforced by catalog from Phase 4
-      // onwards (Mode 3's flag flipped with the engine; Mode 5 still
-      // ships false until Phase 5 but the mock secret obeys the
-      // intended rule already so the reveal never paints repeats).
+      // Mode 3 + 5 unique invariant — both flags flipped to true in
+      // their respective engine phases (Mode 3 in Phase 4, Mode 5 in
+      // Phase 5). The mock secret table obeyed the intended rule from
+      // Phase 1B onwards; this test now mostly guards against a
+      // catalog regression that would lower the bar.
       if (id === 3 || id === 5) {
         const secret = mockSecretByMode[id]!;
         const set = new Set(secret.split(''));

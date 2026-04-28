@@ -1,10 +1,12 @@
 import { __resetRegistryForTests, modeRegistry } from '../../game/modeRegistry';
 import type { ModeDefinition } from '../../game/types';
+import { useLiveMatchStore } from '../liveMatchStore';
 import { useMatchStore } from '../matchStore';
 
 interface StubOptions {
   alwaysWin?: boolean;
   parallelRace?: boolean;
+  perPlayerTimeLimitMs?: number;
 }
 
 function registerStub(id: number, opts: StubOptions = {}): ModeDefinition {
@@ -24,7 +26,13 @@ function registerStub(id: number, opts: StubOptions = {}): ModeDefinition {
     rules: {
       secretLength: 4,
       digitsUnique: false,
-      flags: opts.parallelRace ? { parallelRace: true } : {},
+      ...(opts.perPlayerTimeLimitMs !== undefined
+        ? { perPlayerTimeLimitMs: opts.perPlayerTimeLimitMs }
+        : {}),
+      flags: {
+        ...(opts.parallelRace ? { parallelRace: true } : {}),
+        ...(opts.perPlayerTimeLimitMs !== undefined ? { perPlayerClock: true } : {}),
+      },
     },
     generateSecret: () => '5678',
     validateGuess: () => ({ ok: true }),
@@ -239,5 +247,68 @@ describe('useMatchStore', () => {
 
   it('exposes a persist API (durable)', () => {
     expect(useMatchStore.persist).toBeDefined();
+  });
+
+  // Phase 5 — Mode 4 Blitz: matchStore is the cross-store seam between
+  // the transient `liveMatchStore` (10Hz tick) and the durable
+  // `matchState.clockSnapshot` the engine reads. `submitGuess` and
+  // `runOpponentTurn` capture the live tick value as a snapshot
+  // before handing off to the engine; `startMatch` mirrors the
+  // engine-seeded snapshot back into the live store so the screen's
+  // tick interval has initial values to read.
+  describe('Mode 4 — live↔durable clock seam', () => {
+    beforeEach(() => {
+      useLiveMatchStore.getState().clear();
+    });
+
+    it('startMatch mirrors the engine-seeded clockSnapshot into liveMatchStore', () => {
+      registerStub(4, { perPlayerTimeLimitMs: 60_000 });
+      useMatchStore.getState().createMatch(4, '1234');
+      useMatchStore.getState().startMatch();
+      const live = useLiveMatchStore.getState().liveClocks;
+      expect(live).not.toBeNull();
+      expect(live?.playerMs).toBe(60_000);
+      expect(live?.opponentMs).toBe(60_000);
+      expect(live?.activeOwner === 'player' || live?.activeOwner === 'opponent').toBe(true);
+    });
+
+    it('submitGuess captures the live tick onto the durable snapshot before evaluating', async () => {
+      registerStub(4, { perPlayerTimeLimitMs: 60_000 });
+      useMatchStore.getState().createMatch(4, '1234');
+      useMatchStore.getState().startMatch();
+      // Pin player turn + simulate the live tick having decremented
+      // 8 seconds off the player's side.
+      useMatchStore.setState((s) => ({
+        matchState: s.matchState
+          ? { ...s.matchState, phase: 'active_turn_player' }
+          : null,
+      }));
+      useLiveMatchStore.setState({
+        liveClocks: {
+          playerMs: 52_000,
+          opponentMs: 60_000,
+          activeOwner: 'player',
+          lastTickAt: Date.now(),
+        },
+      });
+      await useMatchStore.getState().submitGuess('5555', 'self');
+      const state = useMatchStore.getState().matchState!;
+      // Durable snapshot reflects the live-ticked value, and the
+      // entry's elapsedMs is the (limit - remaining) delta the
+      // engine derived.
+      expect(state.clockSnapshot?.playerMs).toBe(52_000);
+      const lastEntry = state.playerGuesses[state.playerGuesses.length - 1];
+      expect(lastEntry?.elapsedMs).toBe(8_000);
+    });
+
+    it('non-Blitz modes never write a clockSnapshot (live store stays empty)', async () => {
+      registerStub(1);
+      useMatchStore.getState().createMatch(1, '1234');
+      useMatchStore.getState().startMatch();
+      const live = useLiveMatchStore.getState().liveClocks;
+      expect(live).toBeNull();
+      const state = useMatchStore.getState().matchState!;
+      expect(state.clockSnapshot).toBeUndefined();
+    });
   });
 });

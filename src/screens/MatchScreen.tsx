@@ -50,6 +50,7 @@ import {
 import { guessEntryToRowProps } from '@game/adapters/guessEntryToRowProps';
 import { interleaveTimeline } from '@game/adapters/interleaveTimeline';
 import { matchOutcomeToRoute } from '@game/adapters/matchOutcomeToRoute';
+import { subscribeBlitzLifecycle } from '@/lib/appLifecycle';
 import { modeRegistry } from '@game/modeRegistry';
 import { getRowRenderer } from '@game/renderers';
 import type {
@@ -61,6 +62,7 @@ import type {
 } from '@game/types';
 import { createRNG } from '@/lib/random';
 import type { MatchResultOutcome, RootStackParamList } from '@navigation/routes';
+import { useLiveMatchStore } from '@state/liveMatchStore';
 import { useMatchStore } from '@state/matchStore';
 import { colors, fonts, withAlpha } from '@theme/tokens';
 
@@ -69,6 +71,16 @@ type RouteParams = RouteProp<RootStackParamList, 'Match'>;
 
 const SECRET_LENGTH = 4;
 const SUDDEN_DEATH_BUDGET = 5;
+/** Tick cadence for the Mode 4 Blitz clock — see ROADMAP §State Ayrımı. */
+const BLITZ_TICK_INTERVAL_MS = 100;
+
+/** Mode 4 — `M:SS` formatter used by the header chip + player clock chip. */
+function formatClock(ms: number): string {
+  const safe = Math.max(0, Math.ceil(ms / 1000));
+  const minutes = Math.floor(safe / 60);
+  const seconds = safe % 60;
+  return `${minutes}:${String(seconds).padStart(2, '0')}`;
+}
 
 export function MatchScreen(): React.JSX.Element {
   const navigation = useNavigation<Nav>();
@@ -90,6 +102,15 @@ export function MatchScreen(): React.JSX.Element {
   const isEngineMode =
     modeRegistry.getOrNull(modeId) !== null && matchState?.modeId === modeId;
   const definition = isEngineMode ? modeRegistry.get(modeId) : null;
+  // Mode 4 — live clock subscription. Subscribes only to the slice
+  // we render so a `tickClock` 10×/sec doesn't churn the rest of
+  // the screen. Returns null on non-Blitz modes.
+  const liveClocks = useLiveMatchStore((s) => s.liveClocks);
+  const isBlitzActive =
+    isEngineMode &&
+    mode?.rules.flags.perPlayerClock === true &&
+    matchState !== null &&
+    matchState.phase !== 'completed';
 
   const mockTimeline = useMemo(() => buildMockTimeline(modeId), [modeId]);
   const timeline: readonly GuessEntry[] = isEngineMode && matchState
@@ -251,6 +272,66 @@ export function MatchScreen(): React.JSX.Element {
     matchState,
   ]);
 
+  // Mode 4 — sync the live clock store from the durable snapshot on
+  // mount/match-state change. `matchStore.startMatch` already calls
+  // this on a fresh match; the explicit sync here covers the cold-
+  // hydrate path (persist middleware re-loads `matchState` before the
+  // screen mounts, so the live store would otherwise stay empty).
+  // No-op for non-Blitz modes — `syncFromMatchState` clears liveClocks
+  // when `clockSnapshot` is undefined.
+  useEffect(() => {
+    if (!isEngineMode) return;
+    useLiveMatchStore.getState().syncFromMatchState(matchState);
+  }, [isEngineMode, matchState]);
+
+  // Mode 4 — Blitz clock tick. Decrements the active side's live
+  // clock every 100ms; when a side hits zero, fires
+  // `matchStore.applyTimeout(snapshot)` once and lets the completion
+  // watcher below replace into MatchResult.
+  //
+  // Cleanup contract:
+  //   - on phase → completed: dependency array carries phase, the
+  //     effect re-fires and the early-return clears the interval.
+  //   - on unmount: the cleanup function does the same.
+  //   - in-tick guard: bails if `liveClocks` is null OR the match
+  //     was already completed by another path (e.g. opponent crack);
+  //     prevents the 10Hz spam-after-completion the advisor warned
+  //     about during the CP3b plan review.
+  useEffect(() => {
+    if (!isBlitzActive) return undefined;
+    const id = setInterval(() => {
+      const live = useLiveMatchStore.getState().liveClocks;
+      if (live === null) return;
+      const current = useMatchStore.getState().matchState;
+      if (current === null || current.phase === 'completed') return;
+      useLiveMatchStore.getState().tickClock(BLITZ_TICK_INTERVAL_MS);
+      const post = useLiveMatchStore.getState().liveClocks;
+      if (post === null) return;
+      const playerOut = post.activeOwner === 'player' && post.playerMs <= 0;
+      const opponentOut = post.activeOwner === 'opponent' && post.opponentMs <= 0;
+      if (!playerOut && !opponentOut) return;
+      useMatchStore.getState().applyTimeout({
+        playerMs: post.playerMs,
+        opponentMs: post.opponentMs,
+        activeOwner: post.activeOwner,
+        snapshotTimestamp: Date.now(),
+      });
+    }, BLITZ_TICK_INTERVAL_MS);
+    return () => clearInterval(id);
+  }, [isBlitzActive]);
+
+  // Mode 4 — AppState subscription. Hands off background-grace
+  // logic (5s tolerance + auto-forfeit) to `appLifecycle.ts`.
+  // Subscription lives only while Blitz is active so non-Blitz
+  // sessions never wire a global listener; the cleanup path
+  // (`unsubscribeFn`) clears any pending grace timer too — the
+  // listener module's `__resetForTests` covers the same in tests.
+  useEffect(() => {
+    if (!isBlitzActive) return undefined;
+    const unsubscribe = subscribeBlitzLifecycle();
+    return () => unsubscribe();
+  }, [isBlitzActive]);
+
   // Engine path — completion watcher. Engine writes phase='completed'
   // and a `MatchResult` on the same submitGuess; mirror it into the
   // route params the MatchResultScreen consumes. Reward + XP + the
@@ -317,7 +398,7 @@ export function MatchScreen(): React.JSX.Element {
       <View style={[styles.header, { paddingTop: insets.top + 14 }]}>
         <SectionLabel>{roundLabel}</SectionLabel>
         <View style={styles.headerExtras}>
-          <MatchHeaderExtras mode={mode} timeline={timeline} />
+          <MatchHeaderExtras mode={mode} timeline={timeline} liveClocks={liveClocks} />
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Forfeit match"
@@ -352,6 +433,7 @@ export function MatchScreen(): React.JSX.Element {
           mode={mode}
           timeline={timeline}
           activeSide={isEngineMode ? (isPlayerTurn ? 'self' : 'opponent') : 'self'}
+          liveClocks={liveClocks}
         />
       )}
 
@@ -428,14 +510,31 @@ export function MatchScreen(): React.JSX.Element {
 interface ModeExtrasProps {
   readonly mode: ModeCatalogEntry | undefined;
   readonly timeline: readonly GuessEntry[];
+  /** Mode 4 live clock subscription (null on non-engine + non-Blitz). */
+  readonly liveClocks: LiveClockValues | null;
 }
 
-function MatchHeaderExtras({ mode, timeline }: ModeExtrasProps): React.JSX.Element | null {
+interface LiveClockValues {
+  readonly playerMs: number;
+  readonly opponentMs: number;
+  readonly activeOwner: 'player' | 'opponent' | null;
+}
+
+function MatchHeaderExtras({
+  mode,
+  timeline,
+  liveClocks,
+}: ModeExtrasProps): React.JSX.Element | null {
   if (mode == null) return null;
   if (mode.rules.flags.perPlayerClock === true) {
-    // Mode 4 — static clock readout in Phase 1B; the live tick lands
-    // alongside the Blitz engine in Phase 5.
-    return <Text style={[styles.headerStat, { color: colors.warning }]}>0:28 · 0:45</Text>;
+    // Mode 4 — engine path reads from `liveClocks`; the Phase 1B
+    // mock fallback keeps the hardcoded readout for unregistered
+    // sessions (dev picker path stays intact).
+    const text =
+      liveClocks !== null
+        ? `${formatClock(liveClocks.playerMs)} · ${formatClock(liveClocks.opponentMs)}`
+        : '0:28 · 0:45';
+    return <Text style={[styles.headerStat, { color: colors.warning }]}>{text}</Text>;
   }
   if (mode.rules.flags.suddenDeath === true) {
     const used = countTurns(timeline);
@@ -457,6 +556,7 @@ interface PlayerCardPairProps {
   readonly timeline: readonly GuessEntry[];
   /** Which side currently holds the turn — drives the active glow. */
   readonly activeSide: 'self' | 'opponent';
+  readonly liveClocks: LiveClockValues | null;
 }
 
 function PlayerCardPair({
@@ -467,10 +567,23 @@ function PlayerCardPair({
   mode,
   timeline,
   activeSide,
+  liveClocks,
 }: PlayerCardPairProps): React.JSX.Element {
   const turns = countTurns(timeline);
   const showClock = mode?.rules.flags.perPlayerClock === true;
   const showLives = mode?.rules.flags.suddenDeath === true;
+  // Engine path reads live values; mock path keeps hardcoded
+  // placeholders so the dev-picker walkthrough still looks like Mode 4.
+  const selfClock = showClock
+    ? liveClocks !== null
+      ? formatClock(liveClocks.playerMs)
+      : '0:58'
+    : undefined;
+  const opponentClock = showClock
+    ? liveClocks !== null
+      ? formatClock(liveClocks.opponentMs)
+      : '0:32'
+    : undefined;
 
   return (
     <View style={styles.playerRow}>
@@ -478,7 +591,7 @@ function PlayerCardPair({
         name={selfName}
         level={1}
         active={activeSide === 'self'}
-        clockText={showClock ? '0:58' : undefined}
+        clockText={selfClock}
         livesLeft={showLives ? SUDDEN_DEATH_BUDGET - turns.self : undefined}
       />
       <Text style={styles.vs}>VS</Text>
@@ -487,7 +600,7 @@ function PlayerCardPair({
         level={opponentLevel}
         flag={opponentFlag}
         active={activeSide === 'opponent'}
-        clockText={showClock ? '0:32' : undefined}
+        clockText={opponentClock}
         livesLeft={showLives ? SUDDEN_DEATH_BUDGET - turns.opponent : undefined}
       />
     </View>
