@@ -18,6 +18,7 @@ import { act } from '@testing-library/react-native';
 
 import { MatchScreen } from '@screens/MatchScreen';
 import { __resetRegistryForTests, modeRegistry } from '@game/modeRegistry';
+import { mode1ColorMatch } from '@game/modes/mode1ColorMatch';
 import { mode4Blitz } from '@game/modes/mode4Blitz';
 import { useLiveMatchStore } from '@state/liveMatchStore';
 import { useMatchStore } from '@state/matchStore';
@@ -161,8 +162,6 @@ describe('MatchScreen — Mode 4 Blitz clock tick', () => {
     // observing that the live store stays empty and the durable
     // snapshot is never written.
     __resetRegistryForTests();
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { mode1ColorMatch } = require('@game/modes/mode1ColorMatch');
     modeRegistry.register(mode1ColorMatch);
 
     jest.useFakeTimers();
