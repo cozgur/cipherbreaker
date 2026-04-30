@@ -398,10 +398,11 @@ export function MatchScreen(): React.JSX.Element {
       setShowTyping(false);
     };
     // `matchState` deliberately excluded — see header comment. The
-    // narrower dep array is the whole point of this effect; the
-    // exhaustive-deps lint rule would re-introduce the player-guess
-    // cancellation we're trying to avoid.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // narrower dep array is the whole point of this effect: a wider
+    // array would re-fire on every player guess and cancel the
+    // in-flight bot timer mid-thinking. The closure reads
+    // `useMatchStore.getState()` directly, so exhaustive-deps doesn't
+    // flag the omission and no disable directive is needed.
   }, [isEngineMode, definition, phase, opponentGuessLength, opponentBotExhausted]);
 
   // Mode 4 — sync the live clock store from the durable snapshot on
