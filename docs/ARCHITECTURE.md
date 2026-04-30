@@ -768,30 +768,162 @@ Three pieces deferred to Phase 7A:
 
 ---
 
-## Phase 6 — preview
+## Phase 6 decisions
 
-Phase 6 scope: **Mode 7 (Mirror, new) + Mode 6 (Sudden Death) parallel migration**. The two modes share `parallelEngine`; the parallel family becomes Mode 6 + Mode 7. `parallelEngine.ts` ships in Phase 6 to replace the soft-fail stub from Phase 2.
+Phase 6 lands **Mode 7 (Mirror) end-to-end** and **migrates Mode 6 (Sudden Death) from `turnBasedEngine` to `parallelEngine`**. Both modes now ride the same parallel-race state machine; `parallelEngine.ts` graduated from the Phase 2 soft-fail stub to a production state machine with four-outcome resolution. The seven-mode catalog is feature-complete: every CLASSIC + ADVANCED entry has a registered `ModeDefinition` driving real engine play.
 
-### Mode 6 parallel migration — parity test
+iOS walkthrough surfaced **two production bugs** (stake charge missing, parallel timeline ordering) — both fixed in CP5 with regression tests. No engine bugs, no Mode 1-5 regressions. Test count progressed 598 → 689 (+91 tests, +6 new suites including `parallelEngine`, `mode6ParityLegacyVsParallel`, `mode7Mirror`, `mode7Integration`, `MatchScreenParallel`, `SoloRaceBanner`).
 
-Mode 6's Phase 5 turn-based codebase (`mode6SuddenDeath.ts` façade + the existing `turnBasedEngine` integration) persists through Phase 5. Phase 6 introduces a parallel implementation; the migration is gated on a parity assertion test:
+CP map:
+- **CP0** — Flag split (`parallelRace` vs `sharedSecret`) — 10-line architectural foundation that prevents Mode 6's parallel migration from accidentally inheriting Mirror's "skip SecretSetup" semantic.
+- **CP1** — `parallelEngine` full state machine — Phase 2 soft-fail stub → production, four-outcome resolution including the simultaneous-crack draw nuance.
+- **CP2** — Mode 7 (Mirror) façade — single file, Mode 1 evaluator + bot re-export, sharedSecret invariant pinned.
+- **CP3** — Mode 6 parallel migration — parity test FIRST (4 outcome scenarios + 2 invariants), then catalog flag flip, Option B integration migration.
+- **CP4** — MatchScreen conditional render — `SoloRaceBanner` for Mode 7, `PlayerCardPair activeSide='both'` for Mode 6, parallel bot driver useEffect, "is guessing" verb.
+- **CP5** — Device walkthrough fixes — Bug 1 (stake charge) + Bug 2 (Mode 6 timeline kronoloji).
+- **CP6** — This doc + closing commit.
 
-```
-For matched (mode, secret, player_guesses, opponent_guesses) inputs,
-turn-based-engine.run(...).result === parallel-engine.run(...).result
-```
+### Flag split — `parallelRace` (engine) vs `sharedSecret` (UX)
 
-The parity test runs against a fixture set covering victory, defeat, draw (simultaneous_crack), and stalemate (both_exhausted). Once parity holds across the fixture set, Mode 6 swaps engines via `selectEngine(mode)`'s existing `flags.parallelRace` discriminator — same one Mode 7 will use.
+Phase 5's draft assumed a single `parallelRace` flag would discriminate both "ride the parallel engine" AND "skip SecretSetup because the engine generates the secret". CP0 split them into two flags as the very first Phase 6 change:
 
-### `parallelEngine` shape — both modes share
+- **`parallelRace`** — engine selector. `selectEngine(mode)` routes to `parallelEngine` when set. Mode 6 + Mode 7 both have it.
+- **`sharedSecret`** — Mirror-only UX flag. `parallelEngine.createMatch` overwrites the caller-supplied `playerSecret` with the engine-generated value when set. `modeRouter.nextRouteAfterMatchmaking` consults it to skip SecretSetup. **Only Mode 7 has it.**
 
-Mode 6 and Mode 7 share the parallel-race shape: both sides race the same secret (Mode 7) or their own secrets (Mode 6), submissions are independent, the first to crack wins. The differences are in `rules`:
+Without the split, Mode 6's parallel migration would have collapsed both semantics — the player would have lost the ability to set their own secret. The split is ten lines of types + one boolean per mode, but it's the architectural foundation the rest of Phase 6 stands on. Both flag header docs explicitly state which mode set carries each.
 
-- **Mode 6** — `maxGuessesPerPlayer: 5` (carries over from Phase 5 catalog), `flags.suddenDeath: true`
-- **Mode 7** — no guess budget (unlimited), `flags.parallelRace: true`, single shared secret
+### `parallelEngine` — Phase 2 stub → production
 
-The engine handles both via the `rules` flags — no per-mode branching inside the engine. Phase 6 tests both modes against the same engine, with mode-specific fixture sets covering each rule combo.
+`parallelEngine.ts` shipped in Phase 2 as a soft-fail stub: `submitGuess` returned the input state untouched and warned via `console.warn`. CP1 replaced it with a full state machine matching the `turnBasedEngine` shape:
 
-### What stays out of Phase 6
+- `createMatch` → `'setup'` phase, opponent secret generated via `mode.generateSecret(rng)`. For `flags.sharedSecret` modes the caller's `playerSecret` is **overwritten** with the generated value.
+- `startMatch` → `'active_parallel'` phase. **Zero RNG draws** — there is no "who starts" question in a parallel race. This is the deliberate cursor-divergence point vs `turnBasedEngine.startMatch`, documented in both engine headers + the parity-test header.
+- `submitGuess` → validate, evaluate, append, decrement budget, `checkEndConditions`. On a terminal result, phase flips to `'completed'`; otherwise phase stays `'active_parallel'` and the other side remains free to submit. **No `advanceTurn`**.
 
-Cold-start resume, panic-mode bots, onboarding tips, all explicitly Phase 7. Phase 6 is two engines (Mode 7 new, Mode 6 migrated) and the parity test — nothing else.
+The four terminal outcomes the engine resolves: `player_won/cracked`, `opponent_won/cracked`, `draw/simultaneous_crack` (both sides hold winning feedback in the same state — only reachable from a constructed test fixture in production because `matchStore.submitGuess` serialises calls), `stalemate/both_exhausted` (Mode 6 only — both sides hit the budget).
+
+Single-side budget exhaustion is **non-terminal** in the parallel engine — same SPEC §3.10 rule as the Mode 6 fix from Phase 5 CP1, but now applied to the parallel state machine: when one side hits zero, the other side keeps submitting until they too hit zero, and only then does `both_exhausted → stalemate` fire. The Mode 5-era turn-based fix in `checkEndConditions` carries straight through; no engine-specific branching.
+
+### Mode 7 (Mirror) — single-file façade, Mode 1 reuse
+
+`mode7Mirror.ts` follows the Phase 5 cousin pattern (Mode 4 + Mode 6): single file, no `mode7/` subfolder, direct re-export of `mode1ColorMatch`'s `evaluateColorMatch` + `bot.{makeGuess, thinkingTime}`. Mirror's only mechanical differences from Mode 1 are the engine selector (`parallelRace`) and the shared-secret routing skip (`sharedSecret`) — both expressed via catalog flags, neither requiring a new evaluator or solver.
+
+The structural rule from Phase 5 still holds (a mode gets its own subfolder iff it has a mode-specific evaluator or bot). Mirror uses Mode 1's evaluator unchanged → no subfolder.
+
+`flags.sharedSecret` is the load-bearing invariant: `parallelEngine.createMatch` generates the opponent secret first, then sets `finalPlayerSecret = sharedSecret ? opponentSecret : playerSecret`. Both sides race **the same string**. `submitGuess`'s `targetSecret = author === 'self' ? opponentSecret : playerSecret` resolves to the same value for both sides — zero parallel-specific branching inside the engine.
+
+### Mode 6 parallel migration — parity test FIRST, then flag flip
+
+The migration discipline gate: **the parity test landed BEFORE the catalog flag flip**. `mode6ParityLegacyVsParallel.test.ts` imports both engines directly (not via `selectEngine`) and runs four scenarios through each:
+
+1. Player cracks first → `player_won/cracked`.
+2. Opponent cracks first → `opponent_won/cracked`.
+3. Both crack on equivalent turns → `draw/simultaneous_crack`.
+4. Both exhaust the budget without cracking → `stalemate/both_exhausted`.
+
+Plus two invariants: the `MatchResult` is byte-equal across engines for each scenario, and the SPEC §3.10 nuance (single-side exhaustion is non-terminal) holds in both. With parity green, the catalog flip (`flags.parallelRace: true` on Mode 6) was a one-line change.
+
+What the parity test deliberately does **not** assert: RNG cursor identity (the "who starts" RNG draw in `turnBasedEngine.startMatch` doesn't happen in the parallel engine, so cursor positions diverge), bot-driven runs (turn rotation reorders RNG consumption between bot and engine, fixture-driven comparison sidesteps this).
+
+### Option B integration migration — pin `'active_parallel'` instead of toggling alternation
+
+Mode 6's existing integration tests pinned `'active_turn_player'` / `'active_turn_opponent'` between turns to deterministically drive the bot. After the parallel flip those phases never appear. Two options:
+
+- **Option A** — Per-test branch on `parallelRace`, alternate phases for Mode 6 specifically.
+- **Option B** — Pin `'active_parallel'` once at the top of each Mode 6 test, drive both sides without rotation.
+
+Option B won. The phase the engine actually sets on parallel modes IS `'active_parallel'`; pinning it is the smallest test-side change that matches the engine's real shape. Option A would have created a per-test branch that drifts from the engine semantic.
+
+### `PlayerCardPair.activeSide: 'both'` — Mode 6 needs a third state
+
+The `activeSide` prop was `'self' | 'opponent'` through Phase 3-5 (turn rotation = exactly one side glowing at a time). Mode 6 parallel undermines the binary: both sides may submit independently, so both cards should glow. CP3 added `'both'` as a third variant.
+
+Edge case the new state surfaces: when the player's 5-guess budget hits zero but the opponent is still racing, the keypad goes dead → a glowing self-card while typing is impossible would read as "your turn" and confuse the player. `resolveActiveSide({ phase: 'active_parallel', playerExhausted: true })` drops the glow back to `'opponent'`. The visual state always tells the truth about who can act.
+
+Mode 7 doesn't reach this code path — it uses `SoloRaceBanner` instead of `PlayerCardPair`.
+
+### MatchScreen conditional render — Mode 6 vs Mode 7
+
+The CP4 change in MatchScreen splits along two flags:
+
+| Flag | Mode 6 | Mode 7 |
+| --- | --- | --- |
+| `parallelRace` | true | true |
+| `sharedSecret` | false | true |
+| Player area | `PlayerCardPair activeSide='both'` | `SoloRaceBanner` |
+| Timeline | `interleaveTimeline(state, {chronological: true})` | `state.playerGuesses` only |
+| VS separator | visible | hidden |
+| Opponent count badge | n/a (timeline shows guesses) | `Opponent: N guesses` |
+| Bot typing verb | `is guessing` | `is guessing` |
+| Turn label | `RACING` | `RACING` |
+
+The conditional pattern: `isMirror = sharedSecret`, `isParallel = parallelRace`. `isMirror` drives single-perspective UI, `isParallel` drives engine-aware behaviour (typing verb, bot driver useEffect). Phase 6 split the two flags so the conditionals can branch on the right discriminator.
+
+### Mode 7 timeline single-perspective — Bug 3 leak prevention
+
+Mode 7's timeline reads `matchState.playerGuesses` directly, not `interleaveTimeline(...)`. The opponent's feedback rows would leak the rival's progress (which digits they've narrowed) into the player's view — defeats Mirror's "solo race against a same-secret rival" semantic. The bug was caught during CP4 plan review (Codex finding "Bug 3 — Mirror leak"); the fix is one branch in the timeline computation + a regression test that seeds `opponentGuesses` and asserts no opponent digits appear in any rendered `Text` node. Snapshot alone wouldn't catch a future regression — the assertion is on the absence of specific digit strings, which is forward-compatible with layout changes.
+
+### Bot driver useEffect — narrow deps to `opponentGuesses.length`
+
+The parallel bot driver effect schedules `runOpponentTurn` on a `setTimeout` whenever the opponent could submit. The dep array intentionally **excludes `matchState`** and reads only `[isEngineMode, definition, phase, opponentGuessLength, opponentBotExhausted]`. Wider deps (the obvious `[matchState]`) would re-fire the effect on every player guess, cancelling the in-flight bot timer mid-thinking and resetting the typing indicator. The narrow array means the bot's `setTimeout` survives the player's submissions and only re-runs when the opponent's situation changes (new opponent guess landed, or opponent budget hit zero).
+
+The `eslint-disable react-hooks/exhaustive-deps` is intentional and documented inline. The exhaustive-deps rule would re-introduce the cancellation bug; the narrower array is the whole point of the effect.
+
+### `SoloRaceBanner` co-located in MatchScreen
+
+`SoloRaceBanner` and `PlayerCardPair` both live as exported functions inside `MatchScreen.tsx` (not separate files). The Phase 6 plan originally specified a separate `SoloRaceBanner.tsx` file, but `PlayerCardPair` was already co-located (Phase 3's pattern); splitting would have created an asymmetry. Both helpers are MatchScreen-specific (no other screen imports them); separate files would have been pure refactor cost with no behaviour change. The unit tests import from `MatchScreen.tsx` directly.
+
+The rule: a screen-internal helper component stays in the screen file unless a second screen needs it. Phase 7A may extract them if the home screen surfaces a Mirror preview tile; until then, co-location wins.
+
+### CP5 — Bug 1 stake charge wiring
+
+Device walkthrough revealed the stake economy was broken: a Mode 1 victory grew the balance by `+rewardWin` without first subtracting `stake`. Root cause: `HomeScreen` did the balance check, `SecretSetupScreen` created the match, but **no one debited the stake**. Forfeit charged it (wrong location) and stalemate "refunded" stake that was never debited (free money).
+
+The fix moves the debit to a single seam: `matchStore.createMatch` calls `useUserStore.getState().subtractTokens(mode.meta.stake)` after the in-progress guard but before the engine's `createMatch`. Because `createMatch` is no-op-guarded against re-entry, the debit is idempotent — a second call returns `false` before reaching the debit. `MatchScreen.confirmForfeit` no longer touches tokens (would have been a double-charge); the `MatchResultScreen` stalemate path's `+stake` refund is now meaningful (stake was actually debited).
+
+The tests cover all three paths through the user store: createMatch debits, no-op guard skips debit, clear+restart debits twice. The `cp4Flows.test.tsx` integration cases pin victory net (+rewardWin − stake = +50 for Mode 1) and stalemate net (+0).
+
+The rule that fell out: every economic transaction (stake, reward, refund) belongs to the single store action that owns the corresponding state transition. `matchStore.createMatch` is the seam where a match comes into existence; that's where the stake leaves the wallet. Anywhere else is a drift hazard.
+
+### CP5 — Bug 2 Mode 6 timeline kronoloji
+
+The same walkthrough surfaced a Mode 6 parallel timeline ordering bug: the player's guesses appeared rotated against the opponent's by the round-robin `firstAuthor` alternation, regardless of when they actually submitted. `interleaveTimeline` was built on the turn-based assumption (strict alternation = deterministic merge); under parallel both sides may submit out of rotation.
+
+Fix:
+- `GuessEntry.createdAt?: number` (optional, additive — pre-CP5 persisted states + test fixtures stay valid).
+- Both engines stamp `createdAt = Date.now()` on submit. Single `submittedAt` constant per call so `entry.createdAt` and `state.lastUpdatedAt` stay coherent.
+- `interleaveTimeline(state, opts)` accepts `{ chronological?: boolean }`. `chronological: true` does a stable merge sort by `createdAt`; ties break to player-side first (viewer-anchored, matches `firstAuthor='self'` default).
+- MatchScreen call site: `interleaveTimeline(state, { chronological: isParallel })`. Turn-based modes keep the alternation default; Mode 6 gets chronology.
+- Mode 7 unaffected — single-perspective timeline never enters this code path.
+
+### `stripTimestamp` helper — wall-clock isn't part of resume identity
+
+Adding `createdAt = Date.now()` to engine submits broke five resume-identity tests across mode 1/3/5 integration suites. Each test serializes a `matchState`, deserializes it, runs the bot turn from the rehydrated copy, and compares to a fresh-from-create run on the same RNG seed. The bot's **decision** is deterministic (digits, feedback, RNG cursor, solver pool size) — but the wall-clock `createdAt` differs between runs by however many ms elapsed between the two `runOpponentTurn` calls.
+
+Each affected test file got a small `stripTimestamp({ createdAt: _createdAt, ...rest }: GuessEntry)` helper. The assertion changed from `toEqual(opponentGuesses)` to `toEqual(opponentGuesses.map(stripTimestamp))`. The contract is now explicit: resume identity covers everything the bot's decision is made of; wall-clock is presentation metadata that exists for the timeline ordering and nothing else.
+
+The forfeit tests (`MatchScreen.test.tsx`, `cp3Flows.test.tsx`) were updated in parallel: the assertion that "forfeit confirms charges the stake" became "forfeit confirms pops to top without re-debiting" (the mock path doesn't call `createMatch`, so there's no stake to refund/double-charge; the engine-path arithmetic lives in `cp4Flows.test.tsx`).
+
+---
+
+## Known Issues — Phase 7A backlog
+
+These items were identified during Phase 6 device walkthrough and Codex code review. They are intentional deferrals — none block Phase 6's sealed surface. Phase 7A is the polish + economy phase where they land.
+
+### Medium priority
+
+**1. Opponent variety pool small.** `mockOpponents.ts` ships 4–6 entries; iOS walkthrough caught the "playing the same opponents repeatedly" feel. Phase 7A: expand to 15–20 profiles with diverse names, avatars, levels, country flags. Touches: `data/mockOpponents.ts`, no schema change.
+
+**2. Opponent identity in MatchResult is hardcoded.** `MatchResultScreen` reads `findOpponent('opp-1')` regardless of which opponent the matchmaker actually picked. Route params are missing `opponentId`; the result screen can't surface the real rival's name in DEFEAT copy ("X cracked it in N"). Phase 7A: thread `opponentId` through the navigation chain (Matchmaking → SecretSetup → Match → MatchResult), update `MatchResultScreen` to read from route params.
+
+**3. `tokensEarned` lifetime metric not aggregated.** `userStore.stats.tokensEarned` is a static field initialised to `12_400` and never updated. ProfileScreen reads it, but it drifts from real economy state on every match. Phase 7A: increment on every `MatchResultScreen` reward grant (cumulative, not balance — different metric).
+
+### Low priority / polish
+
+**4. First digit can be `0` in generated secrets.** `generateRandomDigits` allows `0XXX` patterns (e.g. `0234`). SPEC convention review needed: code-breaker semantics suggest a 1–9 first digit (no leading-zero ambiguity in display). Phase 7A: SPEC update + `generateRandomDigits` first-digit constraint + candidate pool size adjustment (Mode 1/2/4/6 10 000 → 9 000, Mode 3/5 5040 → 4536). Bot performance benchmarks should hold (pool reduction is ~10%, not material).
+
+**5. Profile Settings/Statistics layout.** Currently stacked vertically; awkward on smaller screens (iPhone SE 3rd gen, mini). User feedback during walkthrough: "tek butonla geçilsin" (toggle preferred). Phase 7A: tab design — Stats / Settings toggle inside ProfileScreen. ~1.5–2 hour effort.
+
+### Drift — decision needed
+
+**6. SPEC vs catalog reward mismatch.** Phase 5 + 6 catalogs ship `rewardWin: 100` for Modes 1–4, 6 (and `rewardWin: 150` for Mode 7); SPEC §3.5–3.8 declares Mode 4 = 150, Mode 5 = 250, Mode 6 = 120, Mode 7 = 180. Two interpretations: (a) the catalog reflects an intentional Phase 1B rebalance that hasn't propagated back to SPEC, (b) the catalog is wrong and should match SPEC. Phase 7A balance pass: pick one source, update the other, document the decision in this file's §Phase 7A section. Either direction is one-line catalog updates + a SPEC §3.x note; the hard part is the decision, not the change.

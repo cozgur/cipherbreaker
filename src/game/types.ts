@@ -68,8 +68,28 @@ export interface ModeRuleFlags {
   readonly blackoutReveal?: boolean;
   /** Mode 4 — each player has their own chess-clock style countdown. */
   readonly perPlayerClock?: boolean;
-  /** Mode 7 — both players race the same secret in parallel, first to crack wins. */
+  /**
+   * Engine selector. When `true`, `selectEngine(mode)` routes to
+   * `parallelEngine` (no turn rotation; both sides submit independently;
+   * first to crack wins; both-exhausted = stalemate). Phase 6 sets this
+   * for Mode 6 (Sudden Death) and Mode 7 (Mirror); turn-based modes
+   * leave it absent.
+   *
+   * `parallelRace` is the **engine** discriminator. The "shared secret /
+   * skip SecretSetup" semantic — Mirror-only — lives on its own flag
+   * (`sharedSecret`) so Mode 6's parallel migration doesn't accidentally
+   * skip the player-set secret stage.
+   */
   readonly parallelRace?: boolean;
+  /**
+   * Mode 7 (Mirror) — both sides race the **same** engine-generated
+   * secret. `parallelEngine.createMatch` overwrites the caller-supplied
+   * `playerSecret` with the generated value when this flag is set, so
+   * `submitGuess`'s `targetSecret` resolution maps both sides to the
+   * shared string. `modeRouter.nextRouteAfterMatchmaking` consults this
+   * flag to skip SecretSetup (player has nothing to choose).
+   */
+  readonly sharedSecret?: boolean;
   /** Mode 6 — sudden-death variant: fixed guess budget, no draws. */
   readonly suddenDeath?: boolean;
 }
@@ -171,6 +191,20 @@ export interface GuessEntry {
   readonly feedback: NormalizedFeedback;
   /** Mode 4 — time the guess took. Omitted for non-Blitz modes. */
   readonly elapsedMs?: number;
+  /**
+   * Wall-clock timestamp (`Date.now()`) the engine stamps when the
+   * guess is appended. Phase 6 CP5 added this for Mode 6's parallel
+   * timeline ordering — both sides may submit out of strict
+   * alternation, so `interleaveTimeline({chronological:true})` sorts
+   * by this field instead of the round-robin alternation that
+   * turn-based modes use.
+   *
+   * Optional in the type so pre-CP5 persisted states + lightweight
+   * test fixtures stay valid; production engines always set it.
+   * Mode 7 (Mirror) hides the opponent timeline entirely so this
+   * field is unread there even though parallelEngine writes it.
+   */
+  readonly createdAt?: number;
 }
 
 /**

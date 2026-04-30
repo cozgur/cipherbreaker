@@ -16,6 +16,7 @@
  */
 
 import { __resetRegistryForTests, modeRegistry } from '../../modeRegistry';
+import type { GuessEntry } from '../../types';
 import { useMatchStore } from '../../../state/matchStore';
 import { mode1ColorMatch } from '../mode1ColorMatch';
 
@@ -23,6 +24,14 @@ function pinPhase(phase: 'active_turn_player' | 'active_turn_opponent'): void {
   useMatchStore.setState((s) => ({
     matchState: s.matchState ? { ...s.matchState, phase } : null,
   }));
+}
+
+// Drop wall-clock `createdAt` from a GuessEntry so resume-identity
+// equality checks compare only the fields the bot's decision is made
+// of (digits + feedback + side + guessIndex). See the call site for
+// the full rationale.
+function stripTimestamp({ createdAt: _createdAt, ...rest }: GuessEntry): Omit<GuessEntry, 'createdAt'> {
+  return rest;
 }
 
 describe('Mode 1 — integration through useMatchStore', () => {
@@ -148,8 +157,15 @@ describe('Mode 1 — integration through useMatchStore', () => {
 
       // Same opponent guess (digits + feedback), same rngState cursor,
       // same solver pool size — the resume contract's three load-bearing
-      // facts.
-      expect(restoredAfter.opponentGuesses).toEqual(liveAfter.opponentGuesses);
+      // facts. `createdAt` is intentionally stripped: the engine stamps
+      // it with `Date.now()` at submit time, so it diverges between the
+      // live run and the rehydrate-then-replay run by however many ms
+      // elapsed between the two `runOpponentTurn` calls. Wall-clock is
+      // presentation metadata for the timeline, not part of the bot's
+      // decision.
+      expect(restoredAfter.opponentGuesses.map(stripTimestamp)).toEqual(
+        liveAfter.opponentGuesses.map(stripTimestamp),
+      );
       expect(restoredAfter.rngState).toEqual(liveAfter.rngState);
       const liveSolver = liveAfter.solverStates?.opponent;
       const restoredSolver = restoredAfter.solverStates?.opponent;

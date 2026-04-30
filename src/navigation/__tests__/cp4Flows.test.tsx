@@ -68,13 +68,19 @@ describe('CP4 engine-path flows', () => {
     useMatchStore.getState().clearMatch();
   });
 
+  // Mode 1 catalog: stake=50, rewardWin=100. Net flow:
+  //   victory  → -50 (createMatch debit) +100 (reward) = +50
+  //   defeat   → -50 (createMatch debit)               = -50
+  //   stalemate→ -50 (createMatch debit) +50 (refund)  =   0
+  // The seeded match here calls `createMatch` inside `seedActiveMatch`
+  // so the stake debit has already applied by the time we measure
+  // `beforeTokens` — that's why the deltas below are pure +reward / 0.
   it('victory grants reward + xp + bumps gamesPlayed by one', () => {
+    const state = seedActiveMatch('1234');
+    completeMatch(state, 'player_won', 4);
     const beforeTokens = mockUser.tokens;
     const beforeXp = mockUser.currentXP;
     const beforeGames = mockUser.stats.gamesPlayed;
-
-    const state = seedActiveMatch('1234');
-    completeMatch(state, 'player_won', 4);
 
     const utils = renderWithNavigation('Match', stack, {
       modeId: 1,
@@ -92,12 +98,11 @@ describe('CP4 engine-path flows', () => {
   });
 
   it('defeat grants 0 tokens but +5 xp + bumps gamesPlayed by one', () => {
+    const state = seedActiveMatch('1234');
+    completeMatch(state, 'opponent_won', 6);
     const beforeTokens = mockUser.tokens;
     const beforeXp = mockUser.currentXP;
     const beforeGames = mockUser.stats.gamesPlayed;
-
-    const state = seedActiveMatch('1234');
-    completeMatch(state, 'opponent_won', 6);
 
     renderWithNavigation('Match', stack, { modeId: 1, opponentId: 'opp-1' });
     act(() => {});
@@ -105,6 +110,46 @@ describe('CP4 engine-path flows', () => {
     expect(mockUser.tokens).toBe(beforeTokens);
     expect(mockUser.currentXP).toBe(beforeXp + 5);
     expect(mockUser.stats.gamesPlayed).toBe(beforeGames + 1);
+  });
+
+  it('Bug 1 — createMatch debits the mode stake from the user store', () => {
+    const beforeTokens = mockUser.tokens;
+    seedActiveMatch('1234');
+    // Mode 1 stake is 50 (catalog).
+    expect(mockUser.tokens).toBe(beforeTokens - 50);
+  });
+
+  it('Bug 1 — net victory token = rewardWin - stake (50 net for Mode 1)', () => {
+    const beforeTokens = mockUser.tokens;
+    const state = seedActiveMatch('1234');
+    completeMatch(state, 'player_won', 4);
+
+    renderWithNavigation('Match', stack, { modeId: 1, opponentId: 'opp-1' });
+    act(() => {});
+
+    // -50 (stake at createMatch) + 100 (reward at MatchResult mount) = +50.
+    expect(mockUser.tokens).toBe(beforeTokens + 50);
+  });
+
+  it('Bug 1 — stalemate refunds the stake (net zero)', () => {
+    const beforeTokens = mockUser.tokens;
+    const state = seedActiveMatch('1234');
+    // Stalemate path — MatchResultScreen's view model returns `c.stake`
+    // as the reward, so the user lands net zero relative to pre-match.
+    useMatchStore.setState({
+      matchState: {
+        ...state,
+        opponentSecret: '5731',
+        phase: 'completed',
+        result: { outcome: 'stalemate', reason: 'both_exhausted', turns: 5 },
+      },
+    });
+
+    renderWithNavigation('Match', stack, { modeId: 1, opponentId: 'opp-1' });
+    act(() => {});
+
+    // -50 (stake at createMatch) + 50 (refund at MatchResult mount) = 0.
+    expect(mockUser.tokens).toBe(beforeTokens);
   });
 
   it('reveal uses the route-supplied opponent secret, not mockSecretByMode[1]', () => {

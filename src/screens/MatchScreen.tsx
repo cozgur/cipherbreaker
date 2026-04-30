@@ -41,7 +41,7 @@ import { TinyTag } from '@components/TinyTag';
 import { TypingIndicator } from '@components/TypingIndicator';
 import { findMode } from '@data/modeCatalog';
 import { buildMockTimeline } from '@data/mockMatchHistory';
-import { chargeTokens, useMockUser } from '@data/mockUser';
+import { useMockUser } from '@data/mockUser';
 import { findOpponent } from '@data/mockOpponents';
 import {
   currentGuessNumberFromMatch,
@@ -82,6 +82,29 @@ function formatClock(ms: number): string {
   return `${minutes}:${String(seconds).padStart(2, '0')}`;
 }
 
+/**
+ * Pick which side of the `PlayerCardPair` glows. Turn-based modes
+ * track the active turn; parallel modes (Mode 6 post-CP3 — Mode 7
+ * uses `SoloRaceBanner`, not this code path) light *both* cards
+ * because neither side waits on the other. Mode 6 edge case: when
+ * the player has drained their 5-guess budget but the match
+ * continues (opponent still racing), we drop their glow back to
+ * 'opponent' — a glowing self-card while the keypad is dead would
+ * otherwise read as "your turn" and confuse the player.
+ */
+function resolveActiveSide(args: {
+  readonly isEngineMode: boolean;
+  readonly phase: string | undefined;
+  readonly playerExhausted: boolean;
+}): 'self' | 'opponent' | 'both' {
+  if (!args.isEngineMode) return 'self';
+  if (args.phase === 'active_parallel') {
+    return args.playerExhausted ? 'opponent' : 'both';
+  }
+  if (args.phase === 'active_turn_opponent') return 'opponent';
+  return 'self';
+}
+
 export function MatchScreen(): React.JSX.Element {
   const navigation = useNavigation<Nav>();
   const route = useRoute<RouteParams>();
@@ -91,7 +114,13 @@ export function MatchScreen(): React.JSX.Element {
 
   const mode = useMemo(() => findMode(modeId), [modeId]);
   const opponent = useMemo(() => findOpponent(opponentId), [opponentId]);
-  const isMirror = mode?.rules.flags.parallelRace === true;
+  // `isMirror` = Mode 7 (Mirror, sharedSecret) specifically — drives
+  // SoloRaceBanner + the single-column timeline + opponent-guess
+  // hiding. `isParallel` (below) = "rides parallelEngine" — Mode 6 +
+  // Mode 7 both, so it gates the bot driver effect and the typing
+  // verb. Phase 6 split the two flags; do not collapse them back.
+  const isMirror = mode?.rules.flags.sharedSecret === true;
+  const isParallel = mode?.rules.flags.parallelRace === true;
 
   // Engine cutover gate — engine path lights up only when the mode is
   // registered AND the live `matchState` belongs to this mode. The
@@ -113,9 +142,25 @@ export function MatchScreen(): React.JSX.Element {
     matchState.phase !== 'completed';
 
   const mockTimeline = useMemo(() => buildMockTimeline(modeId), [modeId]);
-  const timeline: readonly GuessEntry[] = isEngineMode && matchState
-    ? interleaveTimeline(matchState)
-    : mockTimeline;
+  // Mode 7 (Mirror) Bug 3 fix — Mirror is single-perspective: the
+  // player races their own copy of the shared secret and never sees
+  // the rival's feedback rows. Interleaving would leak the rival's
+  // guesses + colour states into the player's timeline. Other engine
+  // modes (1-6) keep the interleaved chronology so both sides remain
+  // visible. CP4 verification suite includes a leak regression test
+  // that seeds `opponentGuesses` and asserts those digits don't
+  // render — snapshot alone wouldn't catch a future regression.
+  // Mode 6 (parallel) — chronological merge by entry timestamp because
+  // both sides may submit out of strict alternation. Turn-based modes
+  // (1-5) keep the round-robin alternation default — it's the resume-
+  // identity-stable ordering the rest of Phase 3-5 depends on. Mirror
+  // (Mode 7) doesn't reach this branch (single-perspective).
+  const timeline: readonly GuessEntry[] =
+    isEngineMode && matchState
+      ? isMirror
+        ? matchState.playerGuesses
+        : interleaveTimeline(matchState, { chronological: isParallel })
+      : mockTimeline;
 
   const RowRenderer = useMemo(() => getRowRenderer(modeId), [modeId]);
   const adaptorCtx: GuessRowAdaptorContext = useMemo(
@@ -143,8 +188,19 @@ export function MatchScreen(): React.JSX.Element {
   // In engine mode the player can only type when it's their turn;
   // mock mode keeps the legacy "always allow" behaviour because the
   // DevResultPicker is the substitute for turn rotation.
+  //
+  // Parallel modes (Mode 6 + Mode 7) collapse "your turn" into the
+  // single `'active_parallel'` phase — both sides may submit at any
+  // time. The player budget guard is *here*: the engine appends a
+  // 6th-budget guess for Mode 6 (decrement floors at 0) without
+  // terminating, so the UI is the only thing keeping the player in
+  // budget. Mode 7 has no `guessLimits` → optional chain falls back
+  // to `Infinity` → guard is a no-op.
+  const playerRemaining = matchState?.guessLimits?.playerRemaining ?? Infinity;
+  const playerBudgetExhausted = isEngineMode && playerRemaining <= 0;
   const isPlayerTurn = isEngineMode
-    ? matchState?.phase === 'active_turn_player'
+    ? matchState?.phase === 'active_turn_player' ||
+      (matchState?.phase === 'active_parallel' && !playerBudgetExhausted)
     : true;
   const isOpponentTurn = isEngineMode && matchState?.phase === 'active_turn_opponent';
 
@@ -272,6 +328,82 @@ export function MatchScreen(): React.JSX.Element {
     matchState,
   ]);
 
+  // Parallel-mode bot driver (Mode 6 + Mode 7). Same shape as the
+  // turn-based effect above, but the dep array is deliberately
+  // narrower: keying on `opponentGuessLength` (and budget /
+  // engine-flip flags) is what prevents player guesses from
+  // cancelling the in-flight bot timer. The turn-based effect can
+  // safely depend on `matchState` because phase flips between
+  // `active_turn_player` ↔ `active_turn_opponent` keep the
+  // re-execution scope tight; parallel mode keeps phase glued at
+  // `active_parallel` between turns, so we have to be specific
+  // about which mutations should re-fire the effect.
+  //
+  // Re-fires when:
+  //   - opponent submits → `opponentGuessLength` increments → new
+  //     timer scheduled (bot self-reschedule).
+  //   - opponent budget hits 0 → `opponentBudgetRemaining` flips →
+  //     effect re-runs and the early-return clears the timer.
+  //   - phase leaves `active_parallel` (cracks/exhausted/forfeit)
+  //     → early-return clears the timer.
+  //
+  // Does NOT re-fire on:
+  //   - player guess submit (player's history grows but the dep
+  //     array doesn't read it). Critical: a re-fire here would
+  //     reset `setShowTyping(true)` mid-thinking and the player
+  //     would see the typing indicator stutter on every keystroke.
+  const phase = matchState?.phase;
+  const opponentGuessLength = matchState?.opponentGuesses.length ?? 0;
+  const opponentBudgetRemaining = matchState?.guessLimits?.opponentRemaining;
+  const opponentBotExhausted =
+    opponentBudgetRemaining !== undefined && opponentBudgetRemaining <= 0;
+  useEffect(() => {
+    if (!isEngineMode || definition === null) {
+      return undefined;
+    }
+    if (phase !== 'active_parallel') {
+      return undefined;
+    }
+    if (opponentBotExhausted) {
+      return undefined;
+    }
+    // Read fresh state inside the effect (closure) — `matchState` is
+    // intentionally absent from deps to satisfy the no-cancel-on-
+    // player-guess invariant. The bot context built here is a
+    // snapshot at schedule time; `runOpponentTurn` reads the
+    // latest state again at fire time, so this snapshot is only
+    // used to compute the thinking delay.
+    const snapshot = useMatchStore.getState().matchState;
+    if (snapshot === null) return undefined;
+    const ctx: BotContext = {
+      previousGuesses: snapshot.opponentGuesses,
+      mySecret: snapshot.opponentSecret,
+      difficulty: snapshot.botDifficulty ?? 'normal',
+      turnNumber: snapshot.opponentGuesses.length + 1,
+      solverState:
+        snapshot.solverStates?.opponent ??
+        definition.bot.initSolverState(snapshot.opponentSecret, definition.rules),
+      rng: createRNG(snapshot.rngState),
+    };
+    const delay = definition.bot.thinkingTime(ctx);
+
+    const typingId = setTimeout(() => setShowTyping(true), Math.floor(delay * 0.4));
+    const turnId = setTimeout(() => {
+      void useMatchStore.getState().runOpponentTurn();
+    }, delay);
+
+    return () => {
+      clearTimeout(typingId);
+      clearTimeout(turnId);
+      setShowTyping(false);
+    };
+    // `matchState` deliberately excluded — see header comment. The
+    // narrower dep array is the whole point of this effect; the
+    // exhaustive-deps lint rule would re-introduce the player-guess
+    // cancellation we're trying to avoid.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isEngineMode, definition, phase, opponentGuessLength, opponentBotExhausted]);
+
   // Mode 4 — sync the live clock store from the durable snapshot on
   // mount/match-state change. `matchStore.startMatch` already calls
   // this on a fresh match; the explicit sync here covers the cold-
@@ -353,15 +485,18 @@ export function MatchScreen(): React.JSX.Element {
     });
   }, [isEngineMode, matchState, modeId, mode, navigation]);
 
+  // Stake is debited at `matchStore.createMatch`, so forfeit no longer
+  // touches tokens — doing so would double-charge. The Alert copy still
+  // surfaces the consequence ("you lose your entry stake") because from
+  // the player's perspective the stake is forfeited (no refund); the
+  // bookkeeping just happened earlier.
   const confirmForfeit = useCallback((): void => {
-    const stake = mode?.meta.stake ?? 0;
     Alert.alert('Forfeit match?', 'You lose your entry stake.', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Forfeit',
         style: 'destructive',
         onPress: () => {
-          chargeTokens(stake);
           if (isEngineMode) {
             useMatchStore.getState().clearMatch();
           }
@@ -369,7 +504,7 @@ export function MatchScreen(): React.JSX.Element {
         },
       },
     ]);
-  }, [mode?.meta.stake, navigation, isEngineMode]);
+  }, [navigation, isEngineMode]);
 
   // Both ROUND (header chip) and "Guess #N" (sub-counter) read the
   // same active-side count so the number you see while playing equals
@@ -380,16 +515,24 @@ export function MatchScreen(): React.JSX.Element {
       ? currentGuessNumberFromMatch(matchState)
       : currentGuessNumberFromMockTimeline(timeline);
   const roundLabel = mode != null ? `ROUND ${guessNumber} · ${mode.meta.name}` : 'ROUND';
-  const turnLabel = isMirror
+  // Parallel mode (Mode 6 + Mode 7) → "RACING" everywhere; the phrase
+  // "your turn" doesn't apply when both sides submit independently.
+  // Mode 7 also paints the chip in its accent teal (matches catalog
+  // gradient); Mode 6 stays violet so the existing Sudden Death
+  // visual identity (red lives + violet active glow) is undisturbed.
+  const isParallelActive = isEngineMode && matchState?.phase === 'active_parallel';
+  const turnLabel = isMirror || isParallelActive
     ? 'RACING'
     : isOpponentTurn
       ? "OPPONENT'S TURN"
       : 'YOUR TURN';
   const turnColor = isMirror
     ? '#14b8a6'
-    : isOpponentTurn
-      ? colors.textSecondary
-      : colors.violet;
+    : isParallelActive
+      ? colors.violet
+      : isOpponentTurn
+        ? colors.textSecondary
+        : colors.violet;
   const keypadDisabled = pickerOpen || (isEngineMode ? !isPlayerTurn : false);
   const showBotTyping = isEngineMode ? showTyping : true;
 
@@ -423,6 +566,7 @@ export function MatchScreen(): React.JSX.Element {
           opponentName={opponent?.username ?? 'Rival'}
           opponentLevel={opponent?.level ?? 1}
           opponentFlag={opponent?.flag}
+          opponentGuessCount={isEngineMode ? opponentGuessCount : undefined}
         />
       ) : (
         <PlayerCardPair
@@ -432,7 +576,11 @@ export function MatchScreen(): React.JSX.Element {
           opponentFlag={opponent?.flag}
           mode={mode}
           timeline={timeline}
-          activeSide={isEngineMode ? (isPlayerTurn ? 'self' : 'opponent') : 'self'}
+          activeSide={resolveActiveSide({
+            isEngineMode,
+            phase: matchState?.phase,
+            playerExhausted: playerBudgetExhausted,
+          })}
           liveClocks={liveClocks}
         />
       )}
@@ -459,7 +607,7 @@ export function MatchScreen(): React.JSX.Element {
         {showBotTyping ? (
           <BotTypingFooter
             name={opponent?.username ?? 'Opponent'}
-            verb={isMirror ? 'is guessing' : 'is typing'}
+            verb={isParallel ? 'is guessing' : 'is typing'}
           />
         ) : null}
 
@@ -554,12 +702,19 @@ interface PlayerCardPairProps {
   readonly opponentFlag?: string;
   readonly mode: ModeCatalogEntry | undefined;
   readonly timeline: readonly GuessEntry[];
-  /** Which side currently holds the turn — drives the active glow. */
-  readonly activeSide: 'self' | 'opponent';
+  /**
+   * Which side currently holds the turn — drives the active glow.
+   * `'self' | 'opponent'` for turn-based modes (Modes 1-5); `'both'`
+   * for parallel modes where neither side waits on the other (Mode 6
+   * post-CP3, Mode 7 — though Mode 7 uses SoloRaceBanner, not this
+   * component). CP4 will wire `'both'` from the MatchScreen call site
+   * once parallel-mode UI lands; CP3 just makes the prop accept it.
+   */
+  readonly activeSide: 'self' | 'opponent' | 'both';
   readonly liveClocks: LiveClockValues | null;
 }
 
-function PlayerCardPair({
+export function PlayerCardPair({
   selfName,
   opponentName,
   opponentLevel,
@@ -590,7 +745,7 @@ function PlayerCardPair({
       <PlayerCard
         name={selfName}
         level={1}
-        active={activeSide === 'self'}
+        active={activeSide === 'self' || activeSide === 'both'}
         clockText={selfClock}
         livesLeft={showLives ? SUDDEN_DEATH_BUDGET - turns.self : undefined}
       />
@@ -599,7 +754,7 @@ function PlayerCardPair({
         name={opponentName}
         level={opponentLevel}
         flag={opponentFlag}
-        active={activeSide === 'opponent'}
+        active={activeSide === 'opponent' || activeSide === 'both'}
         clockText={opponentClock}
         livesLeft={showLives ? SUDDEN_DEATH_BUDGET - turns.opponent : undefined}
       />
@@ -701,12 +856,22 @@ interface SoloRaceBannerProps {
   readonly opponentName: string;
   readonly opponentLevel: number;
   readonly opponentFlag?: string;
+  /**
+   * Engine-path live count of opponent guesses. Surfaces a "N
+   * guesses" badge so the racing player has a sense of how close
+   * the rival is without leaking individual guesses or feedback
+   * (Bug 3 invariant — see `timeline` ternary in `MatchScreen`).
+   * `undefined` on the mock path → the badge is suppressed entirely
+   * (the count would be a stale fixture, not live state).
+   */
+  readonly opponentGuessCount?: number;
 }
 
-function SoloRaceBanner({
+export function SoloRaceBanner({
   opponentName,
   opponentLevel,
   opponentFlag,
+  opponentGuessCount,
 }: SoloRaceBannerProps): React.JSX.Element {
   return (
     <View style={styles.soloBanner}>
@@ -719,6 +884,13 @@ function SoloRaceBanner({
           {opponentFlag != null ? ` · ${opponentFlag}` : ''}
         </Text>
       </View>
+      {opponentGuessCount !== undefined ? (
+        <View style={styles.soloOpponentCountBadge}>
+          <Text style={styles.soloOpponentCountText}>
+            {opponentName}: {opponentGuessCount} {opponentGuessCount === 1 ? 'guess' : 'guesses'}
+          </Text>
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -966,6 +1138,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+  },
+  soloOpponentCountBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: withAlpha('#14b8a6', 0.5),
+    backgroundColor: withAlpha('#14b8a6', 0.12),
+  },
+  soloOpponentCountText: {
+    fontFamily: fonts.bodySemibold,
+    fontSize: 11,
+    color: '#14b8a6',
+    letterSpacing: 0.4,
   },
   timeline: {
     flex: 1,

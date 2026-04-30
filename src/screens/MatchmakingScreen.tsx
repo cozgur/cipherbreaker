@@ -46,7 +46,10 @@ export function MatchmakingScreen(): React.JSX.Element {
   const { modeId } = route.params;
 
   const mode = useMemo(() => findMode(modeId), [modeId]);
-  const isMirror = mode?.rules.flags.parallelRace === true;
+  // Mirror copy ("Solo race · same code, different minds") is keyed
+  // off `sharedSecret`, not `parallelRace`. Phase 6's flag split lets
+  // Mode 6 ride parallelEngine without taking on Mirror's UX.
+  const isMirror = mode?.rules.flags.sharedSecret === true;
 
   const [opponent, setOpponent] = useState<MockOpponent | null>(null);
   const opponentRef = useRef<MockOpponent | null>(null);

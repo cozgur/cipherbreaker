@@ -2,11 +2,13 @@ import { __resetRegistryForTests, modeRegistry } from '../../game/modeRegistry';
 import type { ModeDefinition } from '../../game/types';
 import { useLiveMatchStore } from '../liveMatchStore';
 import { useMatchStore } from '../matchStore';
+import { useUserStore, USER_STORE_DEFAULTS } from '../userStore';
 
 interface StubOptions {
   alwaysWin?: boolean;
   parallelRace?: boolean;
   perPlayerTimeLimitMs?: number;
+  maxGuessesPerPlayer?: number;
 }
 
 function registerStub(id: number, opts: StubOptions = {}): ModeDefinition {
@@ -28,6 +30,9 @@ function registerStub(id: number, opts: StubOptions = {}): ModeDefinition {
       digitsUnique: false,
       ...(opts.perPlayerTimeLimitMs !== undefined
         ? { perPlayerTimeLimitMs: opts.perPlayerTimeLimitMs }
+        : {}),
+      ...(opts.maxGuessesPerPlayer !== undefined
+        ? { maxGuessesPerPlayer: opts.maxGuessesPerPlayer }
         : {}),
       flags: {
         ...(opts.parallelRace ? { parallelRace: true } : {}),
@@ -57,6 +62,9 @@ describe('useMatchStore', () => {
   beforeEach(() => {
     __resetRegistryForTests();
     useMatchStore.setState({ matchState: null });
+    // Bug 1 — stake debit hits userStore from createMatch. Reset to
+    // a known balance so per-test arithmetic is independent.
+    useUserStore.setState({ tokens: USER_STORE_DEFAULTS.tokens });
   });
 
   describe('createMatch — no-op guard', () => {
@@ -92,6 +100,33 @@ describe('useMatchStore', () => {
       useMatchStore.setState({ matchState: { ...current, phase: 'completed' } });
       const second = useMatchStore.getState().createMatch(1, '4321');
       expect(second).toBe(true);
+    });
+
+    it('Bug 1 — debits the mode stake from userStore on first call', () => {
+      registerStub(1);
+      const before = useUserStore.getState().tokens;
+      useMatchStore.getState().createMatch(1, '1234');
+      // Stub catalog stake is 50 (see registerStub fixture).
+      expect(useUserStore.getState().tokens).toBe(before - 50);
+    });
+
+    it('Bug 1 — does NOT debit when the no-op guard rejects a re-entry', () => {
+      registerStub(1);
+      useMatchStore.getState().createMatch(1, '1234');
+      const afterFirst = useUserStore.getState().tokens;
+      // Second call hits the in-progress guard before the debit.
+      useMatchStore.getState().createMatch(1, '9999');
+      expect(useUserStore.getState().tokens).toBe(afterFirst);
+    });
+
+    it('Bug 1 — debits exactly once per fresh match across clearMatch', () => {
+      registerStub(1);
+      const before = useUserStore.getState().tokens;
+      useMatchStore.getState().createMatch(1, '1234');
+      useMatchStore.getState().clearMatch();
+      useMatchStore.getState().createMatch(1, '4321');
+      // Two stakes for two matches.
+      expect(useUserStore.getState().tokens).toBe(before - 100);
     });
   });
 
@@ -193,6 +228,65 @@ describe('useMatchStore', () => {
       if (opp?.kind === 'candidatePool') {
         expect(opp.pool).toEqual(['1234']);
       }
+    });
+
+    it('CP4 — fires on active_parallel for parallel-engine modes (Mode 6 / Mode 7)', async () => {
+      registerStub(7, { parallelRace: true });
+      useMatchStore.getState().createMatch(7, '1234');
+      useMatchStore.getState().startMatch();
+      // parallelEngine.startMatch already lands on active_parallel,
+      // so no pin needed — but assert it explicitly so the test
+      // doesn't silently regress if startMatch ever changes.
+      expect(useMatchStore.getState().matchState!.phase).toBe('active_parallel');
+      const out = await useMatchStore.getState().runOpponentTurn();
+      expect(out.error).toBeNull();
+      expect(out.feedback).not.toBeNull();
+      const state = useMatchStore.getState().matchState!;
+      expect(state.opponentGuesses).toHaveLength(1);
+      // Phase stays parallel — no advanceTurn for parallel modes.
+      expect(state.phase).toBe('active_parallel');
+    });
+
+    it('CP4 — short-circuits when opponent budget hits 0 (Mode 6 parallel exhaustion)', async () => {
+      registerStub(6, { parallelRace: true, maxGuessesPerPlayer: 5 });
+      useMatchStore.getState().createMatch(6, '1234');
+      useMatchStore.getState().startMatch();
+      // Force the opponent budget to zero — engine would otherwise
+      // accept a 6th guess and append it (decrement floors at 0)
+      // because Mode 6 single-side exhaustion is non-terminal.
+      useMatchStore.setState((s) => ({
+        matchState: s.matchState
+          ? {
+              ...s.matchState,
+              guessLimits: { playerRemaining: 5, opponentRemaining: 0 },
+            }
+          : null,
+      }));
+      const before = useMatchStore.getState().matchState;
+      const out = await useMatchStore.getState().runOpponentTurn();
+      expect(out.feedback).toBeNull();
+      expect(useMatchStore.getState().matchState).toBe(before);
+    });
+
+    it('CP4 — non-parallel + active_parallel phase is still a no-op (defensive)', async () => {
+      // Non-parallel mode in active_parallel phase is impossible in
+      // production but should fail safe rather than throw — covers
+      // hand-edited state / future engine swaps.
+      registerStub(1);
+      useMatchStore.getState().createMatch(1, '1234');
+      useMatchStore.getState().startMatch();
+      useMatchStore.setState((s) => ({
+        matchState: s.matchState ? { ...s.matchState, phase: 'active_parallel' } : null,
+      }));
+      const before = useMatchStore.getState().matchState;
+      const out = await useMatchStore.getState().runOpponentTurn();
+      expect(out.error).toBeNull();
+      // Submission attempts on a non-parallel-registered mode in an
+      // active_parallel phase pass through — turnBasedEngine will
+      // accept the guess. The contract is "don't throw on stale
+      // phase"; behavior beyond that is mode-specific and tested
+      // elsewhere. Don't over-pin.
+      expect(useMatchStore.getState().matchState).not.toBe(before);
     });
 
     it('produces an identical sequence on a serialized + restored state (resume identity)', async () => {

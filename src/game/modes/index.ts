@@ -16,6 +16,7 @@ import { mode3Precision } from './mode3Precision';
 import { mode4Blitz } from './mode4Blitz';
 import { mode5Blackout } from './mode5Blackout';
 import { mode6SuddenDeath } from './mode6SuddenDeath';
+import { mode7Mirror } from './mode7Mirror';
 
 modeRegistry.register(mode1ColorMatch);
 modeRegistry.register(mode2HighLow);
@@ -23,6 +24,7 @@ modeRegistry.register(mode3Precision);
 modeRegistry.register(mode4Blitz);
 modeRegistry.register(mode5Blackout);
 modeRegistry.register(mode6SuddenDeath);
+modeRegistry.register(mode7Mirror);
 
 export {
   mode1ColorMatch,
@@ -31,4 +33,5 @@ export {
   mode4Blitz,
   mode5Blackout,
   mode6SuddenDeath,
+  mode7Mirror,
 };

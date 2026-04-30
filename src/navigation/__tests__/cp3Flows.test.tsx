@@ -123,7 +123,11 @@ describe('CP3 flows', () => {
     expect(utils.queryByText('VS')).toBeNull();
   });
 
-  it('Forfeit confirm: stake charged + popToTop to Home', () => {
+  it('Forfeit confirm: pops to Home without re-debiting (stake debit lives at createMatch)', () => {
+    // Bug 1 wiring (CP5): stake is debited inside `matchStore.createMatch`,
+    // not at forfeit. This flow uses the mock path (no createMatch),
+    // so balances stay flat; the engine-path debit + reward arithmetic
+    // is covered in `cp4Flows.test.tsx`.
     const before = mockUser.tokens;
     jest.spyOn(Alert, 'alert').mockImplementation((_t, _m, buttons) => {
       const forfeit = buttons?.find((b) => b.text === 'Forfeit');
@@ -133,7 +137,7 @@ describe('CP3 flows', () => {
     act(() => {
       fireEvent.press(utils.getByLabelText('Forfeit match'));
     });
-    expect(mockUser.tokens).toBe(before - 50);
+    expect(mockUser.tokens).toBe(before);
     expect(utils.navRef.current?.getCurrentRoute()?.name).toBe('Home');
   });
 });

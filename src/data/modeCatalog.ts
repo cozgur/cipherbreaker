@@ -131,7 +131,14 @@ export const modeCatalog: readonly ModeCatalogEntry[] = [
       secretLength: 4,
       digitsUnique: false,
       maxGuessesPerPlayer: 5,
-      flags: { suddenDeath: true },
+      // Phase 6 CP3 — flipped to parallelEngine after the parity test
+      // (mode6ParityLegacyVsParallel.test.ts) confirmed identical
+      // outcomes across the two engines for crack/exhaustion/last-turn
+      // scenarios. `sharedSecret` is intentionally absent: Mode 6
+      // keeps the player-set secret (SecretSetup runs as before) —
+      // only Mode 7 (Mirror) carries `sharedSecret` for engine-
+      // generated mirroring.
+      flags: { suddenDeath: true, parallelRace: true },
     },
   },
   {
@@ -151,7 +158,7 @@ export const modeCatalog: readonly ModeCatalogEntry[] = [
     rules: {
       secretLength: 4,
       digitsUnique: false,
-      flags: { parallelRace: true },
+      flags: { parallelRace: true, sharedSecret: true },
     },
   },
 ];

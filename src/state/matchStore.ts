@@ -31,6 +31,7 @@ import type {
   ValidationError,
 } from '../game/types';
 import { useLiveMatchStore } from './liveMatchStore';
+import { useUserStore } from './userStore';
 
 /**
  * Mode 4 — capture the live tick value as a durable snapshot the
@@ -100,6 +101,16 @@ export const useMatchStore = create<MatchStoreState & MatchStoreActions>()(
         const engine = selectEngine(mode);
         const rngState = { seed: Date.now() >>> 0, callCount: 0 };
         const next = engine.createMatch(modeId, playerSecret, rngState);
+        // Stake debit lives here, not in HomeScreen/SecretSetup, so every
+        // entry path (turn-based via SecretSetup, parallel via direct
+        // navigation) charges exactly once. The in-progress guard above
+        // makes this idempotent: a re-entry returns `false` before we
+        // reach the debit. `subtractTokens` clamps at zero, so an
+        // insufficient balance silently caps — HomeScreen's pre-check
+        // is the policy gate; this is the bookkeeping seam. Stalemate
+        // refund (MatchResultScreen) and victory reward (engine path)
+        // both assume stake was already debited here.
+        useUserStore.getState().subtractTokens(mode.meta.stake);
         set({ matchState: next });
         return true;
       },
@@ -141,7 +152,29 @@ export const useMatchStore = create<MatchStoreState & MatchStoreActions>()(
 
       runOpponentTurn: async () => {
         const current = get().matchState;
-        if (current === null || current.phase !== 'active_turn_opponent') {
+        if (current === null) {
+          return { feedback: null, error: null };
+        }
+        // Phase gate — turn-based modes fire only on opponent's turn;
+        // parallel modes (Mode 6 + Mode 7) accept any active_parallel
+        // moment because there's no rotation. Anything else (setup /
+        // completed / active_turn_player) is a no-op so screens that
+        // accidentally fire on stale phases don't double-submit.
+        const isOpponentTurn = current.phase === 'active_turn_opponent';
+        const isParallelTurn = current.phase === 'active_parallel';
+        if (!isOpponentTurn && !isParallelTurn) {
+          return { feedback: null, error: null };
+        }
+        // Parallel-mode budget guard — Mode 6's parallelEngine appends
+        // a 6th opponent guess (decrement floors at 0) without
+        // terminating, so without this short-circuit the bot would
+        // exceed its budget. Mode 7 has no `guessLimits` → falsy
+        // optional chain → falls through.
+        if (
+          isParallelTurn &&
+          current.guessLimits !== undefined &&
+          current.guessLimits.opponentRemaining <= 0
+        ) {
           return { feedback: null, error: null };
         }
         const mode = modeRegistry.get(current.modeId);

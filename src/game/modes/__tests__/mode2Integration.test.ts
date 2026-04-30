@@ -6,8 +6,17 @@
  */
 
 import { __resetRegistryForTests, modeRegistry } from '../../modeRegistry';
+import type { GuessEntry } from '../../types';
 import { useMatchStore } from '../../../state/matchStore';
 import { mode2HighLow } from '../mode2HighLow';
+
+// Wall-clock `createdAt` is stamped per-call by `Date.now()`, so it
+// diverges between the live run and the rehydrate-then-replay run.
+// Resume identity is about the bot's decision (digits/feedback/RNG/
+// solver), not the wall clock.
+function stripTimestamp({ createdAt: _createdAt, ...rest }: GuessEntry): Omit<GuessEntry, 'createdAt'> {
+  return rest;
+}
 
 function pinPhase(phase: 'active_turn_player' | 'active_turn_opponent'): void {
   useMatchStore.setState((s) => ({
@@ -120,7 +129,9 @@ describe('Mode 2 — integration through useMatchStore', () => {
       await useMatchStore.getState().runOpponentTurn();
       const restoredAfter = useMatchStore.getState().matchState!;
 
-      expect(restoredAfter.opponentGuesses).toEqual(liveAfter.opponentGuesses);
+      expect(restoredAfter.opponentGuesses.map(stripTimestamp)).toEqual(
+        liveAfter.opponentGuesses.map(stripTimestamp),
+      );
       expect(restoredAfter.rngState).toEqual(liveAfter.rngState);
       const liveSolver = liveAfter.solverStates?.opponent;
       const restoredSolver = restoredAfter.solverStates?.opponent;

@@ -162,11 +162,18 @@ export async function submitGuess(
     limitMs !== undefined && state.clockSnapshot !== undefined
       ? Math.max(0, limitMs - (author === 'self' ? state.clockSnapshot.playerMs : state.clockSnapshot.opponentMs))
       : undefined;
+  // `createdAt` here is set for parity with `parallelEngine` so the
+  // `GuessEntry` shape is uniform across engines. `interleaveTimeline`
+  // ignores it for turn-based modes (round-robin alternation reads
+  // `firstAuthor`); having the field present is harmless and makes
+  // future "rewind to chronological view" diagnostics trivial.
+  const submittedAt = Date.now();
   const entry: GuessEntry = {
     side: author,
     guessIndex,
     digits: parseDigits(guess),
     feedback,
+    createdAt: submittedAt,
     ...(elapsedMs !== undefined ? { elapsedMs } : {}),
   };
 
@@ -176,7 +183,7 @@ export async function submitGuess(
     opponentGuesses:
       author === 'opponent' ? [...state.opponentGuesses, entry] : state.opponentGuesses,
     rngState: rng.getState(),
-    lastUpdatedAt: Date.now(),
+    lastUpdatedAt: submittedAt,
   };
 
   if (mode.rules.maxGuessesPerPlayer !== undefined && newState.guessLimits) {

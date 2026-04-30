@@ -89,7 +89,12 @@ describe('MatchScreen — Modes 1-6', () => {
     expect(current?.params).toEqual({ modeId: 1, outcome: 'victory' });
   });
 
-  it('Forfeit Alert → confirm charges the stake and pops to top', () => {
+  it('Forfeit Alert → confirm pops to top without re-debiting tokens (stake was debited at createMatch)', () => {
+    // Bug 1 wiring: stake is debited inside `matchStore.createMatch`,
+    // so forfeit no longer touches tokens — doing so would double-
+    // charge. This test renders the mock path (no createMatch call),
+    // so tokens stay flat across the forfeit; the engine-path stake
+    // bookkeeping is covered in `cp4Flows.test.tsx`.
     const startTokens = mockUser.tokens;
     jest.spyOn(Alert, 'alert').mockImplementation((_t, _m, buttons) => {
       const forfeit = buttons?.find((b) => b.text === 'Forfeit');
@@ -108,7 +113,7 @@ describe('MatchScreen — Modes 1-6', () => {
     act(() => {
       fireEvent.press(utils.getByLabelText('Forfeit match'));
     });
-    expect(mockUser.tokens).toBe(startTokens - 50);
+    expect(mockUser.tokens).toBe(startTokens);
     expect(utils.navRef.current?.getCurrentRoute()?.name).toBe('Home');
   });
 
