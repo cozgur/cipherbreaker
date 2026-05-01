@@ -264,8 +264,13 @@ describe('useUserStore', () => {
     });
   });
 
-  describe('migrate v1 → v2 (Phase 7A.1 schema bump)', () => {
-    it('renames stats.tokensEarned → stats.totalTokensEarned and seeds empty recentMatches', () => {
+  describe('migration — chained v1 → v2 → v3', () => {
+    // Phase 7A.4 CP3: chained migration pattern. A v1 blob hydrates
+    // through both upgrade steps to land at v3; a v2 blob takes the
+    // v2 → v3 step alone; v3 is identity. Each step preserves prior
+    // fields and seeds the new fields with documented defaults.
+
+    it('v1 → v3: renames tokensEarned, seeds recentMatches, AND seeds dailyChallenge defaults', () => {
       const v1State = {
         username: 'phoenix99',
         tokens: 1234,
@@ -284,6 +289,7 @@ describe('useUserStore', () => {
         perMode: { 1: { winRate: 70 } },
       };
       const next = __migrateUserStoreForTests(v1State, 1);
+      // v1 → v2 transformations preserved.
       expect(next.username).toBe('phoenix99');
       expect(next.tokens).toBe(1234);
       expect(next.level).toBe(8);
@@ -292,25 +298,104 @@ describe('useUserStore', () => {
       expect(next.stats.gamesPlayed).toBe(50);
       expect(next.stats.winRate).toBe(60);
       expect(next.perMode[1]).toEqual({ winRate: 70 });
+      // v2 → v3 dailyChallenge seeded with full default shape.
+      expect(next.dailyChallenge).toEqual({
+        lastPlayedDate: null,
+        currentStreak: 0,
+        longestStreak: 0,
+        effectiveDayOffset: 0,
+        inProgress: null,
+        lastResult: null,
+        history: [],
+      });
     });
 
-    it('falls back to defaults for an unknown version stamp', () => {
+    it('v2 → v3: preserves every v2 field byte-for-byte and seeds dailyChallenge', () => {
+      // Realistic v2 blob — what someone who hydrated through Phase
+      // 7A.1 looks like on disk today. recentMatches has real data.
+      const v2State = {
+        username: 'cipher_kid',
+        tokens: 2400,
+        level: 14,
+        currentXP: 1100,
+        targetXP: 2000,
+        hasOnboarded: true,
+        stats: {
+          gamesPlayed: 89,
+          winRate: 71,
+          currentStreak: 5,
+          bestStreak: 13,
+          avgTurns: 4.7,
+          totalTokensEarned: 18_500,
+          recentMatches: ['victory', 'victory', 'defeat', 'victory'],
+        },
+        perMode: {
+          1: { winRate: 75 },
+          2: { winRate: 68 },
+          3: { winRate: 62 },
+          4: { winRate: 60 },
+          5: { winRate: 55 },
+          6: { winRate: 65 },
+          7: { winRate: 58 },
+        },
+      };
+      const next = __migrateUserStoreForTests(v2State, 2);
+      // Every v2 field survives.
+      expect(next.username).toBe('cipher_kid');
+      expect(next.tokens).toBe(2400);
+      expect(next.level).toBe(14);
+      expect(next.currentXP).toBe(1100);
+      expect(next.targetXP).toBe(2000);
+      expect(next.stats.gamesPlayed).toBe(89);
+      expect(next.stats.totalTokensEarned).toBe(18_500);
+      expect(next.stats.recentMatches).toEqual(['victory', 'victory', 'defeat', 'victory']);
+      expect(next.perMode[3]).toEqual({ winRate: 62 });
+      expect(next.perMode[7]).toEqual({ winRate: 58 });
+      // dailyChallenge seeded fresh — no historical Daily data exists
+      // pre-7A.4, so every v2 hydrate starts the streak from zero.
+      expect(next.dailyChallenge.lastPlayedDate).toBeNull();
+      expect(next.dailyChallenge.currentStreak).toBe(0);
+      expect(next.dailyChallenge.longestStreak).toBe(0);
+      expect(next.dailyChallenge.effectiveDayOffset).toBe(0);
+      expect(next.dailyChallenge.history).toEqual([]);
+      expect(next.dailyChallenge.inProgress).toBeNull();
+      expect(next.dailyChallenge.lastResult).toBeNull();
+    });
+
+    it('v3 is idempotent — current-version state passes through unchanged', () => {
+      const next = __migrateUserStoreForTests(USER_STORE_DEFAULTS, 3);
+      expect(next).toBe(USER_STORE_DEFAULTS);
+    });
+
+    it('falls back to defaults for an unknown (future) version stamp', () => {
       const next = __migrateUserStoreForTests({}, 99);
       expect(next).toEqual(USER_STORE_DEFAULTS);
     });
 
-    it('passes through current-version state untouched', () => {
-      const next = __migrateUserStoreForTests(USER_STORE_DEFAULTS, 2);
-      expect(next).toBe(USER_STORE_DEFAULTS);
-    });
-
-    it('handles a v1 state with a missing `stats` key without throwing', () => {
+    it('handles a v1 state with a missing `stats` key without throwing — chains to v3', () => {
       const partial = { username: 'ghost', tokens: 100 };
       const next = __migrateUserStoreForTests(partial, 1);
       expect(next.username).toBe('ghost');
       expect(next.tokens).toBe(100);
       expect(next.stats.recentMatches).toEqual([]);
       expect(next.stats.totalTokensEarned).toBe(USER_STORE_DEFAULTS.stats.totalTokensEarned);
+      expect(next.dailyChallenge.history).toEqual([]);
+    });
+
+    it('the v2 → v3 step alone never touches non-dailyChallenge fields', () => {
+      // Sanity guard — if a future PR accidentally re-derives stats
+      // inside migrateV2ToV3 (e.g. "let us recompute winRate"), the
+      // round-trip below stops being identity on the stats slice.
+      const v2 = {
+        ...USER_STORE_DEFAULTS,
+        // Strip the v3-specific field to mimic an actual v2 blob.
+      } as unknown;
+      const v2WithoutDaily = { ...(v2 as object) } as Record<string, unknown>;
+      delete v2WithoutDaily.dailyChallenge;
+      const next = __migrateUserStoreForTests(v2WithoutDaily, 2);
+      expect(next.username).toBe(USER_STORE_DEFAULTS.username);
+      expect(next.stats).toEqual(USER_STORE_DEFAULTS.stats);
+      expect(next.perMode).toEqual(USER_STORE_DEFAULTS.perMode);
     });
   });
 });

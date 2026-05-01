@@ -18,6 +18,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
+import type { DailyChallengeState } from '@game/daily/types';
 import type { MatchResultOutcome } from '@navigation/routes';
 
 export interface UserStats {
@@ -53,6 +54,12 @@ export interface UserStoreState {
   readonly hasOnboarded: boolean;
   readonly stats: UserStats;
   readonly perMode: Readonly<Record<number, { readonly winRate: number }>>;
+  /**
+   * Phase 7A.4 — Daily Challenge per-user persisted state. Streak,
+   * regression offset, in-progress attempt, last result, history.
+   * Schema landed in v3 migration. See `@game/daily/types`.
+   */
+  readonly dailyChallenge: DailyChallengeState;
 }
 
 export interface RecordMatchResultInput {
@@ -94,6 +101,16 @@ export interface UserStoreActions {
   addXp(amount: number): void;
 }
 
+export const DAILY_CHALLENGE_DEFAULTS: DailyChallengeState = {
+  lastPlayedDate: null,
+  currentStreak: 0,
+  longestStreak: 0,
+  effectiveDayOffset: 0,
+  inProgress: null,
+  lastResult: null,
+  history: [],
+};
+
 export const USER_STORE_DEFAULTS: UserStoreState = {
   username: 'nova_code',
   tokens: 1840,
@@ -119,50 +136,97 @@ export const USER_STORE_DEFAULTS: UserStoreState = {
     6: { winRate: 61 },
     7: { winRate: 52 },
   },
+  dailyChallenge: DAILY_CHALLENGE_DEFAULTS,
 };
 
-const STORE_VERSION = 2;
+const STORE_VERSION = 3;
 
 /**
  * Migrate persisted state across `STORE_VERSION` bumps. The persist
  * middleware feeds us whatever was on disk; we map it onto the
  * current `UserStoreState` shape (actions are re-bound by zustand).
  *
- * v1 → v2: rename `stats.tokensEarned` → `stats.totalTokensEarned`,
- * preserve the prior cumulative value (so the player keeps their
- * lifetime credit), and seed `stats.recentMatches: []`.
+ * Chained migration pattern (Phase 7A.4 CP3 advisor discipline): each
+ * version step is its own pure function consuming the prior shape and
+ * producing the next one. The dispatcher loops until `version ===
+ * STORE_VERSION` so a v1 blob lands at v3 by going through v1 → v2 →
+ * v3 — no inline-collapsed branches that drift out of sync as new
+ * versions land.
+ *
+ * Step list:
+ *   v1 → v2 (Phase 7A.1): rename `stats.tokensEarned` →
+ *     `stats.totalTokensEarned`; seed `stats.recentMatches: []`.
+ *   v2 → v3 (Phase 7A.4): seed `dailyChallenge` defaults; preserve
+ *     every v2 field byte-for-byte (no economy / streak / stats
+ *     touched).
  */
+
+// Loose v1 shape — only the fields the v1→v2 mapper inspects.
+type V1Stats = Omit<UserStats, 'totalTokensEarned' | 'recentMatches'> & {
+  readonly tokensEarned?: number;
+};
+type V1State = Omit<UserStoreState, 'stats' | 'dailyChallenge'> & {
+  readonly stats?: V1Stats;
+};
+
+// v2 shape — same as today's UserStoreState minus `dailyChallenge`.
+type V2State = Omit<UserStoreState, 'dailyChallenge'>;
+
+function migrateV1ToV2(persisted: unknown): V2State {
+  const v1 = (persisted ?? {}) as V1State;
+  const v1Stats = v1.stats ?? ({} as V1Stats);
+  return {
+    ...USER_STORE_DEFAULTS,
+    ...v1,
+    stats: {
+      gamesPlayed: v1Stats.gamesPlayed ?? USER_STORE_DEFAULTS.stats.gamesPlayed,
+      winRate: v1Stats.winRate ?? USER_STORE_DEFAULTS.stats.winRate,
+      currentStreak: v1Stats.currentStreak ?? USER_STORE_DEFAULTS.stats.currentStreak,
+      bestStreak: v1Stats.bestStreak ?? USER_STORE_DEFAULTS.stats.bestStreak,
+      avgTurns: v1Stats.avgTurns ?? USER_STORE_DEFAULTS.stats.avgTurns,
+      totalTokensEarned: v1Stats.tokensEarned ?? USER_STORE_DEFAULTS.stats.totalTokensEarned,
+      recentMatches: [],
+    },
+  };
+}
+
+function migrateV2ToV3(persisted: unknown): UserStoreState {
+  const v2 = (persisted ?? {}) as V2State;
+  return {
+    ...v2,
+    dailyChallenge: DAILY_CHALLENGE_DEFAULTS,
+  };
+}
+
 function migrateUserStore(persisted: unknown, version: number): UserStoreState {
   if (version === STORE_VERSION) {
     return persisted as UserStoreState;
   }
-
-  if (version === 1) {
-    type V1Stats = Omit<UserStats, 'totalTokensEarned' | 'recentMatches'> & {
-      readonly tokensEarned?: number;
-    };
-    type V1State = Omit<UserStoreState, 'stats'> & { readonly stats?: V1Stats };
-    const v1 = (persisted ?? {}) as V1State;
-    const v1Stats = v1.stats ?? ({} as V1Stats);
-    return {
-      ...USER_STORE_DEFAULTS,
-      ...v1,
-      stats: {
-        gamesPlayed: v1Stats.gamesPlayed ?? USER_STORE_DEFAULTS.stats.gamesPlayed,
-        winRate: v1Stats.winRate ?? USER_STORE_DEFAULTS.stats.winRate,
-        currentStreak: v1Stats.currentStreak ?? USER_STORE_DEFAULTS.stats.currentStreak,
-        bestStreak: v1Stats.bestStreak ?? USER_STORE_DEFAULTS.stats.bestStreak,
-        avgTurns: v1Stats.avgTurns ?? USER_STORE_DEFAULTS.stats.avgTurns,
-        totalTokensEarned: v1Stats.tokensEarned ?? USER_STORE_DEFAULTS.stats.totalTokensEarned,
-        recentMatches: [],
-      },
-    };
+  // Future / corrupt version stamps fall through to defaults rather
+  // than attempting a downgrade — losing persisted progress is the
+  // documented behaviour for an unrecognised version. (We can't
+  // safely synthesise a downgrade because the future shape might
+  // contain fields the current code doesn't understand.)
+  if (version < 1 || version > STORE_VERSION) {
+    return USER_STORE_DEFAULTS;
   }
-
-  // Older / unknown versions — fall back to defaults so the app
-  // still boots. The user loses their persisted progress, which is
-  // the documented behaviour for an unrecognised version stamp.
-  return USER_STORE_DEFAULTS;
+  let current: unknown = persisted;
+  let v = version;
+  while (v < STORE_VERSION) {
+    if (v === 1) {
+      current = migrateV1ToV2(current);
+      v = 2;
+    } else if (v === 2) {
+      current = migrateV2ToV3(current);
+      v = 3;
+    } else {
+      // Defensive — the bounds check above should prevent reaching
+      // this branch, but it keeps the loop total in case the bound
+      // check is ever loosened.
+      return USER_STORE_DEFAULTS;
+    }
+  }
+  return current as UserStoreState;
 }
 
 export const useUserStore = create<UserStoreState & UserStoreActions>()(
