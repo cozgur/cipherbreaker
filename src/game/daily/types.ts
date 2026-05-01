@@ -88,13 +88,22 @@ export interface DailyResultSummary {
 /**
  * Persisted per-user Daily Challenge state — `userStore.dailyChallenge`
  * in schema v3. Migration v2 → v3 (CP3) seeds defaults: empty
- * history, no streak, no in-progress attempt, no last result.
+ * history, no streak, no last result.
  *
  * Reading A + `effectiveDayOffset` model: streak break increments
  * `effectiveDayOffset` by the **prior** tier's period length (7 for
  * tier-5 break → 4-digit period; 10 for tier-6 break → 5-digit
  * period; 0 at tier-4 floor). `effectiveDay = calendarDay -
  * effectiveDayOffset` feeds the tier-from-day formula.
+ *
+ * Architectural note (Phase 7A.4 CP4): the in-progress attempt
+ * (`DailyInProgress`) was originally forward-declared as a field
+ * here, but the matchStore-pattern split lands it in
+ * `dailyChallengeStore` instead — that store owns per-attempt
+ * lifecycle (parallel to how `matchStore` owns `MatchState` for
+ * Modes 1-7). userStore.dailyChallenge stays per-user-durable;
+ * dailyChallengeStore stays per-attempt-durable. One source of
+ * truth per concept, no cross-store hydration race.
  */
 export interface DailyChallengeState {
   readonly lastPlayedDate: string | null;
@@ -102,7 +111,6 @@ export interface DailyChallengeState {
   readonly longestStreak: number;
   /** Cumulative regression — see Reading A model above. */
   readonly effectiveDayOffset: number;
-  readonly inProgress: DailyInProgress | null;
   readonly lastResult: DailyResultSummary | null;
   /** Cap 90 — see `DailyHistoryEntry`. */
   readonly history: readonly DailyHistoryEntry[];

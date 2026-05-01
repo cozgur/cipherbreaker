@@ -6,7 +6,6 @@ const FRESH: DailyChallengeState = {
   currentStreak: 0,
   longestStreak: 0,
   effectiveDayOffset: 0,
-  inProgress: null,
   lastResult: null,
   history: [],
 };

@@ -33,4 +33,15 @@ export type RootStackParamList = {
   Profile: undefined;
   InsufficientTokens: { modeId: number };
   ChangeUsername: undefined;
+  /**
+   * Phase 7A.4 — Daily Challenge anchor feature. No params: the
+   * screen reads "today" from the system clock at mount and consults
+   * `dailyChallengeStore.currentAttempt` for resume vs fresh path.
+   */
+  Daily: undefined;
+  /**
+   * Phase 7A.4 — Daily Challenge result. No params: the screen reads
+   * the just-completed result from `userStore.dailyChallenge.lastResult`.
+   */
+  DailyResult: undefined;
 };

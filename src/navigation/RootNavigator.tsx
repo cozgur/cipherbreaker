@@ -4,6 +4,8 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { mockUser } from '@data/mockUser';
 import { AdWatchScreen } from '@screens/AdWatchScreen';
 import { ChangeUsernameModal } from '@screens/ChangeUsernameModal';
+import { DailyMatchScreen } from '@screens/DailyMatchScreen';
+import { DailyResultScreen } from '@screens/DailyResultScreen';
 import { HomeScreen } from '@screens/HomeScreen';
 import { InsufficientTokensModal } from '@screens/InsufficientTokensModal';
 import { MatchmakingScreen } from '@screens/MatchmakingScreen';
@@ -76,6 +78,12 @@ export function RootNavigator(): React.JSX.Element {
           name="ChangeUsername"
           component={ChangeUsernameModal}
           options={{ presentation: 'transparentModal', animation: 'fade' }}
+        />
+        <Stack.Screen name="Daily" component={DailyMatchScreen} options={{ gestureEnabled: false }} />
+        <Stack.Screen
+          name="DailyResult"
+          component={DailyResultScreen}
+          options={{ gestureEnabled: false }}
         />
       </Stack.Navigator>
     </NavigationContainer>

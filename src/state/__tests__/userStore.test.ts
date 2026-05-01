@@ -299,12 +299,14 @@ describe('useUserStore', () => {
       expect(next.stats.winRate).toBe(60);
       expect(next.perMode[1]).toEqual({ winRate: 70 });
       // v2 → v3 dailyChallenge seeded with full default shape.
+      // `inProgress` deliberately NOT a field of DailyChallengeState
+      // — the in-progress attempt lives in `dailyChallengeStore`
+      // (matchStore-pattern split, Phase 7A.4 CP4 schema cleanup).
       expect(next.dailyChallenge).toEqual({
         lastPlayedDate: null,
         currentStreak: 0,
         longestStreak: 0,
         effectiveDayOffset: 0,
-        inProgress: null,
         lastResult: null,
         history: [],
       });
@@ -358,7 +360,6 @@ describe('useUserStore', () => {
       expect(next.dailyChallenge.longestStreak).toBe(0);
       expect(next.dailyChallenge.effectiveDayOffset).toBe(0);
       expect(next.dailyChallenge.history).toEqual([]);
-      expect(next.dailyChallenge.inProgress).toBeNull();
       expect(next.dailyChallenge.lastResult).toBeNull();
     });
 

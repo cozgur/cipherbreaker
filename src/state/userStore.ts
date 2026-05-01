@@ -18,7 +18,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
-import type { DailyChallengeState } from '@game/daily/types';
+import type { DailyChallengeState, DailyResultSummary } from '@game/daily/types';
+import { computeNextDailyStreakState } from '@game/daily/streak';
+import { calendarDayIndex, effectiveDigitTier, TIER_4_PERIOD, TIER_5_PERIOD } from '@game/daily/dailyConfig';
 import type { MatchResultOutcome } from '@navigation/routes';
 
 export interface UserStats {
@@ -99,6 +101,23 @@ export interface UserStoreActions {
   recordMatchResult(input: RecordMatchResultInput): void;
   /** Positive-only. Raw counter — Phase 7A wires the level-up rollover. */
   addXp(amount: number): void;
+  /**
+   * Phase 7A.4 — record a completed Daily Challenge attempt. Updates
+   * `lastResult`, pushes onto cap-90 `history`, advances streak +
+   * regression offset via `computeNextDailyStreakState`, and stamps
+   * `lastPlayedDate`. The `dailyChallengeStore` action layer calls
+   * this after clearing its own `currentAttempt` — single deterministic
+   * sequence (matchStore-pattern).
+   */
+  recordDailyResult(result: DailyResultSummary): void;
+  /**
+   * Phase 7A.4 — record a missed day (cross-midnight stale-drop or
+   * skipped calendar day). Breaks streak, applies tier regression
+   * (`effectiveDayOffset += prior tier period`), stamps
+   * `lastPlayedDate`. No history entry — a missed day is absence,
+   * not an attempt.
+   */
+  recordMissedDay(today: string): void;
 }
 
 export const DAILY_CHALLENGE_DEFAULTS: DailyChallengeState = {
@@ -106,7 +125,6 @@ export const DAILY_CHALLENGE_DEFAULTS: DailyChallengeState = {
   currentStreak: 0,
   longestStreak: 0,
   effectiveDayOffset: 0,
-  inProgress: null,
   lastResult: null,
   history: [],
 };
@@ -313,6 +331,68 @@ export const useUserStore = create<UserStoreState & UserStoreActions>()(
       addXp: (amount) => {
         if (amount <= 0) return;
         set((s) => ({ currentXP: s.currentXP + amount }));
+      },
+
+      recordDailyResult: (result) => {
+        set((s) => {
+          const prev = s.dailyChallenge;
+          const streakUpdate = computeNextDailyStreakState(prev, result.date, result);
+          const historyEntry = {
+            date: result.date,
+            digits: result.digits,
+            turns: result.turnsUsed,
+            success: result.success,
+          };
+          // Cap 90 — slice at write time so selectors stay O(1) and
+          // a one-shot 91-entry blob can't sneak in via direct setState.
+          const nextHistory = [...prev.history, historyEntry].slice(-90);
+          return {
+            dailyChallenge: {
+              ...prev,
+              lastPlayedDate: result.date,
+              currentStreak: streakUpdate.currentStreak,
+              longestStreak: streakUpdate.longestStreak,
+              effectiveDayOffset: streakUpdate.effectiveDayOffset,
+              lastResult: result,
+              history: nextHistory,
+            },
+          };
+        });
+      },
+
+      recordMissedDay: (today) => {
+        set((s) => {
+          const prev = s.dailyChallenge;
+          // Cross-midnight stale-drop semantics: streak breaks,
+          // regression applies based on the prior tier (computed off
+          // `lastPlayedDate` and the existing offset). Inline rather
+          // than via `computeNextDailyStreakState({result:null})` so
+          // the regression delta is auditable here, where the only
+          // call site lives.
+          if (prev.lastPlayedDate === null) {
+            // First-ever interaction is a "missed day" — no prior
+            // tier to regress from. Stamp the date so the next play
+            // sees a sensible gap; leave streak/offset at zero.
+            return {
+              dailyChallenge: { ...prev, lastPlayedDate: today },
+            };
+          }
+          const lastTierEffectiveDay =
+            calendarDayIndex(prev.lastPlayedDate) - prev.effectiveDayOffset;
+          const lastTier = effectiveDigitTier(lastTierEffectiveDay);
+          let regressionDelta = 0;
+          if (lastTier.digits === 6) regressionDelta = TIER_5_PERIOD;
+          else if (lastTier.digits === 5) regressionDelta = TIER_4_PERIOD;
+          // tier-4 floor: regressionDelta stays 0.
+          return {
+            dailyChallenge: {
+              ...prev,
+              lastPlayedDate: today,
+              currentStreak: 0,
+              effectiveDayOffset: prev.effectiveDayOffset + regressionDelta,
+            },
+          };
+        });
       },
     }),
     {
