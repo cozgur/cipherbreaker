@@ -18,6 +18,11 @@ export { OpponentCard } from './OpponentCard';
 export { RadarAnimation } from './RadarAnimation';
 export { Screen } from './Screen';
 export { SectionLabel } from './SectionLabel';
+export {
+  SegmentedToggle,
+  type SegmentedToggleOption,
+  type SegmentedToggleProps,
+} from './SegmentedToggle';
 export { TinyTag } from './TinyTag';
 export { TokenBadge, type TokenBadgeSize } from './TokenBadge';
 export { TokenCoin } from './TokenCoin';

@@ -1,14 +1,26 @@
 /**
- * Profile hub — identity, lifetime stats, per-mode win rate, and the
- * settings list. The settings list is mostly stub taps in Phase 1B
- * (Notifications/Privacy/Support → placeholder alerts); Sound and
- * Haptics toggle the persisted `mockUser.settings` bits in place so
- * the row value updates live. Username edit opens the dedicated
- * `ChangeUsername` transparent-modal route — same UX on both
- * platforms, unlike `Alert.prompt` (iOS-only).
+ * Profile hub — identity + tabbed Stats / Settings panes. Phase 7A.3
+ * polish:
+ *   - Stats / Settings split behind a `SegmentedToggle` (KI #5
+ *     "tek butonla geçilsin" feedback). Tab state is screen-local
+ *     (intentional — no persist; the panel a player just left isn't
+ *     load-bearing context).
+ *   - Last-10 outcome strip surfaces the Phase 7A.1 `recentMatches`
+ *     window. Four shape variants (filled / hollow / ringed /
+ *     squared) so colour-blind readers can disambiguate without
+ *     relying on hue alone.
+ *   - Per-mode trend caret: ▲ when a mode's win rate is at least 5
+ *     points above lifetime, ▼ when 5 below. Suppressed below an
+ *     estimated 3 games per mode (`gamesPlayed/7 < 3` ≈ <21 lifetime
+ *     games) — small samples are noise, not signal.
+ *
+ * Settings list still hosts the username/notifications/sound/
+ * haptics/privacy/terms/support rows. Phase 7A.5 (Economy polish)
+ * is the slot where Notifications + Privacy + Terms + Support stop
+ * being placeholder alerts.
  */
 
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import {
   Alert,
   Pressable,
@@ -26,14 +38,24 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Avatar } from '@components/Avatar';
 import { Screen } from '@components/Screen';
 import { SectionLabel } from '@components/SectionLabel';
+import { SegmentedToggle, type SegmentedToggleOption } from '@components/SegmentedToggle';
 import { TokenBadge } from '@components/TokenBadge';
 import { modeCatalog } from '@data/modeCatalog';
 import { toggleSetting, useMockUser } from '@data/mockUser';
 import type { MockUserSettings } from '@data/mockUser';
-import type { RootStackParamList } from '@navigation/routes';
+import type { MatchResultOutcome, RootStackParamList } from '@navigation/routes';
 import { colors, fonts, withAlpha } from '@theme/tokens';
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'Profile'>;
+
+const TAB_OPTIONS: readonly [SegmentedToggleOption, SegmentedToggleOption] = [
+  { key: 'stats', label: 'Stats' },
+  { key: 'settings', label: 'Settings' },
+];
+
+const RECENT_WINDOW = 10;
+const TREND_DELTA_THRESHOLD = 5;
+const TREND_MIN_GAMES_PER_MODE = 3;
 
 function formatK(value: number): string {
   if (value >= 1000) {
@@ -42,10 +64,31 @@ function formatK(value: number): string {
   return value.toString();
 }
 
+/**
+ * `null` when the sample is too small (estimated games-per-mode <
+ * `TREND_MIN_GAMES_PER_MODE`) OR the delta between this mode's win
+ * rate and the lifetime average is inside the dead band. The
+ * games-per-mode estimate mirrors the heuristic `matchStore`'s
+ * `recordMatchResult` already uses (gamesPlayed / 7) — both seams
+ * lack a real per-mode count today.
+ */
+function trendDirection(
+  perModeRate: number,
+  lifetimeRate: number,
+  lifetimeGames: number,
+): 'up' | 'down' | null {
+  const estPerModeGames = Math.max(1, Math.round(lifetimeGames / 7));
+  if (estPerModeGames < TREND_MIN_GAMES_PER_MODE) return null;
+  if (perModeRate >= lifetimeRate + TREND_DELTA_THRESHOLD) return 'up';
+  if (perModeRate <= lifetimeRate - TREND_DELTA_THRESHOLD) return 'down';
+  return null;
+}
+
 export function ProfileScreen(): React.JSX.Element {
   const navigation = useNavigation<Nav>();
   const user = useMockUser();
   const insets = useSafeAreaInsets();
+  const [tab, setTab] = useState<string>('stats');
 
   const back = useCallback(() => {
     if (navigation.canGoBack()) navigation.goBack();
@@ -128,74 +171,223 @@ export function ProfileScreen(): React.JSX.Element {
           </Text>
         </View>
 
-        <View style={styles.statsGrid}>
-          {stats.map((stat) => (
-            <View key={stat.label} style={styles.statCard}>
-              <Text style={styles.statValue}>{stat.value}</Text>
-              <Text style={styles.statLabel}>{stat.label}</Text>
-            </View>
-          ))}
-        </View>
+        <SegmentedToggle options={TAB_OPTIONS} value={tab} onChange={setTab} />
 
-        <View style={styles.section}>
-          <SectionLabel>BY MODE</SectionLabel>
-          <View style={styles.modeGrid}>
-            {modeCatalog.map((entry) => {
-              const perMode = user.perMode[entry.id];
-              const winRate = perMode != null ? perMode.winRate : 0;
-              return (
-                <View key={entry.id} style={styles.modeTile}>
+        {tab === 'stats' ? (
+          <StatsPanel
+            stats={stats}
+            recentMatches={user.stats.recentMatches}
+            lifetimeWinRate={user.stats.winRate}
+            lifetimeGames={user.stats.gamesPlayed}
+            perMode={user.perMode}
+          />
+        ) : (
+          <SettingsPanel
+            settings={user.settings}
+            openUsernameEdit={openUsernameEdit}
+            stubAlert={stubAlert}
+          />
+        )}
+      </ScrollView>
+    </Screen>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// Stats panel — lifetime grid + recentMatches strip + by-mode tiles
+// ─────────────────────────────────────────────────────────────
+
+interface StatsPanelProps {
+  readonly stats: ReadonlyArray<{ label: string; value: string }>;
+  readonly recentMatches: readonly MatchResultOutcome[];
+  readonly lifetimeWinRate: number;
+  readonly lifetimeGames: number;
+  readonly perMode: Readonly<Record<number, { winRate: number }>>;
+}
+
+function StatsPanel({
+  stats,
+  recentMatches,
+  lifetimeWinRate,
+  lifetimeGames,
+  perMode,
+}: StatsPanelProps): React.JSX.Element {
+  return (
+    <View>
+      <View style={styles.statsGrid}>
+        {stats.map((stat) => (
+          <View key={stat.label} style={styles.statCard}>
+            <Text style={styles.statValue}>{stat.value}</Text>
+            <Text style={styles.statLabel}>{stat.label}</Text>
+          </View>
+        ))}
+      </View>
+
+      <View style={styles.section}>
+        <SectionLabel>RECENT MATCHES</SectionLabel>
+        <RecentMatchesStrip recentMatches={recentMatches} />
+      </View>
+
+      <View style={styles.section}>
+        <SectionLabel>BY MODE</SectionLabel>
+        <View style={styles.modeGrid}>
+          {modeCatalog.map((entry) => {
+            const perModeEntry = perMode[entry.id];
+            const winRate = perModeEntry != null ? perModeEntry.winRate : 0;
+            const trend = trendDirection(winRate, lifetimeWinRate, lifetimeGames);
+            return (
+              <View key={entry.id} style={styles.modeTile}>
+                <View style={styles.modeRateRow}>
                   <Text
                     style={[styles.modeRate, { color: entry.meta.gradient[0] }]}
                     numberOfLines={1}
                   >
                     {winRate}%
                   </Text>
-                  <Text style={styles.modeName} numberOfLines={1}>
-                    {entry.meta.shortLabel}
-                  </Text>
+                  {trend !== null ? <TrendCaret direction={trend} /> : null}
                 </View>
-              );
-            })}
-          </View>
+                <Text style={styles.modeName} numberOfLines={1}>
+                  {entry.meta.shortLabel}
+                </Text>
+              </View>
+            );
+          })}
         </View>
+      </View>
+    </View>
+  );
+}
 
-        <View style={styles.section}>
-          <SectionLabel>SETTINGS</SectionLabel>
-          <View style={styles.settingsList}>
-            <SettingsRow label="Change Username" onPress={openUsernameEdit} isLast={false} />
-            <SettingsRow
-              label="Notifications"
-              onPress={() => stubAlert('Notifications')}
-              isLast={false}
-            />
-            <SettingsToggleRow
-              label="Sound"
-              settingKey="sound"
-              value={user.settings.sound}
-              isLast={false}
-            />
-            <SettingsToggleRow
-              label="Haptics"
-              settingKey="haptics"
-              value={user.settings.haptics}
-              isLast={false}
-            />
-            <SettingsRow
-              label="Privacy Policy"
-              onPress={() => stubAlert('Privacy Policy')}
-              isLast={false}
-            />
-            <SettingsRow
-              label="Terms of Service"
-              onPress={() => stubAlert('Terms of Service')}
-              isLast={false}
-            />
-            <SettingsRow label="Support" onPress={() => stubAlert('Support')} isLast />
-          </View>
-        </View>
-      </ScrollView>
-    </Screen>
+interface RecentMatchesStripProps {
+  readonly recentMatches: readonly MatchResultOutcome[];
+}
+
+function RecentMatchesStrip({ recentMatches }: RecentMatchesStripProps): React.JSX.Element {
+  // Render exactly RECENT_WINDOW slots; pad missing ones with empty
+  // placeholders so the strip is dimensionally stable across users
+  // who have played 0, 5, or 10+ matches.
+  const slots: Array<MatchResultOutcome | null> = Array.from({ length: RECENT_WINDOW }, () => null);
+  const window = recentMatches.slice(-RECENT_WINDOW);
+  for (let i = 0; i < window.length; i += 1) {
+    slots[RECENT_WINDOW - window.length + i] = window[i] ?? null;
+  }
+  const wins = window.reduce((acc, o) => acc + (o === 'victory' ? 1 : 0), 0);
+  const caption =
+    window.length === 0
+      ? 'No matches yet'
+      : `Last ${window.length} — ${wins} ${wins === 1 ? 'win' : 'wins'}`;
+
+  return (
+    <View>
+      <View style={styles.recentRow} accessibilityLabel="Recent match outcomes">
+        {slots.map((outcome, index) => (
+          <RecentCell key={index} outcome={outcome} index={index} />
+        ))}
+      </View>
+      <Text style={styles.recentCaption}>{caption}</Text>
+    </View>
+  );
+}
+
+interface RecentCellProps {
+  readonly outcome: MatchResultOutcome | null;
+  readonly index: number;
+}
+
+function RecentCell({ outcome, index }: RecentCellProps): React.JSX.Element {
+  const a11y = outcome === null ? `Match ${index + 1}: empty slot` : `Match ${index + 1}: ${outcome}`;
+  if (outcome === null) {
+    return <View accessibilityLabel={a11y} style={[styles.cellBase, styles.cellEmpty]} />;
+  }
+  if (outcome === 'victory') {
+    return <View accessibilityLabel={a11y} style={[styles.cellBase, styles.cellVictory]} />;
+  }
+  if (outcome === 'defeat') {
+    return <View accessibilityLabel={a11y} style={[styles.cellBase, styles.cellDefeat]} />;
+  }
+  if (outcome === 'draw') {
+    // Concentric ring — outer outline + inner dot; reads as a target
+    // glyph at glance, distinct from filled / hollow circles.
+    return (
+      <View accessibilityLabel={a11y} style={[styles.cellBase, styles.cellDraw]}>
+        <View style={styles.cellDrawInner} />
+      </View>
+    );
+  }
+  // stalemate
+  return <View accessibilityLabel={a11y} style={[styles.cellBase, styles.cellStalemate]} />;
+}
+
+interface TrendCaretProps {
+  readonly direction: 'up' | 'down';
+}
+
+function TrendCaret({ direction }: TrendCaretProps): React.JSX.Element {
+  const color = direction === 'up' ? colors.success : colors.danger;
+  // Single-stroke chevron — up: M2 6L5 3L8 6, down: M2 4L5 7L8 4.
+  const path = direction === 'up' ? 'M2 6L5 3L8 6' : 'M2 4L5 7L8 4';
+  return (
+    <Svg
+      width={10}
+      height={10}
+      viewBox="0 0 10 10"
+      accessibilityLabel={direction === 'up' ? 'trend up' : 'trend down'}
+    >
+      <Path d={path} stroke={color} strokeWidth={2} strokeLinecap="round" fill="none" />
+    </Svg>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// Settings panel — list rows
+// ─────────────────────────────────────────────────────────────
+
+interface SettingsPanelProps {
+  readonly settings: MockUserSettings;
+  readonly openUsernameEdit: () => void;
+  readonly stubAlert: (title: string) => void;
+}
+
+function SettingsPanel({
+  settings,
+  openUsernameEdit,
+  stubAlert,
+}: SettingsPanelProps): React.JSX.Element {
+  return (
+    <View style={styles.section}>
+      <SectionLabel>SETTINGS</SectionLabel>
+      <View style={styles.settingsList}>
+        <SettingsRow label="Change Username" onPress={openUsernameEdit} isLast={false} />
+        <SettingsRow
+          label="Notifications"
+          onPress={() => stubAlert('Notifications')}
+          isLast={false}
+        />
+        <SettingsToggleRow
+          label="Sound"
+          settingKey="sound"
+          value={settings.sound}
+          isLast={false}
+        />
+        <SettingsToggleRow
+          label="Haptics"
+          settingKey="haptics"
+          value={settings.haptics}
+          isLast={false}
+        />
+        <SettingsRow
+          label="Privacy Policy"
+          onPress={() => stubAlert('Privacy Policy')}
+          isLast={false}
+        />
+        <SettingsRow
+          label="Terms of Service"
+          onPress={() => stubAlert('Terms of Service')}
+          isLast={false}
+        />
+        <SettingsRow label="Support" onPress={() => stubAlert('Support')} isLast />
+      </View>
+    </View>
   );
 }
 
@@ -290,7 +482,7 @@ const styles = StyleSheet.create({
   identityBlock: {
     alignItems: 'center',
     paddingTop: 12,
-    paddingBottom: 20,
+    paddingBottom: 16,
   },
   levelPill: {
     position: 'absolute',
@@ -331,6 +523,7 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
   },
   statsGrid: {
+    marginTop: 16,
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 10,
@@ -357,7 +550,59 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
   },
   section: {
-    marginTop: 20,
+    marginTop: 18,
+  },
+  recentRow: {
+    marginTop: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  recentCaption: {
+    marginTop: 8,
+    fontFamily: fonts.body,
+    fontSize: 11,
+    color: colors.textSecondary,
+    letterSpacing: 0.4,
+  },
+  cellBase: {
+    width: 18,
+    height: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cellEmpty: {
+    borderWidth: 1,
+    borderRadius: 999,
+    borderStyle: 'dashed',
+    borderColor: withAlpha(colors.textDim, 0.6),
+  },
+  cellVictory: {
+    borderRadius: 999,
+    backgroundColor: colors.success,
+  },
+  cellDefeat: {
+    borderRadius: 999,
+    borderWidth: 2,
+    borderColor: colors.danger,
+  },
+  cellDraw: {
+    borderRadius: 999,
+    borderWidth: 2,
+    borderColor: colors.warning,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cellDrawInner: {
+    width: 6,
+    height: 6,
+    borderRadius: 999,
+    backgroundColor: colors.warning,
+  },
+  cellStalemate: {
+    borderRadius: 3,
+    borderWidth: 2,
+    borderColor: colors.textSecondary,
   },
   modeGrid: {
     marginTop: 10,
@@ -374,6 +619,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.borderSubtle,
     alignItems: 'center',
+  },
+  modeRateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
   modeRate: {
     fontFamily: fonts.display,

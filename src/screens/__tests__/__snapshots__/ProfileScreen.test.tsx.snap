@@ -5806,7 +5806,7 @@ exports[`ProfileScreen snapshots the profile layout 1`] = `
                                       "props": {
                                         "style": {
                                           "alignItems": "center",
-                                          "paddingBottom": 20,
+                                          "paddingBottom": 16,
                                           "paddingTop": 12,
                                         },
                                       },
@@ -5818,43 +5818,69 @@ exports[`ProfileScreen snapshots the profile layout 1`] = `
                                           "children": [
                                             {
                                               "children": [
-                                                "247",
+                                                "Stats",
                                               ],
                                               "props": {
-                                                "style": {
-                                                  "color": "#f5f5f7",
-                                                  "fontFamily": "JetBrainsMono-Bold",
-                                                  "fontSize": 20,
-                                                },
-                                              },
-                                              "type": "Text",
-                                            },
-                                            {
-                                              "children": [
-                                                "Games Played",
-                                              ],
-                                              "props": {
-                                                "style": {
-                                                  "color": "#a1a1b5",
-                                                  "fontFamily": "Inter-SemiBold",
-                                                  "fontSize": 10,
-                                                  "letterSpacing": 1.4,
-                                                  "marginTop": 2,
-                                                  "textTransform": "uppercase",
-                                                },
+                                                "style": [
+                                                  {
+                                                    "color": "#a1a1b5",
+                                                    "fontFamily": "Inter-SemiBold",
+                                                    "fontSize": 12,
+                                                    "letterSpacing": 1.4,
+                                                    "textTransform": "uppercase",
+                                                  },
+                                                  {
+                                                    "color": "#8b5cf6",
+                                                  },
+                                                ],
                                               },
                                               "type": "Text",
                                             },
                                           ],
                                           "props": {
-                                            "style": {
-                                              "backgroundColor": "#15172e",
-                                              "borderColor": "#2a2c54",
-                                              "borderRadius": 14,
-                                              "borderWidth": 1,
-                                              "padding": 14,
-                                              "width": "48%",
+                                            "accessibilityLabel": "Stats",
+                                            "accessibilityRole": "tab",
+                                            "accessibilityState": {
+                                              "busy": undefined,
+                                              "checked": undefined,
+                                              "disabled": undefined,
+                                              "expanded": undefined,
+                                              "selected": true,
                                             },
+                                            "accessibilityValue": {
+                                              "max": undefined,
+                                              "min": undefined,
+                                              "now": undefined,
+                                              "text": undefined,
+                                            },
+                                            "accessible": true,
+                                            "collapsable": false,
+                                            "focusable": true,
+                                            "onBlur": [Function],
+                                            "onClick": [Function],
+                                            "onFocus": [Function],
+                                            "onResponderGrant": [Function],
+                                            "onResponderMove": [Function],
+                                            "onResponderRelease": [Function],
+                                            "onResponderTerminate": [Function],
+                                            "onResponderTerminationRequest": [Function],
+                                            "onStartShouldSetResponder": [Function],
+                                            "style": [
+                                              {
+                                                "alignItems": "center",
+                                                "borderRadius": 8,
+                                                "flex": 1,
+                                                "justifyContent": "center",
+                                              },
+                                              {
+                                                "backgroundColor": "rgba(139,92,246,0.18)",
+                                                "borderColor": "rgba(139,92,246,0.35)",
+                                                "borderWidth": 1,
+                                              },
+                                              {
+                                                "marginRight": 2,
+                                              },
+                                            ],
                                           },
                                           "type": "View",
                                         },
@@ -5862,228 +5888,77 @@ exports[`ProfileScreen snapshots the profile layout 1`] = `
                                           "children": [
                                             {
                                               "children": [
-                                                "68%",
+                                                "Settings",
                                               ],
                                               "props": {
-                                                "style": {
-                                                  "color": "#f5f5f7",
-                                                  "fontFamily": "JetBrainsMono-Bold",
-                                                  "fontSize": 20,
-                                                },
-                                              },
-                                              "type": "Text",
-                                            },
-                                            {
-                                              "children": [
-                                                "Win Rate",
-                                              ],
-                                              "props": {
-                                                "style": {
-                                                  "color": "#a1a1b5",
-                                                  "fontFamily": "Inter-SemiBold",
-                                                  "fontSize": 10,
-                                                  "letterSpacing": 1.4,
-                                                  "marginTop": 2,
-                                                  "textTransform": "uppercase",
-                                                },
+                                                "style": [
+                                                  {
+                                                    "color": "#a1a1b5",
+                                                    "fontFamily": "Inter-SemiBold",
+                                                    "fontSize": 12,
+                                                    "letterSpacing": 1.4,
+                                                    "textTransform": "uppercase",
+                                                  },
+                                                  false,
+                                                ],
                                               },
                                               "type": "Text",
                                             },
                                           ],
                                           "props": {
-                                            "style": {
-                                              "backgroundColor": "#15172e",
-                                              "borderColor": "#2a2c54",
-                                              "borderRadius": 14,
-                                              "borderWidth": 1,
-                                              "padding": 14,
-                                              "width": "48%",
+                                            "accessibilityLabel": "Settings",
+                                            "accessibilityRole": "tab",
+                                            "accessibilityState": {
+                                              "busy": undefined,
+                                              "checked": undefined,
+                                              "disabled": undefined,
+                                              "expanded": undefined,
+                                              "selected": false,
                                             },
-                                          },
-                                          "type": "View",
-                                        },
-                                        {
-                                          "children": [
-                                            {
-                                              "children": [
-                                                "4",
-                                              ],
-                                              "props": {
-                                                "style": {
-                                                  "color": "#f5f5f7",
-                                                  "fontFamily": "JetBrainsMono-Bold",
-                                                  "fontSize": 20,
-                                                },
+                                            "accessibilityValue": {
+                                              "max": undefined,
+                                              "min": undefined,
+                                              "now": undefined,
+                                              "text": undefined,
+                                            },
+                                            "accessible": true,
+                                            "collapsable": false,
+                                            "focusable": true,
+                                            "onBlur": [Function],
+                                            "onClick": [Function],
+                                            "onFocus": [Function],
+                                            "onResponderGrant": [Function],
+                                            "onResponderMove": [Function],
+                                            "onResponderRelease": [Function],
+                                            "onResponderTerminate": [Function],
+                                            "onResponderTerminationRequest": [Function],
+                                            "onStartShouldSetResponder": [Function],
+                                            "style": [
+                                              {
+                                                "alignItems": "center",
+                                                "borderRadius": 8,
+                                                "flex": 1,
+                                                "justifyContent": "center",
                                               },
-                                              "type": "Text",
-                                            },
-                                            {
-                                              "children": [
-                                                "Current Streak",
-                                              ],
-                                              "props": {
-                                                "style": {
-                                                  "color": "#a1a1b5",
-                                                  "fontFamily": "Inter-SemiBold",
-                                                  "fontSize": 10,
-                                                  "letterSpacing": 1.4,
-                                                  "marginTop": 2,
-                                                  "textTransform": "uppercase",
-                                                },
+                                              false,
+                                              {
+                                                "marginLeft": 2,
                                               },
-                                              "type": "Text",
-                                            },
-                                          ],
-                                          "props": {
-                                            "style": {
-                                              "backgroundColor": "#15172e",
-                                              "borderColor": "#2a2c54",
-                                              "borderRadius": 14,
-                                              "borderWidth": 1,
-                                              "padding": 14,
-                                              "width": "48%",
-                                            },
-                                          },
-                                          "type": "View",
-                                        },
-                                        {
-                                          "children": [
-                                            {
-                                              "children": [
-                                                "11",
-                                              ],
-                                              "props": {
-                                                "style": {
-                                                  "color": "#f5f5f7",
-                                                  "fontFamily": "JetBrainsMono-Bold",
-                                                  "fontSize": 20,
-                                                },
-                                              },
-                                              "type": "Text",
-                                            },
-                                            {
-                                              "children": [
-                                                "Best Streak",
-                                              ],
-                                              "props": {
-                                                "style": {
-                                                  "color": "#a1a1b5",
-                                                  "fontFamily": "Inter-SemiBold",
-                                                  "fontSize": 10,
-                                                  "letterSpacing": 1.4,
-                                                  "marginTop": 2,
-                                                  "textTransform": "uppercase",
-                                                },
-                                              },
-                                              "type": "Text",
-                                            },
-                                          ],
-                                          "props": {
-                                            "style": {
-                                              "backgroundColor": "#15172e",
-                                              "borderColor": "#2a2c54",
-                                              "borderRadius": 14,
-                                              "borderWidth": 1,
-                                              "padding": 14,
-                                              "width": "48%",
-                                            },
-                                          },
-                                          "type": "View",
-                                        },
-                                        {
-                                          "children": [
-                                            {
-                                              "children": [
-                                                "5.3",
-                                              ],
-                                              "props": {
-                                                "style": {
-                                                  "color": "#f5f5f7",
-                                                  "fontFamily": "JetBrainsMono-Bold",
-                                                  "fontSize": 20,
-                                                },
-                                              },
-                                              "type": "Text",
-                                            },
-                                            {
-                                              "children": [
-                                                "Avg Turns",
-                                              ],
-                                              "props": {
-                                                "style": {
-                                                  "color": "#a1a1b5",
-                                                  "fontFamily": "Inter-SemiBold",
-                                                  "fontSize": 10,
-                                                  "letterSpacing": 1.4,
-                                                  "marginTop": 2,
-                                                  "textTransform": "uppercase",
-                                                },
-                                              },
-                                              "type": "Text",
-                                            },
-                                          ],
-                                          "props": {
-                                            "style": {
-                                              "backgroundColor": "#15172e",
-                                              "borderColor": "#2a2c54",
-                                              "borderRadius": 14,
-                                              "borderWidth": 1,
-                                              "padding": 14,
-                                              "width": "48%",
-                                            },
-                                          },
-                                          "type": "View",
-                                        },
-                                        {
-                                          "children": [
-                                            {
-                                              "children": [
-                                                "12.4K",
-                                              ],
-                                              "props": {
-                                                "style": {
-                                                  "color": "#f5f5f7",
-                                                  "fontFamily": "JetBrainsMono-Bold",
-                                                  "fontSize": 20,
-                                                },
-                                              },
-                                              "type": "Text",
-                                            },
-                                            {
-                                              "children": [
-                                                "Tokens Earned",
-                                              ],
-                                              "props": {
-                                                "style": {
-                                                  "color": "#a1a1b5",
-                                                  "fontFamily": "Inter-SemiBold",
-                                                  "fontSize": 10,
-                                                  "letterSpacing": 1.4,
-                                                  "marginTop": 2,
-                                                  "textTransform": "uppercase",
-                                                },
-                                              },
-                                              "type": "Text",
-                                            },
-                                          ],
-                                          "props": {
-                                            "style": {
-                                              "backgroundColor": "#15172e",
-                                              "borderColor": "#2a2c54",
-                                              "borderRadius": 14,
-                                              "borderWidth": 1,
-                                              "padding": 14,
-                                              "width": "48%",
-                                            },
+                                            ],
                                           },
                                           "type": "View",
                                         },
                                       ],
                                       "props": {
+                                        "accessibilityRole": "tablist",
                                         "style": {
+                                          "backgroundColor": "#15172e",
+                                          "borderColor": "#2a2c54",
+                                          "borderRadius": 12,
+                                          "borderWidth": 1,
                                           "flexDirection": "row",
-                                          "flexWrap": "wrap",
-                                          "gap": 10,
+                                          "height": 50,
+                                          "padding": 4,
                                         },
                                       },
                                       "type": "View",
@@ -6092,58 +5967,30 @@ exports[`ProfileScreen snapshots the profile layout 1`] = `
                                       "children": [
                                         {
                                           "children": [
-                                            "BY MODE",
-                                          ],
-                                          "props": {
-                                            "style": [
-                                              {
-                                                "fontFamily": "Inter-SemiBold",
-                                                "fontSize": 11,
-                                                "letterSpacing": 1.54,
-                                                "textTransform": "uppercase",
-                                              },
-                                              {
-                                                "color": "#a1a1b5",
-                                              },
-                                              undefined,
-                                            ],
-                                          },
-                                          "type": "Text",
-                                        },
-                                        {
-                                          "children": [
                                             {
                                               "children": [
                                                 {
                                                   "children": [
-                                                    "72",
-                                                    "%",
+                                                    "247",
                                                   ],
                                                   "props": {
-                                                    "numberOfLines": 1,
-                                                    "style": [
-                                                      {
-                                                        "fontFamily": "ChakraPetch-Bold",
-                                                        "fontSize": 18,
-                                                        "letterSpacing": -0.3,
-                                                      },
-                                                      {
-                                                        "color": "#06b6d4",
-                                                      },
-                                                    ],
+                                                    "style": {
+                                                      "color": "#f5f5f7",
+                                                      "fontFamily": "JetBrainsMono-Bold",
+                                                      "fontSize": 20,
+                                                    },
                                                   },
                                                   "type": "Text",
                                                 },
                                                 {
                                                   "children": [
-                                                    "COLOR",
+                                                    "Games Played",
                                                   ],
                                                   "props": {
-                                                    "numberOfLines": 1,
                                                     "style": {
                                                       "color": "#a1a1b5",
                                                       "fontFamily": "Inter-SemiBold",
-                                                      "fontSize": 9,
+                                                      "fontSize": 10,
                                                       "letterSpacing": 1.4,
                                                       "marginTop": 2,
                                                       "textTransform": "uppercase",
@@ -6154,14 +6001,12 @@ exports[`ProfileScreen snapshots the profile layout 1`] = `
                                               ],
                                               "props": {
                                                 "style": {
-                                                  "alignItems": "center",
                                                   "backgroundColor": "#15172e",
                                                   "borderColor": "#2a2c54",
-                                                  "borderRadius": 12,
+                                                  "borderRadius": 14,
                                                   "borderWidth": 1,
-                                                  "paddingHorizontal": 10,
-                                                  "paddingVertical": 10,
-                                                  "width": "31.5%",
+                                                  "padding": 14,
+                                                  "width": "48%",
                                                 },
                                               },
                                               "type": "View",
@@ -6170,34 +6015,26 @@ exports[`ProfileScreen snapshots the profile layout 1`] = `
                                               "children": [
                                                 {
                                                   "children": [
-                                                    "64",
-                                                    "%",
+                                                    "68%",
                                                   ],
                                                   "props": {
-                                                    "numberOfLines": 1,
-                                                    "style": [
-                                                      {
-                                                        "fontFamily": "ChakraPetch-Bold",
-                                                        "fontSize": 18,
-                                                        "letterSpacing": -0.3,
-                                                      },
-                                                      {
-                                                        "color": "#8b5cf6",
-                                                      },
-                                                    ],
+                                                    "style": {
+                                                      "color": "#f5f5f7",
+                                                      "fontFamily": "JetBrainsMono-Bold",
+                                                      "fontSize": 20,
+                                                    },
                                                   },
                                                   "type": "Text",
                                                 },
                                                 {
                                                   "children": [
-                                                    "HIGH",
+                                                    "Win Rate",
                                                   ],
                                                   "props": {
-                                                    "numberOfLines": 1,
                                                     "style": {
                                                       "color": "#a1a1b5",
                                                       "fontFamily": "Inter-SemiBold",
-                                                      "fontSize": 9,
+                                                      "fontSize": 10,
                                                       "letterSpacing": 1.4,
                                                       "marginTop": 2,
                                                       "textTransform": "uppercase",
@@ -6208,14 +6045,12 @@ exports[`ProfileScreen snapshots the profile layout 1`] = `
                                               ],
                                               "props": {
                                                 "style": {
-                                                  "alignItems": "center",
                                                   "backgroundColor": "#15172e",
                                                   "borderColor": "#2a2c54",
-                                                  "borderRadius": 12,
+                                                  "borderRadius": 14,
                                                   "borderWidth": 1,
-                                                  "paddingHorizontal": 10,
-                                                  "paddingVertical": 10,
-                                                  "width": "31.5%",
+                                                  "padding": 14,
+                                                  "width": "48%",
                                                 },
                                               },
                                               "type": "View",
@@ -6224,34 +6059,26 @@ exports[`ProfileScreen snapshots the profile layout 1`] = `
                                               "children": [
                                                 {
                                                   "children": [
-                                                    "58",
-                                                    "%",
+                                                    "4",
                                                   ],
                                                   "props": {
-                                                    "numberOfLines": 1,
-                                                    "style": [
-                                                      {
-                                                        "fontFamily": "ChakraPetch-Bold",
-                                                        "fontSize": 18,
-                                                        "letterSpacing": -0.3,
-                                                      },
-                                                      {
-                                                        "color": "#fbbf24",
-                                                      },
-                                                    ],
+                                                    "style": {
+                                                      "color": "#f5f5f7",
+                                                      "fontFamily": "JetBrainsMono-Bold",
+                                                      "fontSize": 20,
+                                                    },
                                                   },
                                                   "type": "Text",
                                                 },
                                                 {
                                                   "children": [
-                                                    "PRECISION",
+                                                    "Current Streak",
                                                   ],
                                                   "props": {
-                                                    "numberOfLines": 1,
                                                     "style": {
                                                       "color": "#a1a1b5",
                                                       "fontFamily": "Inter-SemiBold",
-                                                      "fontSize": 9,
+                                                      "fontSize": 10,
                                                       "letterSpacing": 1.4,
                                                       "marginTop": 2,
                                                       "textTransform": "uppercase",
@@ -6262,14 +6089,12 @@ exports[`ProfileScreen snapshots the profile layout 1`] = `
                                               ],
                                               "props": {
                                                 "style": {
-                                                  "alignItems": "center",
                                                   "backgroundColor": "#15172e",
                                                   "borderColor": "#2a2c54",
-                                                  "borderRadius": 12,
+                                                  "borderRadius": 14,
                                                   "borderWidth": 1,
-                                                  "paddingHorizontal": 10,
-                                                  "paddingVertical": 10,
-                                                  "width": "31.5%",
+                                                  "padding": 14,
+                                                  "width": "48%",
                                                 },
                                               },
                                               "type": "View",
@@ -6278,34 +6103,26 @@ exports[`ProfileScreen snapshots the profile layout 1`] = `
                                               "children": [
                                                 {
                                                   "children": [
-                                                    "55",
-                                                    "%",
+                                                    "11",
                                                   ],
                                                   "props": {
-                                                    "numberOfLines": 1,
-                                                    "style": [
-                                                      {
-                                                        "fontFamily": "ChakraPetch-Bold",
-                                                        "fontSize": 18,
-                                                        "letterSpacing": -0.3,
-                                                      },
-                                                      {
-                                                        "color": "#ef4444",
-                                                      },
-                                                    ],
+                                                    "style": {
+                                                      "color": "#f5f5f7",
+                                                      "fontFamily": "JetBrainsMono-Bold",
+                                                      "fontSize": 20,
+                                                    },
                                                   },
                                                   "type": "Text",
                                                 },
                                                 {
                                                   "children": [
-                                                    "BLITZ",
+                                                    "Best Streak",
                                                   ],
                                                   "props": {
-                                                    "numberOfLines": 1,
                                                     "style": {
                                                       "color": "#a1a1b5",
                                                       "fontFamily": "Inter-SemiBold",
-                                                      "fontSize": 9,
+                                                      "fontSize": 10,
                                                       "letterSpacing": 1.4,
                                                       "marginTop": 2,
                                                       "textTransform": "uppercase",
@@ -6316,14 +6133,12 @@ exports[`ProfileScreen snapshots the profile layout 1`] = `
                                               ],
                                               "props": {
                                                 "style": {
-                                                  "alignItems": "center",
                                                   "backgroundColor": "#15172e",
                                                   "borderColor": "#2a2c54",
-                                                  "borderRadius": 12,
+                                                  "borderRadius": 14,
                                                   "borderWidth": 1,
-                                                  "paddingHorizontal": 10,
-                                                  "paddingVertical": 10,
-                                                  "width": "31.5%",
+                                                  "padding": 14,
+                                                  "width": "48%",
                                                 },
                                               },
                                               "type": "View",
@@ -6332,34 +6147,26 @@ exports[`ProfileScreen snapshots the profile layout 1`] = `
                                               "children": [
                                                 {
                                                   "children": [
-                                                    "49",
-                                                    "%",
+                                                    "5.3",
                                                   ],
                                                   "props": {
-                                                    "numberOfLines": 1,
-                                                    "style": [
-                                                      {
-                                                        "fontFamily": "ChakraPetch-Bold",
-                                                        "fontSize": 18,
-                                                        "letterSpacing": -0.3,
-                                                      },
-                                                      {
-                                                        "color": "#5b21b6",
-                                                      },
-                                                    ],
+                                                    "style": {
+                                                      "color": "#f5f5f7",
+                                                      "fontFamily": "JetBrainsMono-Bold",
+                                                      "fontSize": 20,
+                                                    },
                                                   },
                                                   "type": "Text",
                                                 },
                                                 {
                                                   "children": [
-                                                    "BLACKOUT",
+                                                    "Avg Turns",
                                                   ],
                                                   "props": {
-                                                    "numberOfLines": 1,
                                                     "style": {
                                                       "color": "#a1a1b5",
                                                       "fontFamily": "Inter-SemiBold",
-                                                      "fontSize": 9,
+                                                      "fontSize": 10,
                                                       "letterSpacing": 1.4,
                                                       "marginTop": 2,
                                                       "textTransform": "uppercase",
@@ -6370,14 +6177,12 @@ exports[`ProfileScreen snapshots the profile layout 1`] = `
                                               ],
                                               "props": {
                                                 "style": {
-                                                  "alignItems": "center",
                                                   "backgroundColor": "#15172e",
                                                   "borderColor": "#2a2c54",
-                                                  "borderRadius": 12,
+                                                  "borderRadius": 14,
                                                   "borderWidth": 1,
-                                                  "paddingHorizontal": 10,
-                                                  "paddingVertical": 10,
-                                                  "width": "31.5%",
+                                                  "padding": 14,
+                                                  "width": "48%",
                                                 },
                                               },
                                               "type": "View",
@@ -6386,34 +6191,26 @@ exports[`ProfileScreen snapshots the profile layout 1`] = `
                                               "children": [
                                                 {
                                                   "children": [
-                                                    "61",
-                                                    "%",
+                                                    "12.4K",
                                                   ],
                                                   "props": {
-                                                    "numberOfLines": 1,
-                                                    "style": [
-                                                      {
-                                                        "fontFamily": "ChakraPetch-Bold",
-                                                        "fontSize": 18,
-                                                        "letterSpacing": -0.3,
-                                                      },
-                                                      {
-                                                        "color": "#7f1d1d",
-                                                      },
-                                                    ],
+                                                    "style": {
+                                                      "color": "#f5f5f7",
+                                                      "fontFamily": "JetBrainsMono-Bold",
+                                                      "fontSize": 20,
+                                                    },
                                                   },
                                                   "type": "Text",
                                                 },
                                                 {
                                                   "children": [
-                                                    "SUDDEN",
+                                                    "Tokens Earned",
                                                   ],
                                                   "props": {
-                                                    "numberOfLines": 1,
                                                     "style": {
                                                       "color": "#a1a1b5",
                                                       "fontFamily": "Inter-SemiBold",
-                                                      "fontSize": 9,
+                                                      "fontSize": 10,
                                                       "letterSpacing": 1.4,
                                                       "marginTop": 2,
                                                       "textTransform": "uppercase",
@@ -6424,68 +6221,12 @@ exports[`ProfileScreen snapshots the profile layout 1`] = `
                                               ],
                                               "props": {
                                                 "style": {
-                                                  "alignItems": "center",
                                                   "backgroundColor": "#15172e",
                                                   "borderColor": "#2a2c54",
-                                                  "borderRadius": 12,
+                                                  "borderRadius": 14,
                                                   "borderWidth": 1,
-                                                  "paddingHorizontal": 10,
-                                                  "paddingVertical": 10,
-                                                  "width": "31.5%",
-                                                },
-                                              },
-                                              "type": "View",
-                                            },
-                                            {
-                                              "children": [
-                                                {
-                                                  "children": [
-                                                    "52",
-                                                    "%",
-                                                  ],
-                                                  "props": {
-                                                    "numberOfLines": 1,
-                                                    "style": [
-                                                      {
-                                                        "fontFamily": "ChakraPetch-Bold",
-                                                        "fontSize": 18,
-                                                        "letterSpacing": -0.3,
-                                                      },
-                                                      {
-                                                        "color": "#14b8a6",
-                                                      },
-                                                    ],
-                                                  },
-                                                  "type": "Text",
-                                                },
-                                                {
-                                                  "children": [
-                                                    "MIRROR",
-                                                  ],
-                                                  "props": {
-                                                    "numberOfLines": 1,
-                                                    "style": {
-                                                      "color": "#a1a1b5",
-                                                      "fontFamily": "Inter-SemiBold",
-                                                      "fontSize": 9,
-                                                      "letterSpacing": 1.4,
-                                                      "marginTop": 2,
-                                                      "textTransform": "uppercase",
-                                                    },
-                                                  },
-                                                  "type": "Text",
-                                                },
-                                              ],
-                                              "props": {
-                                                "style": {
-                                                  "alignItems": "center",
-                                                  "backgroundColor": "#15172e",
-                                                  "borderColor": "#2a2c54",
-                                                  "borderRadius": 12,
-                                                  "borderWidth": 1,
-                                                  "paddingHorizontal": 10,
-                                                  "paddingVertical": 10,
-                                                  "width": "31.5%",
+                                                  "padding": 14,
+                                                  "width": "48%",
                                                 },
                                               },
                                               "type": "View",
@@ -6495,830 +6236,1099 @@ exports[`ProfileScreen snapshots the profile layout 1`] = `
                                             "style": {
                                               "flexDirection": "row",
                                               "flexWrap": "wrap",
-                                              "gap": 8,
-                                              "marginTop": 10,
+                                              "gap": 10,
+                                              "marginTop": 16,
                                             },
                                           },
                                           "type": "View",
                                         },
-                                      ],
-                                      "props": {
-                                        "style": {
-                                          "marginTop": 20,
-                                        },
-                                      },
-                                      "type": "View",
-                                    },
-                                    {
-                                      "children": [
                                         {
                                           "children": [
-                                            "SETTINGS",
+                                            {
+                                              "children": [
+                                                "RECENT MATCHES",
+                                              ],
+                                              "props": {
+                                                "style": [
+                                                  {
+                                                    "fontFamily": "Inter-SemiBold",
+                                                    "fontSize": 11,
+                                                    "letterSpacing": 1.54,
+                                                    "textTransform": "uppercase",
+                                                  },
+                                                  {
+                                                    "color": "#a1a1b5",
+                                                  },
+                                                  undefined,
+                                                ],
+                                              },
+                                              "type": "Text",
+                                            },
+                                            {
+                                              "children": [
+                                                {
+                                                  "children": [
+                                                    {
+                                                      "children": null,
+                                                      "props": {
+                                                        "accessibilityLabel": "Match 1: empty slot",
+                                                        "style": [
+                                                          {
+                                                            "alignItems": "center",
+                                                            "height": 18,
+                                                            "justifyContent": "center",
+                                                            "width": 18,
+                                                          },
+                                                          {
+                                                            "borderColor": "rgba(90,90,122,0.6)",
+                                                            "borderRadius": 999,
+                                                            "borderStyle": "dashed",
+                                                            "borderWidth": 1,
+                                                          },
+                                                        ],
+                                                      },
+                                                      "type": "View",
+                                                    },
+                                                    {
+                                                      "children": null,
+                                                      "props": {
+                                                        "accessibilityLabel": "Match 2: empty slot",
+                                                        "style": [
+                                                          {
+                                                            "alignItems": "center",
+                                                            "height": 18,
+                                                            "justifyContent": "center",
+                                                            "width": 18,
+                                                          },
+                                                          {
+                                                            "borderColor": "rgba(90,90,122,0.6)",
+                                                            "borderRadius": 999,
+                                                            "borderStyle": "dashed",
+                                                            "borderWidth": 1,
+                                                          },
+                                                        ],
+                                                      },
+                                                      "type": "View",
+                                                    },
+                                                    {
+                                                      "children": null,
+                                                      "props": {
+                                                        "accessibilityLabel": "Match 3: empty slot",
+                                                        "style": [
+                                                          {
+                                                            "alignItems": "center",
+                                                            "height": 18,
+                                                            "justifyContent": "center",
+                                                            "width": 18,
+                                                          },
+                                                          {
+                                                            "borderColor": "rgba(90,90,122,0.6)",
+                                                            "borderRadius": 999,
+                                                            "borderStyle": "dashed",
+                                                            "borderWidth": 1,
+                                                          },
+                                                        ],
+                                                      },
+                                                      "type": "View",
+                                                    },
+                                                    {
+                                                      "children": null,
+                                                      "props": {
+                                                        "accessibilityLabel": "Match 4: empty slot",
+                                                        "style": [
+                                                          {
+                                                            "alignItems": "center",
+                                                            "height": 18,
+                                                            "justifyContent": "center",
+                                                            "width": 18,
+                                                          },
+                                                          {
+                                                            "borderColor": "rgba(90,90,122,0.6)",
+                                                            "borderRadius": 999,
+                                                            "borderStyle": "dashed",
+                                                            "borderWidth": 1,
+                                                          },
+                                                        ],
+                                                      },
+                                                      "type": "View",
+                                                    },
+                                                    {
+                                                      "children": null,
+                                                      "props": {
+                                                        "accessibilityLabel": "Match 5: empty slot",
+                                                        "style": [
+                                                          {
+                                                            "alignItems": "center",
+                                                            "height": 18,
+                                                            "justifyContent": "center",
+                                                            "width": 18,
+                                                          },
+                                                          {
+                                                            "borderColor": "rgba(90,90,122,0.6)",
+                                                            "borderRadius": 999,
+                                                            "borderStyle": "dashed",
+                                                            "borderWidth": 1,
+                                                          },
+                                                        ],
+                                                      },
+                                                      "type": "View",
+                                                    },
+                                                    {
+                                                      "children": null,
+                                                      "props": {
+                                                        "accessibilityLabel": "Match 6: empty slot",
+                                                        "style": [
+                                                          {
+                                                            "alignItems": "center",
+                                                            "height": 18,
+                                                            "justifyContent": "center",
+                                                            "width": 18,
+                                                          },
+                                                          {
+                                                            "borderColor": "rgba(90,90,122,0.6)",
+                                                            "borderRadius": 999,
+                                                            "borderStyle": "dashed",
+                                                            "borderWidth": 1,
+                                                          },
+                                                        ],
+                                                      },
+                                                      "type": "View",
+                                                    },
+                                                    {
+                                                      "children": null,
+                                                      "props": {
+                                                        "accessibilityLabel": "Match 7: empty slot",
+                                                        "style": [
+                                                          {
+                                                            "alignItems": "center",
+                                                            "height": 18,
+                                                            "justifyContent": "center",
+                                                            "width": 18,
+                                                          },
+                                                          {
+                                                            "borderColor": "rgba(90,90,122,0.6)",
+                                                            "borderRadius": 999,
+                                                            "borderStyle": "dashed",
+                                                            "borderWidth": 1,
+                                                          },
+                                                        ],
+                                                      },
+                                                      "type": "View",
+                                                    },
+                                                    {
+                                                      "children": null,
+                                                      "props": {
+                                                        "accessibilityLabel": "Match 8: empty slot",
+                                                        "style": [
+                                                          {
+                                                            "alignItems": "center",
+                                                            "height": 18,
+                                                            "justifyContent": "center",
+                                                            "width": 18,
+                                                          },
+                                                          {
+                                                            "borderColor": "rgba(90,90,122,0.6)",
+                                                            "borderRadius": 999,
+                                                            "borderStyle": "dashed",
+                                                            "borderWidth": 1,
+                                                          },
+                                                        ],
+                                                      },
+                                                      "type": "View",
+                                                    },
+                                                    {
+                                                      "children": null,
+                                                      "props": {
+                                                        "accessibilityLabel": "Match 9: empty slot",
+                                                        "style": [
+                                                          {
+                                                            "alignItems": "center",
+                                                            "height": 18,
+                                                            "justifyContent": "center",
+                                                            "width": 18,
+                                                          },
+                                                          {
+                                                            "borderColor": "rgba(90,90,122,0.6)",
+                                                            "borderRadius": 999,
+                                                            "borderStyle": "dashed",
+                                                            "borderWidth": 1,
+                                                          },
+                                                        ],
+                                                      },
+                                                      "type": "View",
+                                                    },
+                                                    {
+                                                      "children": null,
+                                                      "props": {
+                                                        "accessibilityLabel": "Match 10: empty slot",
+                                                        "style": [
+                                                          {
+                                                            "alignItems": "center",
+                                                            "height": 18,
+                                                            "justifyContent": "center",
+                                                            "width": 18,
+                                                          },
+                                                          {
+                                                            "borderColor": "rgba(90,90,122,0.6)",
+                                                            "borderRadius": 999,
+                                                            "borderStyle": "dashed",
+                                                            "borderWidth": 1,
+                                                          },
+                                                        ],
+                                                      },
+                                                      "type": "View",
+                                                    },
+                                                  ],
+                                                  "props": {
+                                                    "accessibilityLabel": "Recent match outcomes",
+                                                    "style": {
+                                                      "alignItems": "center",
+                                                      "flexDirection": "row",
+                                                      "gap": 8,
+                                                      "marginTop": 10,
+                                                    },
+                                                  },
+                                                  "type": "View",
+                                                },
+                                                {
+                                                  "children": [
+                                                    "No matches yet",
+                                                  ],
+                                                  "props": {
+                                                    "style": {
+                                                      "color": "#a1a1b5",
+                                                      "fontFamily": "Inter-Regular",
+                                                      "fontSize": 11,
+                                                      "letterSpacing": 0.4,
+                                                      "marginTop": 8,
+                                                    },
+                                                  },
+                                                  "type": "Text",
+                                                },
+                                              ],
+                                              "props": {},
+                                              "type": "View",
+                                            },
                                           ],
                                           "props": {
-                                            "style": [
-                                              {
-                                                "fontFamily": "Inter-SemiBold",
-                                                "fontSize": 11,
-                                                "letterSpacing": 1.54,
-                                                "textTransform": "uppercase",
-                                              },
-                                              {
-                                                "color": "#a1a1b5",
-                                              },
-                                              undefined,
-                                            ],
+                                            "style": {
+                                              "marginTop": 18,
+                                            },
                                           },
-                                          "type": "Text",
+                                          "type": "View",
                                         },
                                         {
                                           "children": [
                                             {
                                               "children": [
+                                                "BY MODE",
+                                              ],
+                                              "props": {
+                                                "style": [
+                                                  {
+                                                    "fontFamily": "Inter-SemiBold",
+                                                    "fontSize": 11,
+                                                    "letterSpacing": 1.54,
+                                                    "textTransform": "uppercase",
+                                                  },
+                                                  {
+                                                    "color": "#a1a1b5",
+                                                  },
+                                                  undefined,
+                                                ],
+                                              },
+                                              "type": "Text",
+                                            },
+                                            {
+                                              "children": [
                                                 {
                                                   "children": [
-                                                    "Change Username",
+                                                    {
+                                                      "children": [
+                                                        {
+                                                          "children": [
+                                                            "72",
+                                                            "%",
+                                                          ],
+                                                          "props": {
+                                                            "numberOfLines": 1,
+                                                            "style": [
+                                                              {
+                                                                "fontFamily": "ChakraPetch-Bold",
+                                                                "fontSize": 18,
+                                                                "letterSpacing": -0.3,
+                                                              },
+                                                              {
+                                                                "color": "#06b6d4",
+                                                              },
+                                                            ],
+                                                          },
+                                                          "type": "Text",
+                                                        },
+                                                      ],
+                                                      "props": {
+                                                        "style": {
+                                                          "alignItems": "center",
+                                                          "flexDirection": "row",
+                                                          "gap": 4,
+                                                        },
+                                                      },
+                                                      "type": "View",
+                                                    },
+                                                    {
+                                                      "children": [
+                                                        "COLOR",
+                                                      ],
+                                                      "props": {
+                                                        "numberOfLines": 1,
+                                                        "style": {
+                                                          "color": "#a1a1b5",
+                                                          "fontFamily": "Inter-SemiBold",
+                                                          "fontSize": 9,
+                                                          "letterSpacing": 1.4,
+                                                          "marginTop": 2,
+                                                          "textTransform": "uppercase",
+                                                        },
+                                                      },
+                                                      "type": "Text",
+                                                    },
                                                   ],
                                                   "props": {
                                                     "style": {
-                                                      "color": "#f5f5f7",
-                                                      "flex": 1,
-                                                      "fontFamily": "Inter-Regular",
-                                                      "fontSize": 14,
+                                                      "alignItems": "center",
+                                                      "backgroundColor": "#15172e",
+                                                      "borderColor": "#2a2c54",
+                                                      "borderRadius": 12,
+                                                      "borderWidth": 1,
+                                                      "paddingHorizontal": 10,
+                                                      "paddingVertical": 10,
+                                                      "width": "31.5%",
                                                     },
                                                   },
-                                                  "type": "Text",
+                                                  "type": "View",
                                                 },
                                                 {
                                                   "children": [
                                                     {
                                                       "children": [
                                                         {
-                                                          "children": null,
+                                                          "children": [
+                                                            "64",
+                                                            "%",
+                                                          ],
                                                           "props": {
-                                                            "d": "M1 1l6 5-6 5",
-                                                            "fill": null,
-                                                            "propList": [
-                                                              "fill",
-                                                              "stroke",
-                                                              "strokeWidth",
-                                                              "strokeLinecap",
+                                                            "numberOfLines": 1,
+                                                            "style": [
+                                                              {
+                                                                "fontFamily": "ChakraPetch-Bold",
+                                                                "fontSize": 18,
+                                                                "letterSpacing": -0.3,
+                                                              },
+                                                              {
+                                                                "color": "#8b5cf6",
+                                                              },
                                                             ],
-                                                            "stroke": {
-                                                              "payload": 4284111482,
-                                                              "type": 0,
-                                                            },
-                                                            "strokeLinecap": 1,
-                                                            "strokeWidth": 2,
                                                           },
-                                                          "type": "RNSVGPath",
+                                                          "type": "Text",
                                                         },
                                                       ],
                                                       "props": {
-                                                        "fill": {
-                                                          "payload": 4278190080,
-                                                          "type": 0,
+                                                        "style": {
+                                                          "alignItems": "center",
+                                                          "flexDirection": "row",
+                                                          "gap": 4,
                                                         },
                                                       },
-                                                      "type": "RNSVGGroup",
+                                                      "type": "View",
                                                     },
-                                                  ],
-                                                  "props": {
-                                                    "align": "xMidYMid",
-                                                    "bbHeight": 12,
-                                                    "bbWidth": 8,
-                                                    "focusable": false,
-                                                    "height": 12,
-                                                    "meetOrSlice": 0,
-                                                    "minX": 0,
-                                                    "minY": 0,
-                                                    "style": [
-                                                      {
-                                                        "backgroundColor": "transparent",
-                                                        "borderWidth": 0,
+                                                    {
+                                                      "children": [
+                                                        "HIGH",
+                                                      ],
+                                                      "props": {
+                                                        "numberOfLines": 1,
+                                                        "style": {
+                                                          "color": "#a1a1b5",
+                                                          "fontFamily": "Inter-SemiBold",
+                                                          "fontSize": 9,
+                                                          "letterSpacing": 1.4,
+                                                          "marginTop": 2,
+                                                          "textTransform": "uppercase",
+                                                        },
                                                       },
-                                                      {
-                                                        "flex": 0,
-                                                        "height": 12,
-                                                        "width": 8,
-                                                      },
-                                                    ],
-                                                    "vbHeight": 12,
-                                                    "vbWidth": 8,
-                                                    "width": 8,
-                                                  },
-                                                  "type": "RNSVGSvgView",
-                                                },
-                                              ],
-                                              "props": {
-                                                "accessibilityLabel": "Change Username",
-                                                "accessibilityRole": "button",
-                                                "accessibilityState": {
-                                                  "busy": undefined,
-                                                  "checked": undefined,
-                                                  "disabled": undefined,
-                                                  "expanded": undefined,
-                                                  "selected": undefined,
-                                                },
-                                                "accessibilityValue": {
-                                                  "max": undefined,
-                                                  "min": undefined,
-                                                  "now": undefined,
-                                                  "text": undefined,
-                                                },
-                                                "accessible": true,
-                                                "collapsable": false,
-                                                "focusable": true,
-                                                "onBlur": [Function],
-                                                "onClick": [Function],
-                                                "onFocus": [Function],
-                                                "onResponderGrant": [Function],
-                                                "onResponderMove": [Function],
-                                                "onResponderRelease": [Function],
-                                                "onResponderTerminate": [Function],
-                                                "onResponderTerminationRequest": [Function],
-                                                "onStartShouldSetResponder": [Function],
-                                                "style": [
-                                                  {
-                                                    "alignItems": "center",
-                                                    "flexDirection": "row",
-                                                    "gap": 8,
-                                                    "paddingHorizontal": 16,
-                                                    "paddingVertical": 14,
-                                                  },
-                                                  {
-                                                    "borderBottomColor": "rgba(42,44,84,0.8)",
-                                                    "borderBottomWidth": 1,
-                                                  },
-                                                  false,
-                                                ],
-                                              },
-                                              "type": "View",
-                                            },
-                                            {
-                                              "children": [
-                                                {
-                                                  "children": [
-                                                    "Notifications",
+                                                      "type": "Text",
+                                                    },
                                                   ],
                                                   "props": {
                                                     "style": {
-                                                      "color": "#f5f5f7",
-                                                      "flex": 1,
-                                                      "fontFamily": "Inter-Regular",
-                                                      "fontSize": 14,
+                                                      "alignItems": "center",
+                                                      "backgroundColor": "#15172e",
+                                                      "borderColor": "#2a2c54",
+                                                      "borderRadius": 12,
+                                                      "borderWidth": 1,
+                                                      "paddingHorizontal": 10,
+                                                      "paddingVertical": 10,
+                                                      "width": "31.5%",
                                                     },
                                                   },
-                                                  "type": "Text",
+                                                  "type": "View",
                                                 },
                                                 {
                                                   "children": [
                                                     {
                                                       "children": [
                                                         {
-                                                          "children": null,
+                                                          "children": [
+                                                            "58",
+                                                            "%",
+                                                          ],
                                                           "props": {
-                                                            "d": "M1 1l6 5-6 5",
-                                                            "fill": null,
-                                                            "propList": [
-                                                              "fill",
-                                                              "stroke",
-                                                              "strokeWidth",
-                                                              "strokeLinecap",
+                                                            "numberOfLines": 1,
+                                                            "style": [
+                                                              {
+                                                                "fontFamily": "ChakraPetch-Bold",
+                                                                "fontSize": 18,
+                                                                "letterSpacing": -0.3,
+                                                              },
+                                                              {
+                                                                "color": "#fbbf24",
+                                                              },
                                                             ],
-                                                            "stroke": {
-                                                              "payload": 4284111482,
-                                                              "type": 0,
-                                                            },
-                                                            "strokeLinecap": 1,
-                                                            "strokeWidth": 2,
                                                           },
-                                                          "type": "RNSVGPath",
+                                                          "type": "Text",
+                                                        },
+                                                        {
+                                                          "children": [
+                                                            {
+                                                              "children": [
+                                                                {
+                                                                  "children": null,
+                                                                  "props": {
+                                                                    "d": "M2 4L5 7L8 4",
+                                                                    "fill": null,
+                                                                    "propList": [
+                                                                      "fill",
+                                                                      "stroke",
+                                                                      "strokeWidth",
+                                                                      "strokeLinecap",
+                                                                    ],
+                                                                    "stroke": {
+                                                                      "payload": 4293870660,
+                                                                      "type": 0,
+                                                                    },
+                                                                    "strokeLinecap": 1,
+                                                                    "strokeWidth": 2,
+                                                                  },
+                                                                  "type": "RNSVGPath",
+                                                                },
+                                                              ],
+                                                              "props": {
+                                                                "fill": {
+                                                                  "payload": 4278190080,
+                                                                  "type": 0,
+                                                                },
+                                                              },
+                                                              "type": "RNSVGGroup",
+                                                            },
+                                                          ],
+                                                          "props": {
+                                                            "accessibilityLabel": "trend down",
+                                                            "align": "xMidYMid",
+                                                            "bbHeight": 10,
+                                                            "bbWidth": 10,
+                                                            "focusable": false,
+                                                            "height": 10,
+                                                            "meetOrSlice": 0,
+                                                            "minX": 0,
+                                                            "minY": 0,
+                                                            "style": [
+                                                              {
+                                                                "backgroundColor": "transparent",
+                                                                "borderWidth": 0,
+                                                              },
+                                                              {
+                                                                "flex": 0,
+                                                                "height": 10,
+                                                                "width": 10,
+                                                              },
+                                                            ],
+                                                            "vbHeight": 10,
+                                                            "vbWidth": 10,
+                                                            "width": 10,
+                                                          },
+                                                          "type": "RNSVGSvgView",
                                                         },
                                                       ],
                                                       "props": {
-                                                        "fill": {
-                                                          "payload": 4278190080,
-                                                          "type": 0,
+                                                        "style": {
+                                                          "alignItems": "center",
+                                                          "flexDirection": "row",
+                                                          "gap": 4,
                                                         },
                                                       },
-                                                      "type": "RNSVGGroup",
+                                                      "type": "View",
                                                     },
-                                                  ],
-                                                  "props": {
-                                                    "align": "xMidYMid",
-                                                    "bbHeight": 12,
-                                                    "bbWidth": 8,
-                                                    "focusable": false,
-                                                    "height": 12,
-                                                    "meetOrSlice": 0,
-                                                    "minX": 0,
-                                                    "minY": 0,
-                                                    "style": [
-                                                      {
-                                                        "backgroundColor": "transparent",
-                                                        "borderWidth": 0,
+                                                    {
+                                                      "children": [
+                                                        "PRECISION",
+                                                      ],
+                                                      "props": {
+                                                        "numberOfLines": 1,
+                                                        "style": {
+                                                          "color": "#a1a1b5",
+                                                          "fontFamily": "Inter-SemiBold",
+                                                          "fontSize": 9,
+                                                          "letterSpacing": 1.4,
+                                                          "marginTop": 2,
+                                                          "textTransform": "uppercase",
+                                                        },
                                                       },
-                                                      {
-                                                        "flex": 0,
-                                                        "height": 12,
-                                                        "width": 8,
-                                                      },
-                                                    ],
-                                                    "vbHeight": 12,
-                                                    "vbWidth": 8,
-                                                    "width": 8,
-                                                  },
-                                                  "type": "RNSVGSvgView",
-                                                },
-                                              ],
-                                              "props": {
-                                                "accessibilityLabel": "Notifications",
-                                                "accessibilityRole": "button",
-                                                "accessibilityState": {
-                                                  "busy": undefined,
-                                                  "checked": undefined,
-                                                  "disabled": undefined,
-                                                  "expanded": undefined,
-                                                  "selected": undefined,
-                                                },
-                                                "accessibilityValue": {
-                                                  "max": undefined,
-                                                  "min": undefined,
-                                                  "now": undefined,
-                                                  "text": undefined,
-                                                },
-                                                "accessible": true,
-                                                "collapsable": false,
-                                                "focusable": true,
-                                                "onBlur": [Function],
-                                                "onClick": [Function],
-                                                "onFocus": [Function],
-                                                "onResponderGrant": [Function],
-                                                "onResponderMove": [Function],
-                                                "onResponderRelease": [Function],
-                                                "onResponderTerminate": [Function],
-                                                "onResponderTerminationRequest": [Function],
-                                                "onStartShouldSetResponder": [Function],
-                                                "style": [
-                                                  {
-                                                    "alignItems": "center",
-                                                    "flexDirection": "row",
-                                                    "gap": 8,
-                                                    "paddingHorizontal": 16,
-                                                    "paddingVertical": 14,
-                                                  },
-                                                  {
-                                                    "borderBottomColor": "rgba(42,44,84,0.8)",
-                                                    "borderBottomWidth": 1,
-                                                  },
-                                                  false,
-                                                ],
-                                              },
-                                              "type": "View",
-                                            },
-                                            {
-                                              "children": [
-                                                {
-                                                  "children": [
-                                                    "Sound",
+                                                      "type": "Text",
+                                                    },
                                                   ],
                                                   "props": {
                                                     "style": {
-                                                      "color": "#f5f5f7",
-                                                      "flex": 1,
-                                                      "fontFamily": "Inter-Regular",
-                                                      "fontSize": 14,
+                                                      "alignItems": "center",
+                                                      "backgroundColor": "#15172e",
+                                                      "borderColor": "#2a2c54",
+                                                      "borderRadius": 12,
+                                                      "borderWidth": 1,
+                                                      "paddingHorizontal": 10,
+                                                      "paddingVertical": 10,
+                                                      "width": "31.5%",
                                                     },
                                                   },
-                                                  "type": "Text",
-                                                },
-                                                {
-                                                  "children": [
-                                                    "On",
-                                                  ],
-                                                  "props": {
-                                                    "style": [
-                                                      {
-                                                        "color": "#a1a1b5",
-                                                        "fontFamily": "Inter-Regular",
-                                                        "fontSize": 13,
-                                                      },
-                                                      {
-                                                        "color": "#10b981",
-                                                      },
-                                                    ],
-                                                  },
-                                                  "type": "Text",
-                                                },
-                                              ],
-                                              "props": {
-                                                "accessibilityLabel": "Sound",
-                                                "accessibilityRole": "switch",
-                                                "accessibilityState": {
-                                                  "busy": undefined,
-                                                  "checked": true,
-                                                  "disabled": undefined,
-                                                  "expanded": undefined,
-                                                  "selected": undefined,
-                                                },
-                                                "accessibilityValue": {
-                                                  "max": undefined,
-                                                  "min": undefined,
-                                                  "now": undefined,
-                                                  "text": undefined,
-                                                },
-                                                "accessible": true,
-                                                "collapsable": false,
-                                                "focusable": true,
-                                                "onBlur": [Function],
-                                                "onClick": [Function],
-                                                "onFocus": [Function],
-                                                "onResponderGrant": [Function],
-                                                "onResponderMove": [Function],
-                                                "onResponderRelease": [Function],
-                                                "onResponderTerminate": [Function],
-                                                "onResponderTerminationRequest": [Function],
-                                                "onStartShouldSetResponder": [Function],
-                                                "style": [
-                                                  {
-                                                    "alignItems": "center",
-                                                    "flexDirection": "row",
-                                                    "gap": 8,
-                                                    "paddingHorizontal": 16,
-                                                    "paddingVertical": 14,
-                                                  },
-                                                  {
-                                                    "borderBottomColor": "rgba(42,44,84,0.8)",
-                                                    "borderBottomWidth": 1,
-                                                  },
-                                                  false,
-                                                ],
-                                              },
-                                              "type": "View",
-                                            },
-                                            {
-                                              "children": [
-                                                {
-                                                  "children": [
-                                                    "Haptics",
-                                                  ],
-                                                  "props": {
-                                                    "style": {
-                                                      "color": "#f5f5f7",
-                                                      "flex": 1,
-                                                      "fontFamily": "Inter-Regular",
-                                                      "fontSize": 14,
-                                                    },
-                                                  },
-                                                  "type": "Text",
-                                                },
-                                                {
-                                                  "children": [
-                                                    "On",
-                                                  ],
-                                                  "props": {
-                                                    "style": [
-                                                      {
-                                                        "color": "#a1a1b5",
-                                                        "fontFamily": "Inter-Regular",
-                                                        "fontSize": 13,
-                                                      },
-                                                      {
-                                                        "color": "#10b981",
-                                                      },
-                                                    ],
-                                                  },
-                                                  "type": "Text",
-                                                },
-                                              ],
-                                              "props": {
-                                                "accessibilityLabel": "Haptics",
-                                                "accessibilityRole": "switch",
-                                                "accessibilityState": {
-                                                  "busy": undefined,
-                                                  "checked": true,
-                                                  "disabled": undefined,
-                                                  "expanded": undefined,
-                                                  "selected": undefined,
-                                                },
-                                                "accessibilityValue": {
-                                                  "max": undefined,
-                                                  "min": undefined,
-                                                  "now": undefined,
-                                                  "text": undefined,
-                                                },
-                                                "accessible": true,
-                                                "collapsable": false,
-                                                "focusable": true,
-                                                "onBlur": [Function],
-                                                "onClick": [Function],
-                                                "onFocus": [Function],
-                                                "onResponderGrant": [Function],
-                                                "onResponderMove": [Function],
-                                                "onResponderRelease": [Function],
-                                                "onResponderTerminate": [Function],
-                                                "onResponderTerminationRequest": [Function],
-                                                "onStartShouldSetResponder": [Function],
-                                                "style": [
-                                                  {
-                                                    "alignItems": "center",
-                                                    "flexDirection": "row",
-                                                    "gap": 8,
-                                                    "paddingHorizontal": 16,
-                                                    "paddingVertical": 14,
-                                                  },
-                                                  {
-                                                    "borderBottomColor": "rgba(42,44,84,0.8)",
-                                                    "borderBottomWidth": 1,
-                                                  },
-                                                  false,
-                                                ],
-                                              },
-                                              "type": "View",
-                                            },
-                                            {
-                                              "children": [
-                                                {
-                                                  "children": [
-                                                    "Privacy Policy",
-                                                  ],
-                                                  "props": {
-                                                    "style": {
-                                                      "color": "#f5f5f7",
-                                                      "flex": 1,
-                                                      "fontFamily": "Inter-Regular",
-                                                      "fontSize": 14,
-                                                    },
-                                                  },
-                                                  "type": "Text",
+                                                  "type": "View",
                                                 },
                                                 {
                                                   "children": [
                                                     {
                                                       "children": [
                                                         {
-                                                          "children": null,
+                                                          "children": [
+                                                            "55",
+                                                            "%",
+                                                          ],
                                                           "props": {
-                                                            "d": "M1 1l6 5-6 5",
-                                                            "fill": null,
-                                                            "propList": [
-                                                              "fill",
-                                                              "stroke",
-                                                              "strokeWidth",
-                                                              "strokeLinecap",
+                                                            "numberOfLines": 1,
+                                                            "style": [
+                                                              {
+                                                                "fontFamily": "ChakraPetch-Bold",
+                                                                "fontSize": 18,
+                                                                "letterSpacing": -0.3,
+                                                              },
+                                                              {
+                                                                "color": "#ef4444",
+                                                              },
                                                             ],
-                                                            "stroke": {
-                                                              "payload": 4284111482,
-                                                              "type": 0,
-                                                            },
-                                                            "strokeLinecap": 1,
-                                                            "strokeWidth": 2,
                                                           },
-                                                          "type": "RNSVGPath",
+                                                          "type": "Text",
+                                                        },
+                                                        {
+                                                          "children": [
+                                                            {
+                                                              "children": [
+                                                                {
+                                                                  "children": null,
+                                                                  "props": {
+                                                                    "d": "M2 4L5 7L8 4",
+                                                                    "fill": null,
+                                                                    "propList": [
+                                                                      "fill",
+                                                                      "stroke",
+                                                                      "strokeWidth",
+                                                                      "strokeLinecap",
+                                                                    ],
+                                                                    "stroke": {
+                                                                      "payload": 4293870660,
+                                                                      "type": 0,
+                                                                    },
+                                                                    "strokeLinecap": 1,
+                                                                    "strokeWidth": 2,
+                                                                  },
+                                                                  "type": "RNSVGPath",
+                                                                },
+                                                              ],
+                                                              "props": {
+                                                                "fill": {
+                                                                  "payload": 4278190080,
+                                                                  "type": 0,
+                                                                },
+                                                              },
+                                                              "type": "RNSVGGroup",
+                                                            },
+                                                          ],
+                                                          "props": {
+                                                            "accessibilityLabel": "trend down",
+                                                            "align": "xMidYMid",
+                                                            "bbHeight": 10,
+                                                            "bbWidth": 10,
+                                                            "focusable": false,
+                                                            "height": 10,
+                                                            "meetOrSlice": 0,
+                                                            "minX": 0,
+                                                            "minY": 0,
+                                                            "style": [
+                                                              {
+                                                                "backgroundColor": "transparent",
+                                                                "borderWidth": 0,
+                                                              },
+                                                              {
+                                                                "flex": 0,
+                                                                "height": 10,
+                                                                "width": 10,
+                                                              },
+                                                            ],
+                                                            "vbHeight": 10,
+                                                            "vbWidth": 10,
+                                                            "width": 10,
+                                                          },
+                                                          "type": "RNSVGSvgView",
                                                         },
                                                       ],
                                                       "props": {
-                                                        "fill": {
-                                                          "payload": 4278190080,
-                                                          "type": 0,
+                                                        "style": {
+                                                          "alignItems": "center",
+                                                          "flexDirection": "row",
+                                                          "gap": 4,
                                                         },
                                                       },
-                                                      "type": "RNSVGGroup",
+                                                      "type": "View",
                                                     },
-                                                  ],
-                                                  "props": {
-                                                    "align": "xMidYMid",
-                                                    "bbHeight": 12,
-                                                    "bbWidth": 8,
-                                                    "focusable": false,
-                                                    "height": 12,
-                                                    "meetOrSlice": 0,
-                                                    "minX": 0,
-                                                    "minY": 0,
-                                                    "style": [
-                                                      {
-                                                        "backgroundColor": "transparent",
-                                                        "borderWidth": 0,
+                                                    {
+                                                      "children": [
+                                                        "BLITZ",
+                                                      ],
+                                                      "props": {
+                                                        "numberOfLines": 1,
+                                                        "style": {
+                                                          "color": "#a1a1b5",
+                                                          "fontFamily": "Inter-SemiBold",
+                                                          "fontSize": 9,
+                                                          "letterSpacing": 1.4,
+                                                          "marginTop": 2,
+                                                          "textTransform": "uppercase",
+                                                        },
                                                       },
-                                                      {
-                                                        "flex": 0,
-                                                        "height": 12,
-                                                        "width": 8,
-                                                      },
-                                                    ],
-                                                    "vbHeight": 12,
-                                                    "vbWidth": 8,
-                                                    "width": 8,
-                                                  },
-                                                  "type": "RNSVGSvgView",
-                                                },
-                                              ],
-                                              "props": {
-                                                "accessibilityLabel": "Privacy Policy",
-                                                "accessibilityRole": "button",
-                                                "accessibilityState": {
-                                                  "busy": undefined,
-                                                  "checked": undefined,
-                                                  "disabled": undefined,
-                                                  "expanded": undefined,
-                                                  "selected": undefined,
-                                                },
-                                                "accessibilityValue": {
-                                                  "max": undefined,
-                                                  "min": undefined,
-                                                  "now": undefined,
-                                                  "text": undefined,
-                                                },
-                                                "accessible": true,
-                                                "collapsable": false,
-                                                "focusable": true,
-                                                "onBlur": [Function],
-                                                "onClick": [Function],
-                                                "onFocus": [Function],
-                                                "onResponderGrant": [Function],
-                                                "onResponderMove": [Function],
-                                                "onResponderRelease": [Function],
-                                                "onResponderTerminate": [Function],
-                                                "onResponderTerminationRequest": [Function],
-                                                "onStartShouldSetResponder": [Function],
-                                                "style": [
-                                                  {
-                                                    "alignItems": "center",
-                                                    "flexDirection": "row",
-                                                    "gap": 8,
-                                                    "paddingHorizontal": 16,
-                                                    "paddingVertical": 14,
-                                                  },
-                                                  {
-                                                    "borderBottomColor": "rgba(42,44,84,0.8)",
-                                                    "borderBottomWidth": 1,
-                                                  },
-                                                  false,
-                                                ],
-                                              },
-                                              "type": "View",
-                                            },
-                                            {
-                                              "children": [
-                                                {
-                                                  "children": [
-                                                    "Terms of Service",
+                                                      "type": "Text",
+                                                    },
                                                   ],
                                                   "props": {
                                                     "style": {
-                                                      "color": "#f5f5f7",
-                                                      "flex": 1,
-                                                      "fontFamily": "Inter-Regular",
-                                                      "fontSize": 14,
+                                                      "alignItems": "center",
+                                                      "backgroundColor": "#15172e",
+                                                      "borderColor": "#2a2c54",
+                                                      "borderRadius": 12,
+                                                      "borderWidth": 1,
+                                                      "paddingHorizontal": 10,
+                                                      "paddingVertical": 10,
+                                                      "width": "31.5%",
                                                     },
                                                   },
-                                                  "type": "Text",
+                                                  "type": "View",
                                                 },
                                                 {
                                                   "children": [
                                                     {
                                                       "children": [
                                                         {
-                                                          "children": null,
+                                                          "children": [
+                                                            "49",
+                                                            "%",
+                                                          ],
                                                           "props": {
-                                                            "d": "M1 1l6 5-6 5",
-                                                            "fill": null,
-                                                            "propList": [
-                                                              "fill",
-                                                              "stroke",
-                                                              "strokeWidth",
-                                                              "strokeLinecap",
+                                                            "numberOfLines": 1,
+                                                            "style": [
+                                                              {
+                                                                "fontFamily": "ChakraPetch-Bold",
+                                                                "fontSize": 18,
+                                                                "letterSpacing": -0.3,
+                                                              },
+                                                              {
+                                                                "color": "#5b21b6",
+                                                              },
                                                             ],
-                                                            "stroke": {
-                                                              "payload": 4284111482,
-                                                              "type": 0,
-                                                            },
-                                                            "strokeLinecap": 1,
-                                                            "strokeWidth": 2,
                                                           },
-                                                          "type": "RNSVGPath",
+                                                          "type": "Text",
+                                                        },
+                                                        {
+                                                          "children": [
+                                                            {
+                                                              "children": [
+                                                                {
+                                                                  "children": null,
+                                                                  "props": {
+                                                                    "d": "M2 4L5 7L8 4",
+                                                                    "fill": null,
+                                                                    "propList": [
+                                                                      "fill",
+                                                                      "stroke",
+                                                                      "strokeWidth",
+                                                                      "strokeLinecap",
+                                                                    ],
+                                                                    "stroke": {
+                                                                      "payload": 4293870660,
+                                                                      "type": 0,
+                                                                    },
+                                                                    "strokeLinecap": 1,
+                                                                    "strokeWidth": 2,
+                                                                  },
+                                                                  "type": "RNSVGPath",
+                                                                },
+                                                              ],
+                                                              "props": {
+                                                                "fill": {
+                                                                  "payload": 4278190080,
+                                                                  "type": 0,
+                                                                },
+                                                              },
+                                                              "type": "RNSVGGroup",
+                                                            },
+                                                          ],
+                                                          "props": {
+                                                            "accessibilityLabel": "trend down",
+                                                            "align": "xMidYMid",
+                                                            "bbHeight": 10,
+                                                            "bbWidth": 10,
+                                                            "focusable": false,
+                                                            "height": 10,
+                                                            "meetOrSlice": 0,
+                                                            "minX": 0,
+                                                            "minY": 0,
+                                                            "style": [
+                                                              {
+                                                                "backgroundColor": "transparent",
+                                                                "borderWidth": 0,
+                                                              },
+                                                              {
+                                                                "flex": 0,
+                                                                "height": 10,
+                                                                "width": 10,
+                                                              },
+                                                            ],
+                                                            "vbHeight": 10,
+                                                            "vbWidth": 10,
+                                                            "width": 10,
+                                                          },
+                                                          "type": "RNSVGSvgView",
                                                         },
                                                       ],
                                                       "props": {
-                                                        "fill": {
-                                                          "payload": 4278190080,
-                                                          "type": 0,
+                                                        "style": {
+                                                          "alignItems": "center",
+                                                          "flexDirection": "row",
+                                                          "gap": 4,
                                                         },
                                                       },
-                                                      "type": "RNSVGGroup",
+                                                      "type": "View",
                                                     },
-                                                  ],
-                                                  "props": {
-                                                    "align": "xMidYMid",
-                                                    "bbHeight": 12,
-                                                    "bbWidth": 8,
-                                                    "focusable": false,
-                                                    "height": 12,
-                                                    "meetOrSlice": 0,
-                                                    "minX": 0,
-                                                    "minY": 0,
-                                                    "style": [
-                                                      {
-                                                        "backgroundColor": "transparent",
-                                                        "borderWidth": 0,
+                                                    {
+                                                      "children": [
+                                                        "BLACKOUT",
+                                                      ],
+                                                      "props": {
+                                                        "numberOfLines": 1,
+                                                        "style": {
+                                                          "color": "#a1a1b5",
+                                                          "fontFamily": "Inter-SemiBold",
+                                                          "fontSize": 9,
+                                                          "letterSpacing": 1.4,
+                                                          "marginTop": 2,
+                                                          "textTransform": "uppercase",
+                                                        },
                                                       },
-                                                      {
-                                                        "flex": 0,
-                                                        "height": 12,
-                                                        "width": 8,
-                                                      },
-                                                    ],
-                                                    "vbHeight": 12,
-                                                    "vbWidth": 8,
-                                                    "width": 8,
-                                                  },
-                                                  "type": "RNSVGSvgView",
-                                                },
-                                              ],
-                                              "props": {
-                                                "accessibilityLabel": "Terms of Service",
-                                                "accessibilityRole": "button",
-                                                "accessibilityState": {
-                                                  "busy": undefined,
-                                                  "checked": undefined,
-                                                  "disabled": undefined,
-                                                  "expanded": undefined,
-                                                  "selected": undefined,
-                                                },
-                                                "accessibilityValue": {
-                                                  "max": undefined,
-                                                  "min": undefined,
-                                                  "now": undefined,
-                                                  "text": undefined,
-                                                },
-                                                "accessible": true,
-                                                "collapsable": false,
-                                                "focusable": true,
-                                                "onBlur": [Function],
-                                                "onClick": [Function],
-                                                "onFocus": [Function],
-                                                "onResponderGrant": [Function],
-                                                "onResponderMove": [Function],
-                                                "onResponderRelease": [Function],
-                                                "onResponderTerminate": [Function],
-                                                "onResponderTerminationRequest": [Function],
-                                                "onStartShouldSetResponder": [Function],
-                                                "style": [
-                                                  {
-                                                    "alignItems": "center",
-                                                    "flexDirection": "row",
-                                                    "gap": 8,
-                                                    "paddingHorizontal": 16,
-                                                    "paddingVertical": 14,
-                                                  },
-                                                  {
-                                                    "borderBottomColor": "rgba(42,44,84,0.8)",
-                                                    "borderBottomWidth": 1,
-                                                  },
-                                                  false,
-                                                ],
-                                              },
-                                              "type": "View",
-                                            },
-                                            {
-                                              "children": [
-                                                {
-                                                  "children": [
-                                                    "Support",
+                                                      "type": "Text",
+                                                    },
                                                   ],
                                                   "props": {
                                                     "style": {
-                                                      "color": "#f5f5f7",
-                                                      "flex": 1,
-                                                      "fontFamily": "Inter-Regular",
-                                                      "fontSize": 14,
+                                                      "alignItems": "center",
+                                                      "backgroundColor": "#15172e",
+                                                      "borderColor": "#2a2c54",
+                                                      "borderRadius": 12,
+                                                      "borderWidth": 1,
+                                                      "paddingHorizontal": 10,
+                                                      "paddingVertical": 10,
+                                                      "width": "31.5%",
                                                     },
                                                   },
-                                                  "type": "Text",
+                                                  "type": "View",
                                                 },
                                                 {
                                                   "children": [
                                                     {
                                                       "children": [
                                                         {
-                                                          "children": null,
+                                                          "children": [
+                                                            "61",
+                                                            "%",
+                                                          ],
                                                           "props": {
-                                                            "d": "M1 1l6 5-6 5",
-                                                            "fill": null,
-                                                            "propList": [
-                                                              "fill",
-                                                              "stroke",
-                                                              "strokeWidth",
-                                                              "strokeLinecap",
+                                                            "numberOfLines": 1,
+                                                            "style": [
+                                                              {
+                                                                "fontFamily": "ChakraPetch-Bold",
+                                                                "fontSize": 18,
+                                                                "letterSpacing": -0.3,
+                                                              },
+                                                              {
+                                                                "color": "#7f1d1d",
+                                                              },
                                                             ],
-                                                            "stroke": {
-                                                              "payload": 4284111482,
-                                                              "type": 0,
-                                                            },
-                                                            "strokeLinecap": 1,
-                                                            "strokeWidth": 2,
                                                           },
-                                                          "type": "RNSVGPath",
+                                                          "type": "Text",
+                                                        },
+                                                        {
+                                                          "children": [
+                                                            {
+                                                              "children": [
+                                                                {
+                                                                  "children": null,
+                                                                  "props": {
+                                                                    "d": "M2 4L5 7L8 4",
+                                                                    "fill": null,
+                                                                    "propList": [
+                                                                      "fill",
+                                                                      "stroke",
+                                                                      "strokeWidth",
+                                                                      "strokeLinecap",
+                                                                    ],
+                                                                    "stroke": {
+                                                                      "payload": 4293870660,
+                                                                      "type": 0,
+                                                                    },
+                                                                    "strokeLinecap": 1,
+                                                                    "strokeWidth": 2,
+                                                                  },
+                                                                  "type": "RNSVGPath",
+                                                                },
+                                                              ],
+                                                              "props": {
+                                                                "fill": {
+                                                                  "payload": 4278190080,
+                                                                  "type": 0,
+                                                                },
+                                                              },
+                                                              "type": "RNSVGGroup",
+                                                            },
+                                                          ],
+                                                          "props": {
+                                                            "accessibilityLabel": "trend down",
+                                                            "align": "xMidYMid",
+                                                            "bbHeight": 10,
+                                                            "bbWidth": 10,
+                                                            "focusable": false,
+                                                            "height": 10,
+                                                            "meetOrSlice": 0,
+                                                            "minX": 0,
+                                                            "minY": 0,
+                                                            "style": [
+                                                              {
+                                                                "backgroundColor": "transparent",
+                                                                "borderWidth": 0,
+                                                              },
+                                                              {
+                                                                "flex": 0,
+                                                                "height": 10,
+                                                                "width": 10,
+                                                              },
+                                                            ],
+                                                            "vbHeight": 10,
+                                                            "vbWidth": 10,
+                                                            "width": 10,
+                                                          },
+                                                          "type": "RNSVGSvgView",
                                                         },
                                                       ],
                                                       "props": {
-                                                        "fill": {
-                                                          "payload": 4278190080,
-                                                          "type": 0,
+                                                        "style": {
+                                                          "alignItems": "center",
+                                                          "flexDirection": "row",
+                                                          "gap": 4,
                                                         },
                                                       },
-                                                      "type": "RNSVGGroup",
+                                                      "type": "View",
+                                                    },
+                                                    {
+                                                      "children": [
+                                                        "SUDDEN",
+                                                      ],
+                                                      "props": {
+                                                        "numberOfLines": 1,
+                                                        "style": {
+                                                          "color": "#a1a1b5",
+                                                          "fontFamily": "Inter-SemiBold",
+                                                          "fontSize": 9,
+                                                          "letterSpacing": 1.4,
+                                                          "marginTop": 2,
+                                                          "textTransform": "uppercase",
+                                                        },
+                                                      },
+                                                      "type": "Text",
                                                     },
                                                   ],
                                                   "props": {
-                                                    "align": "xMidYMid",
-                                                    "bbHeight": 12,
-                                                    "bbWidth": 8,
-                                                    "focusable": false,
-                                                    "height": 12,
-                                                    "meetOrSlice": 0,
-                                                    "minX": 0,
-                                                    "minY": 0,
-                                                    "style": [
-                                                      {
-                                                        "backgroundColor": "transparent",
-                                                        "borderWidth": 0,
-                                                      },
-                                                      {
-                                                        "flex": 0,
-                                                        "height": 12,
-                                                        "width": 8,
-                                                      },
-                                                    ],
-                                                    "vbHeight": 12,
-                                                    "vbWidth": 8,
-                                                    "width": 8,
+                                                    "style": {
+                                                      "alignItems": "center",
+                                                      "backgroundColor": "#15172e",
+                                                      "borderColor": "#2a2c54",
+                                                      "borderRadius": 12,
+                                                      "borderWidth": 1,
+                                                      "paddingHorizontal": 10,
+                                                      "paddingVertical": 10,
+                                                      "width": "31.5%",
+                                                    },
                                                   },
-                                                  "type": "RNSVGSvgView",
+                                                  "type": "View",
+                                                },
+                                                {
+                                                  "children": [
+                                                    {
+                                                      "children": [
+                                                        {
+                                                          "children": [
+                                                            "52",
+                                                            "%",
+                                                          ],
+                                                          "props": {
+                                                            "numberOfLines": 1,
+                                                            "style": [
+                                                              {
+                                                                "fontFamily": "ChakraPetch-Bold",
+                                                                "fontSize": 18,
+                                                                "letterSpacing": -0.3,
+                                                              },
+                                                              {
+                                                                "color": "#14b8a6",
+                                                              },
+                                                            ],
+                                                          },
+                                                          "type": "Text",
+                                                        },
+                                                        {
+                                                          "children": [
+                                                            {
+                                                              "children": [
+                                                                {
+                                                                  "children": null,
+                                                                  "props": {
+                                                                    "d": "M2 4L5 7L8 4",
+                                                                    "fill": null,
+                                                                    "propList": [
+                                                                      "fill",
+                                                                      "stroke",
+                                                                      "strokeWidth",
+                                                                      "strokeLinecap",
+                                                                    ],
+                                                                    "stroke": {
+                                                                      "payload": 4293870660,
+                                                                      "type": 0,
+                                                                    },
+                                                                    "strokeLinecap": 1,
+                                                                    "strokeWidth": 2,
+                                                                  },
+                                                                  "type": "RNSVGPath",
+                                                                },
+                                                              ],
+                                                              "props": {
+                                                                "fill": {
+                                                                  "payload": 4278190080,
+                                                                  "type": 0,
+                                                                },
+                                                              },
+                                                              "type": "RNSVGGroup",
+                                                            },
+                                                          ],
+                                                          "props": {
+                                                            "accessibilityLabel": "trend down",
+                                                            "align": "xMidYMid",
+                                                            "bbHeight": 10,
+                                                            "bbWidth": 10,
+                                                            "focusable": false,
+                                                            "height": 10,
+                                                            "meetOrSlice": 0,
+                                                            "minX": 0,
+                                                            "minY": 0,
+                                                            "style": [
+                                                              {
+                                                                "backgroundColor": "transparent",
+                                                                "borderWidth": 0,
+                                                              },
+                                                              {
+                                                                "flex": 0,
+                                                                "height": 10,
+                                                                "width": 10,
+                                                              },
+                                                            ],
+                                                            "vbHeight": 10,
+                                                            "vbWidth": 10,
+                                                            "width": 10,
+                                                          },
+                                                          "type": "RNSVGSvgView",
+                                                        },
+                                                      ],
+                                                      "props": {
+                                                        "style": {
+                                                          "alignItems": "center",
+                                                          "flexDirection": "row",
+                                                          "gap": 4,
+                                                        },
+                                                      },
+                                                      "type": "View",
+                                                    },
+                                                    {
+                                                      "children": [
+                                                        "MIRROR",
+                                                      ],
+                                                      "props": {
+                                                        "numberOfLines": 1,
+                                                        "style": {
+                                                          "color": "#a1a1b5",
+                                                          "fontFamily": "Inter-SemiBold",
+                                                          "fontSize": 9,
+                                                          "letterSpacing": 1.4,
+                                                          "marginTop": 2,
+                                                          "textTransform": "uppercase",
+                                                        },
+                                                      },
+                                                      "type": "Text",
+                                                    },
+                                                  ],
+                                                  "props": {
+                                                    "style": {
+                                                      "alignItems": "center",
+                                                      "backgroundColor": "#15172e",
+                                                      "borderColor": "#2a2c54",
+                                                      "borderRadius": 12,
+                                                      "borderWidth": 1,
+                                                      "paddingHorizontal": 10,
+                                                      "paddingVertical": 10,
+                                                      "width": "31.5%",
+                                                    },
+                                                  },
+                                                  "type": "View",
                                                 },
                                               ],
                                               "props": {
-                                                "accessibilityLabel": "Support",
-                                                "accessibilityRole": "button",
-                                                "accessibilityState": {
-                                                  "busy": undefined,
-                                                  "checked": undefined,
-                                                  "disabled": undefined,
-                                                  "expanded": undefined,
-                                                  "selected": undefined,
+                                                "style": {
+                                                  "flexDirection": "row",
+                                                  "flexWrap": "wrap",
+                                                  "gap": 8,
+                                                  "marginTop": 10,
                                                 },
-                                                "accessibilityValue": {
-                                                  "max": undefined,
-                                                  "min": undefined,
-                                                  "now": undefined,
-                                                  "text": undefined,
-                                                },
-                                                "accessible": true,
-                                                "collapsable": false,
-                                                "focusable": true,
-                                                "onBlur": [Function],
-                                                "onClick": [Function],
-                                                "onFocus": [Function],
-                                                "onResponderGrant": [Function],
-                                                "onResponderMove": [Function],
-                                                "onResponderRelease": [Function],
-                                                "onResponderTerminate": [Function],
-                                                "onResponderTerminationRequest": [Function],
-                                                "onStartShouldSetResponder": [Function],
-                                                "style": [
-                                                  {
-                                                    "alignItems": "center",
-                                                    "flexDirection": "row",
-                                                    "gap": 8,
-                                                    "paddingHorizontal": 16,
-                                                    "paddingVertical": 14,
-                                                  },
-                                                  false,
-                                                  false,
-                                                ],
                                               },
                                               "type": "View",
                                             },
                                           ],
                                           "props": {
                                             "style": {
-                                              "backgroundColor": "#15172e",
-                                              "borderColor": "#2a2c54",
-                                              "borderRadius": 16,
-                                              "borderWidth": 1,
-                                              "marginTop": 10,
-                                              "overflow": "hidden",
+                                              "marginTop": 18,
                                             },
                                           },
                                           "type": "View",
                                         },
                                       ],
-                                      "props": {
-                                        "style": {
-                                          "marginTop": 20,
-                                        },
-                                      },
+                                      "props": {},
                                       "type": "View",
                                     },
                                   ],
