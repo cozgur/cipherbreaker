@@ -353,16 +353,29 @@ Maç başlatmaya çalışırken modal: "Yetersiz token. Token almak için:"
 
 ### 5.5 Dinamik Kazanma Oranı (gizli)
 
-Oyuncu long-term **yavaşça kaybetmeli** — ama bunu hissetmemeli. Backend olmadığı için basit bir lokal DDA (dynamic difficulty adjustment):
+Oyuncu long-term **yavaşça kaybetmeli** — ama bunu hissetmemeli. Backend olmadığı için basit bir lokal DDA (dynamic difficulty adjustment).
+
+**Implementation: rolling 10-match window with deterministic threshold mapping** (Phase 7A.2). _Tasarım drift not_: erken taslakta lifetime-winRate üzerinden weighted-random öneriliyordu; Phase 7A.0 brainstorm'unda deterministik thresholda dönüldü çünkü (a) test edilebilirlik (pure function, scenario fixtures), (b) bot tuning'in tahmin edilebilirliği, (c) lifetime stats yerine "son 10 maç" ile yakın-vadeli oyuncu deneyimine duyarlılık.
 
 ```
-function selectDifficulty(stats):
-  winRate = stats.wins / (stats.games || 1)
-  if stats.games < 5: return weightedRandom({easy: 0.10, normal: 0.80, hard: 0.10})  // ilk günler tatlı
-  if winRate > 0.60: return weightedRandom({easy: 0.02, normal: 0.58, hard: 0.40})  // çok kazanıyorsa zorlaştır
-  if winRate < 0.30: return weightedRandom({easy: 0.15, normal: 0.75, hard: 0.10})  // çok kaybediyorsa yumuşat
-  return weightedRandom({easy: 0.05, normal: 0.70, hard: 0.25})  // default
+function pickDifficultyFromOutcomes(recentMatches: MatchResultOutcome[]):
+  if recentMatches.length < 10: return 'normal'      // warm-up — küçük örneklemde overreact yok
+  window = recentMatches.last(10)                     // rolling 10
+  wins = count(window, outcome == 'victory')          // sadece victory sayılır
+  if wins <= 2: return 'easy'                         // 0–2 / 10 → struggling, yumuşat
+  if wins >= 8: return 'hard'                         // 8–10 / 10 → dominating, zorlaştır
+  return 'normal'                                     // 3–7 / 10 → wide normal band (target)
 ```
+
+- **Pencere**: son 10 maç (rolling). `userStore.stats.recentMatches`'ten okunur (cap 10, `recordMatchResult` her maç sonunda push'lar).
+- **Warm-up**: 10 maçtan az history varsa default `'normal'`. 1–2 maçlık streak'lere overreact yok.
+- **Win sayımı**: yalnızca `'victory'` paya girer. `'draw'` ve `'stalemate'` paydaya girer ama paya girmez (winRate semantiği ile uyumlu — bkz. SPEC §3.10 stalemate refund).
+- **Wide normal band** (3–7): %30–%70 kazanma oranını aynı bot zorluğunda toplayan kasıtlı "tembel DDA" tasarımı. Yalnızca sürekli ekstrem streak'ler difficulty'yi hareket ettirir.
+- **Freeze noktası**: `matchStore.createMatch` (stake debit ile aynı seam). Difficulty maç oluşumunda kilitlenir; mid-match recentMatches değişiklikleri aktif maçı geri etkilemez.
+
+**Hidden invariant**: UI hiçbir yerde `'easy' | 'normal' | 'hard'` literal'ını render etmez ve oyuncuya bot zorluğunu hissettiren açıklama (örn. "your opponent is harder now") basmaz. DDA tasarım gereği gizlidir; oyuncu zorluğu yalnızca bot davranışı (pool selectivity + thinking time, SPEC §4.3 + §4.4) üzerinden hisseder. Detaylı invariant ve uygulama notu: `docs/ARCHITECTURE.md` "Phase 7A.2 — Hidden DDA".
+
+**Post-launch tuning**: %45 hedef win-rate ile threshold uyumluluğu gerçek kullanıcı verisiyle değerlendirilecek. Eğer dağılım dar çıkarsa normal band 4–6 olarak daraltılabilir (Phase 7A backlog).
 
 ---
 

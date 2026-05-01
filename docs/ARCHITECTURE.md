@@ -509,7 +509,7 @@ The price is that thinking-time tests can't pin a specific value without `jest.s
 
 Two new optional fields on `MatchState`. Both are durable (persist with the rest of the snapshot) so resume produces the same bot behaviour and timeline ordering. Both are optional so the persist version doesn't have to bump for hydrated Phase 2 states.
 
-- **`botDifficulty`** — frozen at `startMatch` (Phase 3 hardcodes `'normal'`; Phase 7A wires SPEC §5.5 dynamic-difficulty adjustment from `userStore.stats`). The field exists today so the wiring change is one line in `startMatch` and zero everywhere else. `runOpponentTurn` falls back to `'normal'` for `undefined`, so a hydrated pre-Phase-3 state still works.
+- **`botDifficulty`** — stamped at `matchStore.createMatch` (Phase 7A.2 wires SPEC §5.5 hidden DDA via `pickDifficultyFromOutcomes(userStore.stats.recentMatches)` at the orchestration boundary; engines stay userStore-naïve and pass the field through). Both `engine.startMatch` and `matchStore.runOpponentTurn` fall back to `'normal'` for `undefined`, so a hydrated pre-Phase-3 state — or any test that constructs `MatchState` inline without DDA wiring — still works. Full delta in "Phase 7A.2 — Hidden DDA" below.
 - **`firstAuthor`** — set by the same RNG roll in `startMatch` that picks the initial phase. The MatchScreen UI consumes this through `interleaveTimeline(state)` to round-robin `playerGuesses` + `opponentGuesses` into chronological order. Without it, the UI would have to assume "player always goes first" and Mode 4 (Blitz, where the opponent often cracks first) would render the timeline backwards.
 
 Both fields use the `state.X ?? default` idiom in their consumers — adding a third optional field in a future phase (e.g. `replayVersion`) follows the same pattern with no migration overhead.
@@ -939,6 +939,16 @@ These items were identified during Phase 6 device walkthrough and Codex code rev
 ### Drift — decision needed
 
 **6. SPEC vs catalog reward mismatch.** **Phase 7A.1 resolution — SPEC is the source of truth.** Catalog updates: Mode 4 `rewardWin` 100 → 150, Mode 5 `rewardWin` 200 → 250, Mode 6 `rewardWin` 100 → 120 + `rewardDraw` 0 → 50 (the SPEC §5.2 stalemate refund), Mode 7 `rewardWin` 150 → 180. Stakes were already SPEC-aligned (Mode 5 = 100, Mode 7 = 75). Reasoning: SPEC's risk/reward gradient matches each mode's pressure (Blitz timer, Blackout information-poverty, Mirror parallel-race premium); the Phase 1B flat 100/100/100/100/200/100/150 row was provisional balancing during scaffold, not a deliberate counter-design. The drift was a one-line catalog change but called for a decision because the launch-balance lever lives at this seam.
+
+### Phase 7A.2 Codex Review Follow-ups (Phase 7A.3 polish)
+
+Surfaced during the Phase 7A.2 Codex review. None block 7A.2's commit (no high-severity bugs, threshold + wiring + tests are all correct); these are quality bars to raise in the next polish slice.
+
+**1. Real Mode 6 / Mode 7 concrete DDA integration test.** The current `matchStore` DDA tests use a stub mode (`registerStub`) — they prove the wiring (recentMatches → state.botDifficulty) but not the per-mode propagation chain end-to-end on the real registry. Phase 7A.3 add: a test that registers `mode7Mirror` + `mode6SuddenDeath` (the production definitions), runs `createMatch` → `startMatch` → `runOpponentTurn` against a fixed `recentMatches` window, and asserts that the difficulty stamped at `createMatch` reaches `mode.bot.makeGuess`'s `BotContext.difficulty` unchanged. Catches future regressions where a mode override (e.g. a Mode 7-specific bot façade) silently drops the field.
+
+**2. Hidden invariant CI guard.** Today the "no UI surfaces `'easy' | 'normal' | 'hard'`" rule is enforced by ARCHITECTURE.md prose + a manual grep. Phase 7A.3 add: a whitelist test (Jest) that fails if any of those literals appear inside `src/screens/**` or `src/components/**` outside known `BotContext` plumbing sites (`MatchScreen.tsx` lines feeding `BotContext.difficulty`). The whitelist is small enough to maintain by hand; a regex sweep catches future drift before review.
+
+**3. (Post-launch) %45 win-rate target vs 3–7 normal band.** Current Option B threshold is "lazy DDA" — wide normal band absorbs %30–%70 win rates. SPEC §5.5 implementation note already flags this. Decision deferred until real user telemetry exists: if win-rate distribution is wide, narrow the normal band to 4–6 (or 4–7); if narrow, keep current. No code change today.
 
 ---
 

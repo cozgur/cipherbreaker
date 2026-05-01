@@ -101,6 +101,35 @@ describe('pickDifficultyFromOutcomes', () => {
     });
   });
 
+  describe('boundary oscillation — sliding window flips difficulty at threshold edges', () => {
+    // These cover the case the static threshold tests don't: as the
+    // window slides forward (one outcome dropped from the head, one
+    // appended to the tail), the wins count can change by ±1 and trip
+    // a band boundary. Regression guard for off-by-one slice + count
+    // bugs that wouldn't surface from full-window fixtures alone.
+
+    it('2 → 3 flip — appending a victory while a defeat slides off pushes easy → normal', () => {
+      // Window: [D, V, V, D, D, D, D, D, D, D] — 2 victories → easy.
+      const before: MatchResultOutcome[] = [D, V, V, D, D, D, D, D, D, D];
+      expect(pickDifficultyFromOutcomes(before)).toBe('easy');
+      // Push a new victory; the leading defeat falls off under the
+      // cap-10 sliding window. Graded last-10 becomes
+      // [V, V, D, D, D, D, D, D, D, V] — 3 victories → normal.
+      const after = [...before, V];
+      expect(pickDifficultyFromOutcomes(after)).toBe('normal');
+    });
+
+    it('7 → 8 flip — appending a victory while a defeat slides off pushes normal → hard', () => {
+      // Window: [D, V, V, V, V, V, V, V, D, D] — 7 victories → normal.
+      const before: MatchResultOutcome[] = [D, V, V, V, V, V, V, V, D, D];
+      expect(pickDifficultyFromOutcomes(before)).toBe('normal');
+      // Push a new victory; the leading defeat falls off. Graded last-10
+      // becomes [V, V, V, V, V, V, V, D, D, V] — 8 victories → hard.
+      const after = [...before, V];
+      expect(pickDifficultyFromOutcomes(after)).toBe('hard');
+    });
+  });
+
   describe('rolling window — slices the last RECENT_WINDOW_SIZE entries', () => {
     it('15-entry input where the leading 5 are victories: only the last 10 grade', () => {
       // First 5 victories fall off the window; last 10 are all defeats → easy.
