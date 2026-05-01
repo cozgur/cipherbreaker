@@ -1055,6 +1055,7 @@ Items intentionally pushed past launch (incorporating Codex roadmap suggestions 
 - **LiveOps surface** — events, weekly featured mode, streak rewards. Engagement layer after Daily fatigue surfaces in the retention curve. (Codex #5.)
 - **Bot persona variations** — typing cadence, aggressive vs conservative styles, opponent-name-correlated personality. (Codex #6.) Adds bot believability without a backend bot service.
 - **DDA tuning with real user data** — Option B threshold re-evaluated against the win-rate distribution from real telemetry. SPEC §5.5 already flags this seam.
+- **Profile per-mode trend caret threshold (±5 → ±8?)** — observed during Phase 7A.3 iOS walkthrough: with the launch fixture (lifetime win rate 68%) most modes trip the ▼ caret because their per-mode rates sit 13–19 points below lifetime. The arithmetic is correct but the visual pattern is demoralising — every mode tile looks like a regression. Decision deferred to post-launch: if real user distributions reproduce the pattern (most users dominating one or two modes and "below average" everywhere else), widen the trend dead-band from ±5 to ±8. If distributions are tighter, keep ±5. Pure tuning change inside `trendDirection` in `ProfileScreen.tsx` — no schema cost.
 - **Friends mode** — room codes for two-player matches on Supabase. First feature requiring a real backend. (Codex #8.)
 - **Leaderboard** — async-first (daily best leaderboard); real-time only if engagement justifies it.
 
