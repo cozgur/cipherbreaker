@@ -74,6 +74,11 @@ export interface DailyHistoryEntry {
  * `dailyChallengeStore.startToday()` once the user moves to the
  * next day's puzzle, so two consecutive days never overlap on this
  * field.
+ *
+ * The `secret` is captured here so DailyResult can reveal it on
+ * failure (Wordle-faithful — the player who couldn't crack the code
+ * sees the answer). On success the field is still populated; the
+ * screen just doesn't surface it (the player already cracked it).
  */
 export interface DailyResultSummary {
   readonly date: string;
@@ -81,6 +86,7 @@ export interface DailyResultSummary {
   readonly turnLimit: number;
   readonly turnsUsed: number;
   readonly success: boolean;
+  readonly secret: string;
   /** Full +N/-M trail for the share text and the result reveal. */
   readonly feedbackTrail: readonly DailyGuessRecord[];
 }

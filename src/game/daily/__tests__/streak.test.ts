@@ -16,6 +16,7 @@ const result = (overrides: Partial<DailyResultSummary> = {}): DailyResultSummary
   turnLimit: 6,
   turnsUsed: 4,
   success: true,
+  secret: '1234',
   feedbackTrail: [],
   ...overrides,
 });

@@ -72,6 +72,15 @@ export function DailyResultScreen(): React.JSX.Element {
           {headline}
         </Text>
 
+        {!lastResult.success ? (
+          <View style={styles.revealBlock}>
+            <Text style={styles.revealLabel}>THE CODE WAS</Text>
+            <Text style={styles.revealValue} accessibilityLabel={`Secret was ${lastResult.secret}`}>
+              {lastResult.secret}
+            </Text>
+          </View>
+        ) : null}
+
         <View style={styles.statsBlock}>
           <Stat label="Streak" value={`${currentStreak} ${currentStreak === 1 ? 'day' : 'days'}`} />
           <Stat
@@ -185,6 +194,24 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.textSecondary,
     textAlign: 'center',
+  },
+  revealBlock: {
+    marginTop: 24,
+    alignItems: 'center',
+  },
+  revealLabel: {
+    fontFamily: fonts.bodySemibold,
+    fontSize: 10,
+    letterSpacing: 1.4,
+    textTransform: 'uppercase',
+    color: colors.textSecondary,
+  },
+  revealValue: {
+    marginTop: 6,
+    fontFamily: fonts.mono,
+    fontSize: 26,
+    letterSpacing: 4,
+    color: colors.text,
   },
   statsBlock: {
     marginTop: 32,

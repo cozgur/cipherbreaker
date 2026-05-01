@@ -20,6 +20,7 @@ const successResult: DailyResultSummary = {
   turnLimit: 6,
   turnsUsed: 3,
   success: true,
+  secret: '4321',
   feedbackTrail: [
     { guess: '1234', plus: 1, minus: 1, isWin: false },
     { guess: '5678', plus: 0, minus: 2, isWin: false },
@@ -31,6 +32,7 @@ const failureResult: DailyResultSummary = {
   ...successResult,
   turnsUsed: 6,
   success: false,
+  secret: '7382',
   feedbackTrail: Array.from({ length: 6 }, () => ({
     guess: '1111',
     plus: 0,

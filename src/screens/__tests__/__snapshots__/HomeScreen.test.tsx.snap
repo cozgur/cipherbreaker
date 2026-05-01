@@ -5735,6 +5735,94 @@ exports[`HomeScreen snapshots the seven-mode layout 1`] = `
                                       "children": [
                                         {
                                           "children": [
+                                            "Today's puzzle 🔓",
+                                          ],
+                                          "props": {
+                                            "numberOfLines": 1,
+                                            "style": {
+                                              "color": "#f5f5f7",
+                                              "fontFamily": "ChakraPetch-Bold",
+                                              "fontSize": 18,
+                                              "letterSpacing": -0.2,
+                                            },
+                                          },
+                                          "type": "Text",
+                                        },
+                                        {
+                                          "children": [
+                                            "Day #1 · 4 digits · Resets in 14h 32m",
+                                          ],
+                                          "props": {
+                                            "numberOfLines": 1,
+                                            "style": {
+                                              "color": "#a1a1b5",
+                                              "fontFamily": "Inter-Regular",
+                                              "fontSize": 12,
+                                              "marginTop": 4,
+                                            },
+                                          },
+                                          "type": "Text",
+                                        },
+                                      ],
+                                      "props": {
+                                        "accessibilityLabel": "Daily challenge — Today's puzzle 🔓",
+                                        "accessibilityRole": "button",
+                                        "accessibilityState": {
+                                          "busy": undefined,
+                                          "checked": undefined,
+                                          "disabled": undefined,
+                                          "expanded": undefined,
+                                          "selected": undefined,
+                                        },
+                                        "accessibilityValue": {
+                                          "max": undefined,
+                                          "min": undefined,
+                                          "now": undefined,
+                                          "text": undefined,
+                                        },
+                                        "accessible": true,
+                                        "collapsable": false,
+                                        "focusable": true,
+                                        "onBlur": [Function],
+                                        "onClick": [Function],
+                                        "onFocus": [Function],
+                                        "onResponderGrant": [Function],
+                                        "onResponderMove": [Function],
+                                        "onResponderRelease": [Function],
+                                        "onResponderTerminate": [Function],
+                                        "onResponderTerminationRequest": [Function],
+                                        "onStartShouldSetResponder": [Function],
+                                        "style": [
+                                          {
+                                            "backgroundColor": "#15172e",
+                                            "borderColor": "#2a2c54",
+                                            "borderRadius": 14,
+                                            "borderWidth": 1,
+                                            "marginBottom": 16,
+                                            "paddingHorizontal": 16,
+                                            "paddingVertical": 14,
+                                          },
+                                          {
+                                            "backgroundColor": "rgba(139,92,246,0.16)",
+                                            "borderColor": "rgba(139,92,246,0.4)",
+                                            "elevation": 4,
+                                            "shadowColor": "#8b5cf6",
+                                            "shadowOffset": {
+                                              "height": 0,
+                                              "width": 0,
+                                            },
+                                            "shadowOpacity": 0.5,
+                                            "shadowRadius": 18,
+                                          },
+                                          false,
+                                        ],
+                                      },
+                                      "type": "View",
+                                    },
+                                    {
+                                      "children": [
+                                        {
+                                          "children": [
                                             "CLASSIC",
                                           ],
                                           "props": {

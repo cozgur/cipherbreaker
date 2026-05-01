@@ -166,6 +166,7 @@ export const useDailyChallengeStore = create<
             turnLimit: attempt.turnLimit,
             turnsUsed,
             success,
+            secret: attempt.secret,
             feedbackTrail: nextGuesses,
           };
           // Step 1: clear our own state. Step 2: hand the result to

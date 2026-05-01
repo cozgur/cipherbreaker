@@ -6,7 +6,7 @@
  * `meta.section` — adding a new mode needs no changes here.
  */
 
-import { useCallback } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Path } from 'react-native-svg';
@@ -21,8 +21,17 @@ import { SectionLabel } from '@components/SectionLabel';
 import { TokenBadge } from '@components/TokenBadge';
 import { modeCatalog } from '@data/modeCatalog';
 import { useMockUser } from '@data/mockUser';
+import {
+  buildBannerCopy,
+  getDailyBannerState,
+  timeUntilNextDaily,
+  type DailyBannerState,
+} from '@game/daily/banner';
+import { calendarDayIndex, getDailyConfig } from '@game/daily/dailyConfig';
+import { formatDailyDate } from '@game/daily/dailyDate';
 import type { ModeCatalogEntry } from '@game/types';
 import type { RootStackParamList } from '@navigation/routes';
+import { useUserStore } from '@state/userStore';
 import { colors, fonts, withAlpha } from '@theme/tokens';
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'Home'>;
@@ -31,6 +40,56 @@ export function HomeScreen(): React.JSX.Element {
   const navigation = useNavigation<Nav>();
   const user = useMockUser();
   const insets = useSafeAreaInsets();
+  const dailyState = useUserStore((s) => s.dailyChallenge);
+
+  // `today` is captured once on mount. The countdown ticker below
+  // watches the wall clock; the day string only matters for state
+  // determination, which is recomputed each render off this value.
+  const [today] = useState(() => formatDailyDate(new Date()));
+  const dayNumber = useMemo(() => calendarDayIndex(today), [today]);
+  const dailyConfig = useMemo(() => getDailyConfig(today, dailyState), [today, dailyState]);
+  const bannerState: DailyBannerState = getDailyBannerState(today, dailyState.lastResult);
+
+  const [countdown, setCountdown] = useState(() => timeUntilNextDaily(new Date()));
+  useEffect(() => {
+    // 60s tick — minute granularity is enough for the "Resets in
+    // 14h 32m" surface. Cleanup on unmount.
+    const interval = setInterval(() => {
+      setCountdown(timeUntilNextDaily(new Date()));
+    }, 60_000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const bannerCopy = useMemo(
+    () =>
+      buildBannerCopy(
+        bannerState,
+        dailyConfig,
+        dayNumber,
+        countdown,
+        dailyState.lastResult,
+        dailyState.currentStreak,
+      ),
+    [
+      bannerState,
+      dailyConfig,
+      dayNumber,
+      countdown,
+      dailyState.lastResult,
+      dailyState.currentStreak,
+    ],
+  );
+
+  const onDailyPress = useCallback(() => {
+    // 3-state navigation guard. Cracked or failed today → DailyResult
+    // (Wordle pattern — no replay). Otherwise → DailyMatchScreen
+    // (which itself handles fresh vs resume via the store).
+    if (dailyState.lastResult !== null && dailyState.lastResult.date === today) {
+      navigation.navigate('DailyResult');
+      return;
+    }
+    navigation.navigate('Daily');
+  }, [dailyState.lastResult, today, navigation]);
 
   const openProfile = useCallback(() => navigation.navigate('Profile'), [navigation]);
   const openShop = useCallback(() => navigation.navigate('Shop'), [navigation]);
@@ -82,6 +141,24 @@ export function HomeScreen(): React.JSX.Element {
         contentContainerStyle={[styles.list, { paddingBottom: insets.bottom + 48 }]}
         showsVerticalScrollIndicator={false}
       >
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`Daily challenge — ${bannerCopy.headline}`}
+          onPress={onDailyPress}
+          style={({ pressed }) => [
+            styles.dailyBanner,
+            bannerStateStyle(bannerState),
+            pressed && styles.dailyBannerPressed,
+          ]}
+        >
+          <Text style={styles.dailyBannerHeadline} numberOfLines={1}>
+            {bannerCopy.headline}
+          </Text>
+          <Text style={styles.dailyBannerSubline} numberOfLines={1}>
+            {bannerCopy.subline}
+          </Text>
+        </Pressable>
+
         <View style={styles.sectionHeader}>
           <SectionLabel>CLASSIC</SectionLabel>
         </View>
@@ -183,4 +260,52 @@ const styles = StyleSheet.create({
   levelBarWrap: {
     marginTop: 28,
   },
+  dailyBanner: {
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderRadius: 14,
+    marginBottom: 16,
+    borderWidth: 1,
+    backgroundColor: colors.bgElevated,
+    borderColor: colors.borderSubtle,
+  },
+  dailyBannerFresh: {
+    backgroundColor: withAlpha(colors.violet, 0.16),
+    borderColor: withAlpha(colors.violet, 0.4),
+    shadowColor: colors.violet,
+    shadowOpacity: 0.5,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 4,
+  },
+  dailyBannerCracked: {
+    backgroundColor: withAlpha(colors.success, 0.14),
+    borderColor: withAlpha(colors.success, 0.4),
+  },
+  dailyBannerFailed: {
+    backgroundColor: withAlpha(colors.danger, 0.12),
+    borderColor: withAlpha(colors.danger, 0.34),
+  },
+  dailyBannerPressed: {
+    opacity: 0.85,
+    transform: [{ scale: 0.99 }],
+  },
+  dailyBannerHeadline: {
+    fontFamily: fonts.display,
+    fontSize: 18,
+    color: colors.text,
+    letterSpacing: -0.2,
+  },
+  dailyBannerSubline: {
+    marginTop: 4,
+    fontFamily: fonts.body,
+    fontSize: 12,
+    color: colors.textSecondary,
+  },
 });
+
+function bannerStateStyle(state: DailyBannerState) {
+  if (state === 'cracked') return styles.dailyBannerCracked;
+  if (state === 'failed') return styles.dailyBannerFailed;
+  return styles.dailyBannerFresh;
+}
