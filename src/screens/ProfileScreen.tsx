@@ -65,7 +65,7 @@ export function ProfileScreen(): React.JSX.Element {
     { label: 'Current Streak', value: user.stats.currentStreak.toString() },
     { label: 'Best Streak', value: user.stats.bestStreak.toString() },
     { label: 'Avg Turns', value: user.stats.avgTurns.toFixed(1) },
-    { label: 'Tokens Earned', value: formatK(user.stats.tokensEarned) },
+    { label: 'Tokens Earned', value: formatK(user.stats.totalTokensEarned) },
   ];
 
   return (

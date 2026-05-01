@@ -1,4 +1,4 @@
-import { USER_STORE_DEFAULTS, useUserStore } from '../userStore';
+import { __migrateUserStoreForTests, USER_STORE_DEFAULTS, useUserStore } from '../userStore';
 
 describe('useUserStore', () => {
   beforeEach(() => {
@@ -83,7 +83,8 @@ describe('useUserStore', () => {
           currentStreak: 10,
           bestStreak: 10,
           avgTurns: 5,
-          tokensEarned: 0,
+          totalTokensEarned: 0,
+          recentMatches: [],
         },
       });
       useUserStore.getState().recordMatchResult({
@@ -107,7 +108,8 @@ describe('useUserStore', () => {
           currentStreak: 7,
           bestStreak: 12,
           avgTurns: 5,
-          tokensEarned: 0,
+          totalTokensEarned: 0,
+          recentMatches: [],
         },
       });
       useUserStore.getState().recordMatchResult({
@@ -144,7 +146,8 @@ describe('useUserStore', () => {
           currentStreak: 0,
           bestStreak: 0,
           avgTurns: 5,
-          tokensEarned: 0,
+          totalTokensEarned: 0,
+          recentMatches: [],
         },
         perMode: { 1: { winRate: 50 }, 2: { winRate: 64 }, 7: { winRate: 52 } },
       });
@@ -181,7 +184,8 @@ describe('useUserStore', () => {
           currentStreak: 0,
           bestStreak: 0,
           avgTurns: 5,
-          tokensEarned: 0,
+          totalTokensEarned: 0,
+          recentMatches: [],
         },
       });
       // (5 * 9 + 6) / 10 = 5.1
@@ -191,6 +195,122 @@ describe('useUserStore', () => {
         turns: 6,
       });
       expect(useUserStore.getState().stats.avgTurns).toBeCloseTo(5.1, 1);
+    });
+
+    it('appends the outcome onto the rolling recentMatches window', () => {
+      useUserStore.setState({
+        stats: { ...USER_STORE_DEFAULTS.stats, recentMatches: [] },
+      });
+      useUserStore.getState().recordMatchResult({ modeId: 1, outcome: 'victory', turns: 4 });
+      useUserStore.getState().recordMatchResult({ modeId: 1, outcome: 'defeat', turns: 6 });
+      useUserStore.getState().recordMatchResult({ modeId: 1, outcome: 'draw', turns: 5 });
+      expect(useUserStore.getState().stats.recentMatches).toEqual([
+        'victory',
+        'defeat',
+        'draw',
+      ]);
+    });
+
+    it('caps recentMatches at the ten most recent outcomes (sliding window)', () => {
+      useUserStore.setState({
+        stats: { ...USER_STORE_DEFAULTS.stats, recentMatches: [] },
+      });
+      // Record 12 matches; first two should fall off the tail.
+      for (let i = 0; i < 12; i += 1) {
+        useUserStore.getState().recordMatchResult({
+          modeId: 1,
+          outcome: i % 2 === 0 ? 'victory' : 'defeat',
+          turns: 4,
+        });
+      }
+      const recent = useUserStore.getState().stats.recentMatches;
+      expect(recent).toHaveLength(10);
+      // Last entry came in on i=11 (odd) → defeat.
+      expect(recent[recent.length - 1]).toBe('defeat');
+    });
+
+    it('increments totalTokensEarned by tokensEarnedThisMatch when positive', () => {
+      useUserStore.setState({
+        stats: { ...USER_STORE_DEFAULTS.stats, totalTokensEarned: 1000 },
+      });
+      useUserStore.getState().recordMatchResult({
+        modeId: 1,
+        outcome: 'victory',
+        turns: 4,
+        tokensEarnedThisMatch: 100,
+      });
+      expect(useUserStore.getState().stats.totalTokensEarned).toBe(1100);
+    });
+
+    it('clamps a negative tokensEarnedThisMatch to zero (no debit on the lifetime counter)', () => {
+      useUserStore.setState({
+        stats: { ...USER_STORE_DEFAULTS.stats, totalTokensEarned: 500 },
+      });
+      useUserStore.getState().recordMatchResult({
+        modeId: 1,
+        outcome: 'defeat',
+        turns: 6,
+        tokensEarnedThisMatch: -50,
+      });
+      expect(useUserStore.getState().stats.totalTokensEarned).toBe(500);
+    });
+
+    it('omitted tokensEarnedThisMatch defaults to zero (legacy callers stay neutral)', () => {
+      useUserStore.setState({
+        stats: { ...USER_STORE_DEFAULTS.stats, totalTokensEarned: 200 },
+      });
+      useUserStore.getState().recordMatchResult({ modeId: 1, outcome: 'draw', turns: 5 });
+      expect(useUserStore.getState().stats.totalTokensEarned).toBe(200);
+    });
+  });
+
+  describe('migrate v1 → v2 (Phase 7A.1 schema bump)', () => {
+    it('renames stats.tokensEarned → stats.totalTokensEarned and seeds empty recentMatches', () => {
+      const v1State = {
+        username: 'phoenix99',
+        tokens: 1234,
+        level: 8,
+        currentXP: 500,
+        targetXP: 800,
+        hasOnboarded: true,
+        stats: {
+          gamesPlayed: 50,
+          winRate: 60,
+          currentStreak: 3,
+          bestStreak: 7,
+          avgTurns: 5.1,
+          tokensEarned: 9_999,
+        },
+        perMode: { 1: { winRate: 70 } },
+      };
+      const next = __migrateUserStoreForTests(v1State, 1);
+      expect(next.username).toBe('phoenix99');
+      expect(next.tokens).toBe(1234);
+      expect(next.level).toBe(8);
+      expect(next.stats.totalTokensEarned).toBe(9_999);
+      expect(next.stats.recentMatches).toEqual([]);
+      expect(next.stats.gamesPlayed).toBe(50);
+      expect(next.stats.winRate).toBe(60);
+      expect(next.perMode[1]).toEqual({ winRate: 70 });
+    });
+
+    it('falls back to defaults for an unknown version stamp', () => {
+      const next = __migrateUserStoreForTests({}, 99);
+      expect(next).toEqual(USER_STORE_DEFAULTS);
+    });
+
+    it('passes through current-version state untouched', () => {
+      const next = __migrateUserStoreForTests(USER_STORE_DEFAULTS, 2);
+      expect(next).toBe(USER_STORE_DEFAULTS);
+    });
+
+    it('handles a v1 state with a missing `stats` key without throwing', () => {
+      const partial = { username: 'ghost', tokens: 100 };
+      const next = __migrateUserStoreForTests(partial, 1);
+      expect(next.username).toBe('ghost');
+      expect(next.tokens).toBe(100);
+      expect(next.stats.recentMatches).toEqual([]);
+      expect(next.stats.totalTokensEarned).toBe(USER_STORE_DEFAULTS.stats.totalTokensEarned);
     });
   });
 });

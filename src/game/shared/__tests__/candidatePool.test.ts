@@ -10,19 +10,24 @@ describe('candidatePool', () => {
     __resetCandidatePoolCacheForTests();
   });
 
-  it('builds 10000 4-digit candidates for the non-unique pool', () => {
+  it('builds 9000 4-digit candidates for the non-unique pool (no leading zero — SPEC §3)', () => {
     const pool = buildAllCandidates(false);
-    expect(pool).toHaveLength(10_000);
-    expect(pool[0]).toBe('0000');
+    expect(pool).toHaveLength(9_000);
+    expect(pool[0]).toBe('1000');
     expect(pool[pool.length - 1]).toBe('9999');
+    // No leading-zero candidates survive.
+    for (const candidate of pool) {
+      expect(candidate[0]).not.toBe('0');
+    }
   });
 
-  it('builds 5040 4-digit candidates for the all-unique pool', () => {
+  it('builds 4536 4-digit candidates for the all-unique pool (no leading zero — SPEC §3)', () => {
     const pool = buildAllCandidates(true);
-    // 10 * 9 * 8 * 7 = 5040
-    expect(pool).toHaveLength(5_040);
+    // 10·9·8·7 − 9·8·7 = 5040 − 504 = 4536
+    expect(pool).toHaveLength(4_536);
     for (const candidate of pool) {
       expect(new Set(candidate).size).toBe(4);
+      expect(candidate[0]).not.toBe('0');
     }
   });
 

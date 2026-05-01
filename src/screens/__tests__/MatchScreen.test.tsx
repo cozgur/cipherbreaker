@@ -86,7 +86,7 @@ describe('MatchScreen — Modes 1-6', () => {
     });
     const current = utils.navRef.current?.getCurrentRoute();
     expect(current?.name).toBe('MatchResult');
-    expect(current?.params).toEqual({ modeId: 1, outcome: 'victory' });
+    expect(current?.params).toEqual({ modeId: 1, outcome: 'victory', opponentId: 'opp-1' });
   });
 
   it('Forfeit Alert → confirm pops to top without re-debiting tokens (stake was debited at createMatch)', () => {

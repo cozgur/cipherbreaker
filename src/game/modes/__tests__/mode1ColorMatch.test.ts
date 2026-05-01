@@ -193,11 +193,11 @@ describe('mode1ColorMatch — bot strategy (CP2)', () => {
     };
   }
 
-  it('initSolverState seeds a candidatePool with all 10 000 four-digit strings', () => {
+  it('initSolverState seeds a candidatePool with all 9 000 four-digit strings (no leading zero)', () => {
     const s = mode1ColorMatch.bot.initSolverState('1234', mode1ColorMatch.rules);
     expect(s.kind).toBe('candidatePool');
     if (s.kind !== 'candidatePool') return;
-    expect(s.pool.length).toBe(10_000);
+    expect(s.pool.length).toBe(9_000);
   });
 
   it('opening guess: returns a 4-digit candidate when the pool is full', async () => {
@@ -207,7 +207,7 @@ describe('mode1ColorMatch — bot strategy (CP2)', () => {
     expect(out.newSolverState.kind).toBe('candidatePool');
     if (out.newSolverState.kind !== 'candidatePool') return;
     // Opening turn — no feedback yet, pool size unchanged.
-    expect(out.newSolverState.pool.length).toBe(10_000);
+    expect(out.newSolverState.pool.length).toBe(9_000);
   });
 
   it('makeGuess is deterministic across identical RNG cursors', async () => {
@@ -228,7 +228,7 @@ describe('mode1ColorMatch — bot strategy (CP2)', () => {
         rng: createRNG({ seed: 42, callCount: 0 }),
       }),
     );
-    expect(hard.guess).toBe('0000'); // pool[0] of buildAllCandidates(false)
+    expect(hard.guess).toBe('1000'); // pool[0] of buildAllCandidates(false) — first digit ≥ 1
   });
 
   it('pool monotonically narrows after a feedback round', async () => {
@@ -253,7 +253,7 @@ describe('mode1ColorMatch — bot strategy (CP2)', () => {
     });
     const next = await mode1ColorMatch.bot.makeGuess(ctx2);
     if (next.newSolverState.kind !== 'candidatePool') throw new Error('wrong kind');
-    expect(next.newSolverState.pool.length).toBeLessThan(10_000);
+    expect(next.newSolverState.pool.length).toBeLessThan(9_000);
     expect(next.newSolverState.pool.length).toBeGreaterThan(0);
     // Sanity — every survivor must contain none of 5/6/7/8.
     for (const candidate of next.newSolverState.pool) {

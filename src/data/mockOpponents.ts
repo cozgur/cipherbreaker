@@ -1,8 +1,12 @@
 /**
- * Ten mock opponents used by Matchmaking + Match headers. Phase 2's
- * real matchmaking will replace `pickRandomOpponent` with a server
- * call — the `MockOpponent` shape matches the Phase 2 `Opponent`
- * domain type so row components and MatchScreen don't need changes.
+ * Twenty mock opponents used by Matchmaking + Match headers. The pool
+ * was 10 in Phase 1B; iOS walkthrough during Phase 6 caught the "playing
+ * the same opponents repeatedly" feel, so Phase 7A.1 doubled it. Phase
+ * 2's real matchmaking will replace `pickRandomOpponent` with a server
+ * call — the `MockOpponent` shape matches the Phase 2 `Opponent` domain
+ * type so row components and MatchScreen don't need changes. Naming
+ * patterns + level range + flag set follow SPEC §6 (3–47, twenty
+ * countries).
  */
 
 export interface MockOpponent {
@@ -24,6 +28,16 @@ export const mockOpponents: readonly MockOpponent[] = [
   { id: 'opp-8', username: 'vortex_io', level: 42, flag: '🇰🇷', isOnline: true },
   { id: 'opp-9', username: 'ghost_byte', level: 11, flag: '🇸🇪', isOnline: true },
   { id: 'opp-10', username: 'radix9', level: 20, flag: '🇨🇦', isOnline: true },
+  { id: 'opp-11', username: 'dragonByte42', level: 27, flag: '🇧🇷', isOnline: true },
+  { id: 'opp-12', username: 'mike_42', level: 8, flag: '🇲🇽', isOnline: true },
+  { id: 'opp-13', username: 'swiftFox', level: 19, flag: '🇮🇹', isOnline: true },
+  { id: 'opp-14', username: 'pixelHunt7', level: 14, flag: '🇪🇸', isOnline: false },
+  { id: 'opp-15', username: 'raj.k', level: 36, flag: '🇮🇳', isOnline: true },
+  { id: 'opp-16', username: 'crypto_omar', level: 22, flag: '🇪🇬', isOnline: true },
+  { id: 'opp-17', username: 'xX_phoenix_Xx', level: 33, flag: '🇷🇺', isOnline: true },
+  { id: 'opp-18', username: 'mason_legend', level: 41, flag: '🇵🇱', isOnline: true },
+  { id: 'opp-19', username: 'zen_arrow', level: 16, flag: '🇦🇷', isOnline: false },
+  { id: 'opp-20', username: 'byteRaider', level: 5, flag: '🇦🇺', isOnline: true },
 ];
 
 /**

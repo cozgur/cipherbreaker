@@ -14,11 +14,17 @@ function renderResult(modeId: number, outcome: MatchResultOutcome) {
       Matchmaking: RouteStubScreen,
       Home: RouteStubScreen,
     },
-    { modeId, outcome },
+    // 'opp-1' (shadowHunter47) is the default fixture for the result-
+    // screen tests so snapshots stay stable. The opponentId chain (Phase
+    // 7A.1, KI #2) is exercised end-to-end in cp4Flows.test.tsx.
+    { modeId, outcome, opponentId: 'opp-1' },
   );
 }
 
-function renderEngineResult(params: RootStackParamList['MatchResult']) {
+function renderEngineResult(
+  params: Omit<RootStackParamList['MatchResult'], 'opponentId'> &
+    Partial<Pick<RootStackParamList['MatchResult'], 'opponentId'>>,
+) {
   return renderWithNavigation(
     'MatchResult',
     {
@@ -26,7 +32,10 @@ function renderEngineResult(params: RootStackParamList['MatchResult']) {
       Matchmaking: RouteStubScreen,
       Home: RouteStubScreen,
     },
-    params,
+    // Default to 'opp-1' (shadowHunter47) so existing engine-path
+    // fixtures don't have to thread opponentId through; tests that
+    // care about a specific opponent override explicitly.
+    { opponentId: 'opp-1', ...params },
   );
 }
 
@@ -102,7 +111,7 @@ describe('MatchResultScreen', () => {
       Matchmaking: RouteStubScreen,
     });
     act(() => {
-      utils.navRef.current?.navigate('MatchResult', { modeId: 1, outcome: 'victory' });
+      utils.navRef.current?.navigate('MatchResult', { modeId: 1, outcome: 'victory', opponentId: 'opp-1' });
     });
     act(() => {
       fireEvent.press(utils.getByText('Home'));

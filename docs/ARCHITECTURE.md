@@ -885,6 +885,18 @@ The tests cover all three paths through the user store: createMatch debits, no-o
 
 The rule that fell out: every economic transaction (stake, reward, refund) belongs to the single store action that owns the corresponding state transition. `matchStore.createMatch` is the seam where a match comes into existence; that's where the stake leaves the wallet. Anywhere else is a drift hazard.
 
+### CP6 — Bug 4 Mode 7 engine path hookup (post-phase-6 fix)
+
+Phase 6 closed Mode 7's engine + parallel timeline work but left one seam unwired: the screen chain `Matchmaking → Match` (sharedSecret skips SecretSetup) had no place that called `matchStore.createMatch + startMatch`. iOS walkthrough revealed the symptom — Mode 7 looked playable but the timeline was the Phase 1B mock + DevResultPicker. Engine gate at `MatchScreen:131` requires both `modeRegistry.getOrNull(modeId) !== null` *and* `matchState?.modeId === modeId`; with no seed the second clause fell through to the mock branch.
+
+The fix lives in `MatchmakingScreen`'s reveal callback: when `nextRouteAfterMatchmaking(modeId)` returns `'Match'` (the sharedSecret branch), the screen now calls `clearMatch + createMatch(modeId, '_') + startMatch` before navigating. Modes 1-6 keep delegating to `SecretSetup.handleLockIn` — the regression guard test (`MatchmakingScreen.test.tsx:engine seed contract`) pins this boundary so a future change cannot leak the seed call into both branches and double-debit the stake.
+
+**Stake debit timing — the asymmetry that fell out.** Mode 7 stake (75 tokens) debits inside `matchStore.createMatch`, so the new seam triggers it at the matchmaking reveal moment — earlier than Modes 1-6, which debit at SecretSetup's "Lock In Code" press. The asymmetry is intentional and semantically clean: sharedSecret means there is no later confirmation gesture; `replace`-navigation also forecloses any "back out before lock-in" path. Visual commitment moment (opponent reveal) and economic commitment moment (stake debit) coincide. Documented here so a future audit doesn't read it as a bug.
+
+The `'_'` placeholder is the Mode 7 secret contract: the engine sees `flags.sharedSecret === true` during `startMatch`, generates a real 4-digit code via `generateRandomDigits`, and overwrites both `playerSecret` and `opponentSecret` to the same string. The placeholder string never reaches gameplay — `mode7Integration.test.ts` already pinned this contract before the navigation hookup landed.
+
+Tests added with the fix: `MatchmakingScreen.test.tsx` grew two cases inside an `engine seed contract` describe block (Mode 7 positive seed + Modes 1-6 negative regression guard); `mode7NavigationFlow.test.tsx` is a new file that mounts `MatchmakingScreen + MatchScreen` together and checks the full surface — landed on Match, matchState seeded, stake debited, DevResultPicker absent. The latter is what would have caught the original bug if it had existed during Phase 6.
+
 ### CP5 — Bug 2 Mode 6 timeline kronoloji
 
 The same walkthrough surfaced a Mode 6 parallel timeline ordering bug: the player's guesses appeared rotated against the opponent's by the round-robin `firstAuthor` alternation, regardless of when they actually submitted. `interleaveTimeline` was built on the turn-based assumption (strict alternation = deterministic merge); under parallel both sides may submit out of rotation.
@@ -912,18 +924,151 @@ These items were identified during Phase 6 device walkthrough and Codex code rev
 
 ### Medium priority
 
-**1. Opponent variety pool small.** `mockOpponents.ts` ships 4–6 entries; iOS walkthrough caught the "playing the same opponents repeatedly" feel. Phase 7A: expand to 15–20 profiles with diverse names, avatars, levels, country flags. Touches: `data/mockOpponents.ts`, no schema change.
+**1. Opponent variety pool small.** `mockOpponents.ts` shipped 10 entries through Phase 6; iOS walkthrough caught the "playing the same opponents repeatedly" feel. **Phase 7A.1 resolution**: expanded to 20 profiles with diverse names, avatars, levels (3–47 per SPEC §6), and country flags across 20 countries. Generator-based approach (SPEC §6 — runtime profile synthesis) deferred to Phase 7B or later; static expansion preserves deterministic test surface and YAGNI.
 
-**2. Opponent identity in MatchResult is hardcoded.** `MatchResultScreen` reads `findOpponent('opp-1')` regardless of which opponent the matchmaker actually picked. Route params are missing `opponentId`; the result screen can't surface the real rival's name in DEFEAT copy ("X cracked it in N"). Phase 7A: thread `opponentId` through the navigation chain (Matchmaking → SecretSetup → Match → MatchResult), update `MatchResultScreen` to read from route params.
+**2. Opponent identity in MatchResult is hardcoded.** `MatchResultScreen` read `findOpponent('opp-1')` regardless of which opponent the matchmaker actually picked. **Phase 7A.1 resolution**: `opponentId: string` is now required on the `MatchResult` route param; the chain runs Matchmaking → SecretSetup → Match → MatchResult unchanged at the call sites (Matchmaking already injected the id, Match already received it via route params). Both `MatchScreen` completion paths (mock-picker + engine watcher) thread it forward; `MatchResultScreen` reads it from `route.params`. Existing engine-path test fixtures default `opponentId: 'opp-1'` via a helper-level fallback so historical snapshots stay byte-identical.
 
-**3. `tokensEarned` lifetime metric not aggregated.** `userStore.stats.tokensEarned` is a static field initialised to `12_400` and never updated. ProfileScreen reads it, but it drifts from real economy state on every match. Phase 7A: increment on every `MatchResultScreen` reward grant (cumulative, not balance — different metric).
+**3. `tokensEarned` lifetime metric not aggregated.** `userStore.stats.tokensEarned` was a static `12_400` placeholder. **Phase 7A.1 resolution**: renamed to `totalTokensEarned`, now incremented inside `recordMatchResult` from a new `tokensEarnedThisMatch` argument. `MatchResultScreen` passes the same `reward` it grants to the wallet, so the lifetime counter and the balance never drift. Negative inputs are clamped to zero (the lifetime line is monotonic — stake debits don't reduce it).
 
 ### Low priority / polish
 
-**4. First digit can be `0` in generated secrets.** `generateRandomDigits` allows `0XXX` patterns (e.g. `0234`). SPEC convention review needed: code-breaker semantics suggest a 1–9 first digit (no leading-zero ambiguity in display). Phase 7A: SPEC update + `generateRandomDigits` first-digit constraint + candidate pool size adjustment (Mode 1/2/4/6 10 000 → 9 000, Mode 3/5 5040 → 4536). Bot performance benchmarks should hold (pool reduction is ~10%, not material).
+**4. First digit can be `0` in generated secrets.** `generateRandomDigits` previously allowed `0XXX`. **Phase 7A.1 resolution**: SPEC §3 now states the convention explicitly (first digit 1–9). `generateRandomDigits` constrains the first position; `buildAllCandidates` skips leading-zero candidates. Pools: 10 000 → 9 000 (any-digit) and 5040 → 4536 (unique). `validateGuess` was intentionally **not** changed — players can still type a `0XXX` guess (it's a bad guess, not an invalid one). Mode 1/4/6/7 hard `pool[0]` is now `'1000'`; Mode 3/5 hard `pool[0]` is `'1023'`. Bot integration tests held under the smaller pool (no benchmark regression).
 
 **5. Profile Settings/Statistics layout.** Currently stacked vertically; awkward on smaller screens (iPhone SE 3rd gen, mini). User feedback during walkthrough: "tek butonla geçilsin" (toggle preferred). Phase 7A: tab design — Stats / Settings toggle inside ProfileScreen. ~1.5–2 hour effort.
 
 ### Drift — decision needed
 
-**6. SPEC vs catalog reward mismatch.** Phase 5 + 6 catalogs ship `rewardWin: 100` for Modes 1–4, 6 (and `rewardWin: 150` for Mode 7); SPEC §3.5–3.8 declares Mode 4 = 150, Mode 5 = 250, Mode 6 = 120, Mode 7 = 180. Two interpretations: (a) the catalog reflects an intentional Phase 1B rebalance that hasn't propagated back to SPEC, (b) the catalog is wrong and should match SPEC. Phase 7A balance pass: pick one source, update the other, document the decision in this file's §Phase 7A section. Either direction is one-line catalog updates + a SPEC §3.x note; the hard part is the decision, not the change.
+**6. SPEC vs catalog reward mismatch.** **Phase 7A.1 resolution — SPEC is the source of truth.** Catalog updates: Mode 4 `rewardWin` 100 → 150, Mode 5 `rewardWin` 200 → 250, Mode 6 `rewardWin` 100 → 120 + `rewardDraw` 0 → 50 (the SPEC §5.2 stalemate refund), Mode 7 `rewardWin` 150 → 180. Stakes were already SPEC-aligned (Mode 5 = 100, Mode 7 = 75). Reasoning: SPEC's risk/reward gradient matches each mode's pressure (Blitz timer, Blackout information-poverty, Mirror parallel-race premium); the Phase 1B flat 100/100/100/100/200/100/150 row was provisional balancing during scaffold, not a deliberate counter-design. The drift was a one-line catalog change but called for a decision because the launch-balance lever lives at this seam.
+
+---
+
+## Phase 7A.1 — Polish + Drift Cleanup (delta)
+
+Phase 7A.1 closes five known-issue items + one drift in a single sweep, all of them surface-area cleanup that was deferred from Phase 6 to keep that phase's sealed-surface test suite stable. The schema migration (KI #3 + DDA prep) is the only piece that touches durable state — the rest is catalog + routing + test-fixture work.
+
+### `userStore` v1 → v2 schema migration
+
+Two semantic changes on `stats`:
+- `tokensEarned` (static `12_400`, never updated) → `totalTokensEarned` (cumulative, incremented inside `recordMatchResult` from the new `tokensEarnedThisMatch` argument).
+- `recentMatches: readonly MatchResultOutcome[]` (rolling window, capped at 10) added — the Phase 7A.2 DDA reads from it.
+
+Migration handler (`migrateUserStore`) maps a v1 persisted blob onto v2: rename the field, preserve the prior cumulative value (so the player keeps their lifetime credit), seed `recentMatches: []`, fall through to defaults for an unrecognised version. The previous stub (every mismatch → defaults) would have wiped every device's progress on the v1 → v2 bump; the real handler keeps the wallet, level, XP, streaks, and per-mode rates intact across the upgrade.
+
+`__migrateUserStoreForTests` is the same function exposed under a test-only alias so the migration suite can exercise the pure mapping without going through AsyncStorage / zustand internals.
+
+### Why `recordMatchResult` learned a fourth argument
+
+Before v2, the action only consumed `(modeId, outcome, turns)` because the only thing it touched was the stats matrix. Adding `tokensEarnedThisMatch?: number` keeps the lifetime counter colocated with the same store action that owns every other match-completion side effect (streak update, win-rate recompute, perMode bump, recentMatches push). The alternative — a separate `creditLifetimeTokens(amount)` action called from `MatchResultScreen` — would have spread the post-match invariant across two seams; if a future caller forgets one, the wallet and the lifetime counter desync. Single-action responsibility eliminates that drift class.
+
+The argument is optional + clamped to zero: legacy callers (the Phase 1B mock-picker path that doesn't have an economy context) record the match without crediting the lifetime counter, and a negative input never debits — the lifetime counter is monotonic.
+
+### KI #2 routing — why an existing field was the hardest part
+
+`Match` and `SecretSetup` already carried `opponentId`; the chain was already ¾ wired. The "tek param ekle" instinct underweighted that the type schema change cascades into every test fixture that constructs a `MatchResult` route — eight `renderEngineResult` call sites, two `navigate('MatchResult', ...)` assertions, and four screen-test snapshots that needed an opponent default. The helper-level default (`{ opponentId: 'opp-1', ...params }`) kept the existing fixtures byte-identical instead of bulk-rewriting them; tests that *do* care about a specific opponent override explicitly. The lesson: when adding a required route param, the cost is dominated by fixture surface, not call-site surface.
+
+### KI #4 — `validateGuess` deliberately stayed permissive
+
+The first-digit-≠-0 convention is a *secret* property (and therefore a *bot pool* property), not a *guess* property. A player can still type `0XXX` — it's a bad guess (kesin yanlış, since secrets never start with 0) but semantically valid input. Restricting `validateGuess` would have meant a keypad rejection at the seventh of seven mode entry points, plus rewriting every `0XXX` fixture in the integration suites (Mode 2 leading-zero numeric-compare cases, Mode 6 parity walk-throughs). The asymmetry is intentional and documented at the SPEC level: pool/secret = strict, guess = permissive.
+
+### Reward drift — the only decision in this delta
+
+The SPEC-vs-catalog reward mismatch (KI #6) was the single non-mechanical call. The chosen direction (catalog → SPEC) makes the reward gradient track each mode's pressure: Blitz pays 50% more for the timer risk, Blackout pays 150% more for the prestige stake, Mode 6 pays 20% more for sudden-death exposure, Mirror pays 20% more for the parallel-race premium. The Phase 1B 100-flat row treated reward as a placeholder; Phase 7A.1 is where that placeholder ends. Future re-balancing now happens in SPEC §5.2 first; the catalog tracks.
+
+---
+
+## Phase 7A.5 — Daily Challenge (planned)
+
+Anchor feature for launch marketing. Slot is **after 7A.4 (Onboarding)** — the onboarding flow's first slide will showcase Daily Challenge directly, so Daily Challenge has to exist before onboarding finalises. ~12–13 hours total, broken into seven CPs (engine refactor through commit). Outline below records the fourteen design decisions that fell out of the brainstorming pass — the implementation phase will turn them into code without re-litigating them.
+
+### Marketing position
+
+> **Mastermind, modern. Daily code crack. 4 to 6 digits. Pure logic.**
+
+Daily Challenge is the "everyone plays the same code today" hook — the social anchor that the seven competitive modes don't carry on their own. Wordle's daily/social loop, applied to a numeric deduction game; the seven modes are the long-tail engagement after the daily lands.
+
+### Engine
+
+- **Mode 3 paradigm** (`+N / −M` count-only feedback, no positional leak) but **multiset evaluate** — digit repeats are allowed (Mode 3 stays unique-only for backward compatibility). The new mode ships behind its own façade rather than extending Mode 3, so registry entries and tests stay disjoint.
+- **First digit ≠ 0** — same SPEC §3 convention KI #4 just locked in. Pool sizes scale with digit count (see progression).
+
+### Progression — variable digit count
+
+| Day range | Digits | Pool (first digit ≥ 1) | Tempo rationale |
+|-----------|--------|------------------------|-----------------|
+| 1–7       | 4      | 9 000                  | Wordle baseline — the entry difficulty Wordle players already calibrate against |
+| 8–17      | 5      | 90 000                 | Fast 4 → 5 ramp: the pool jumps an order of magnitude but the player has the 4-digit rhythm |
+| 18+       | 6      | 900 000                | Medium 5 → 6 ramp; **6 is the cap** |
+
+Cap rationale: the pool is 10 unique digits; at 7+ characters the game collapses into placement/permutation reasoning (effectively a 10-token anagram), not deduction. The deduction-vs-placement ratio peaks at 5–6.
+
+### Streak
+
+- Only a **missed day** breaks the streak. A loss does **not** — the player gets credit for showing up.
+- Break consequence: drop **one difficulty tier** (5 → 4, 6 → 5; floor at 4). Re-progression at the same tempo (7 days back to 5, 10 days back to 6).
+- Lossy break (kindness-but-not-free) — the streak is a participation lock, not a skill lock.
+
+### Turn limits
+
+| Digits | Turns |
+|--------|-------|
+| 4      | 6     |
+| 5      | 7     |
+| 6      | 8     |
+
+Deliberately tight. The cap forces interesting decisions; an unbounded budget reduces Daily Challenge to "eventually solve" rather than "solve under pressure".
+
+### Rewards
+
+- Digit-based base: 4 → **25** tokens, 5 → **50**, 6 → **75**.
+- Streak bonus: **+10 per 7 consecutive days**, capped at **+50 from Day 35 onwards**.
+- Maximum daily payout: **125 tokens** (6-digit + Day 35+ streak). Below the lowest competitive stake (Mode 1/2/3/4/6 = 50, Mode 5 = 100, Mode 7 = 75) so Daily Challenge funds *trying* the seven modes, not bypassing them.
+
+### Economy
+
+- **Free** — no stake. Daily Challenge is engagement infrastructure; charging for it is wrong.
+- **One attempt per day** — the seed is a date hash, retries would defeat the point.
+- **Bot-less** — single-player vs the daily code. No engine bot, no DDA, no opponent profile.
+
+### Social — share format
+
+Numerical (NOT Wordle emoji squares), captures the deduction shape rather than tile colours. Example for a 4-digit, 4-of-6-turn solve:
+
+```
+CipherBreaker Day #142  4/6
++1 −2
++0 −3
++2 −1
++4 ✓ ✓
+cipherbreaker.app
+```
+
+Wordle's emoji grid hides the guess; here the +/− trail *is* the puzzle's signature. Two players who solved Day #142 in different turn counts can compare deduction paths at a glance — that's the social loop.
+
+### Notification
+
+- Daily reminder at **09:00 local time**, iOS opt-in (the system permission prompt rides the onboarding flow).
+
+### Onboarding
+
+- **First slide** is Daily Challenge — the anchor feature gets the first impression. Competitive modes are introduced after.
+
+### Post-daily home layout
+
+After the daily is solved (or failed) the home screen shows a dual layout:
+
+- **Top half**: today's result, current streak, countdown to next daily, share button.
+- **Bottom half**: the seven mode cards.
+
+Engagement after daily complete is the primary KPI for retention week 2+.
+
+### Implementation scope (12–13h)
+
+| CP | Scope | Hours |
+|----|-------|-------|
+| 1  | Engine refactor — variable digit count, multiset `+N/−M` evaluate, new mode façade | 2 |
+| 2  | Daily challenge logic — seed from date, attempt-per-day enforcement | 1.5 |
+| 3  | `DailyMatchScreen` — UI variant of MatchScreen with no opponent column | 2 |
+| 4  | Streak tracking + share format (numerical) | 1.5 |
+| 5  | Push notification (09:00 local, iOS opt-in) | 1 |
+| 6  | Tests + iOS device walkthrough | 2 |
+| 7  | ARCHITECTURE update + commit | 0.5 |

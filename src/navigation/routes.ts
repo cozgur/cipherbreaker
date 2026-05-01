@@ -15,6 +15,10 @@ export type RootStackParamList = {
   MatchResult: {
     modeId: number;
     outcome: MatchResultOutcome;
+    /** Threaded from Matchmaking → SecretSetup → Match → MatchResult so the
+     *  defeat copy can name the rival who cracked it. Phase 7A.1 — was
+     *  hardcoded to 'opp-1' in the result screen until the chain landed. */
+    opponentId: string;
     /** Engine path — real opponent secret for the reveal. Mock path omits. */
     secret?: string;
     /** Engine path — winner's per-side guess count for the headline copy. */

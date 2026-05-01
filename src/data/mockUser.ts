@@ -31,6 +31,7 @@
 
 import { useMemo } from 'react';
 
+import type { MatchResultOutcome } from '@navigation/routes';
 import { SETTINGS_STORE_DEFAULTS, useSettingsStore } from '@state/settingsStore';
 import { USER_STORE_DEFAULTS, useUserStore } from '@state/userStore';
 
@@ -41,7 +42,10 @@ export interface MockUserStats {
   readonly currentStreak: number;
   readonly bestStreak: number;
   readonly avgTurns: number;
-  readonly tokensEarned: number;
+  /** Lifetime cumulative — Phase 7A.1 renamed from `tokensEarned`. */
+  readonly totalTokensEarned: number;
+  /** Rolling window of last ten outcomes — Phase 7A.2 DDA input. */
+  readonly recentMatches: readonly MatchResultOutcome[];
 }
 
 export interface MockUserSettings {

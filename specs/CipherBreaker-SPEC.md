@@ -35,6 +35,8 @@
 
 ## 3. Oyun Mekanikleri
 
+> **Konvansiyon (tüm modlar)**: Gizli sayının ilk hanesi `1–9` aralığındadır. `0XXX` deseni geçersizdir — code-breaker görselinde leading-zero belirsizliği oluşturur. Bu kısıt aday havuzunu da etkiler: tekrar-izinli mod havuzu **9 000** (1000–9999), tekil-rakam havuzu **4 536** (`10·9·8·7 − 9·8·7`). Oyuncu girişinde `0XXX` tahmini izinli kalır (yalnızca kötü bir tahmindir, semantik olarak geçersiz değil).
+
 ### 3.1 Temel Akış
 
 1. **Açılış**: Oyuncu uygulamayı ilk kez açarsa 500 token verilir. Ana ekrana düşer.

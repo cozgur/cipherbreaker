@@ -52,8 +52,8 @@ describe('Mode 7 — integration through useMatchStore (parallelEngine + sharedS
       const solver = state.solverStates!.opponent!;
       expect(solver.kind).toBe('candidatePool');
       if (solver.kind !== 'candidatePool') return;
-      // Mode 1 / Mode 7 candidate pool — duplicates allowed → 10 000.
-      expect(solver.pool.length).toBe(10_000);
+      // Mode 1 / Mode 7 candidate pool — duplicates allowed, first digit ≥ 1 → 9 000.
+      expect(solver.pool.length).toBe(9_000);
     });
   });
 
@@ -93,7 +93,7 @@ describe('Mode 7 — integration through useMatchStore (parallelEngine + sharedS
       useMatchStore.getState().createMatch(7, '_');
       useMatchStore.getState().startMatch();
       const started = useMatchStore.getState().matchState!;
-      // Pick a guess that is provably NOT the secret. The 1-in-10000
+      // Pick a guess that is provably NOT the secret. The 1-in-9000
       // collision is guarded against by trying a fallback.
       const losingGuess = started.opponentSecret === '0000' ? '9999' : '0000';
       const out = await useMatchStore.getState().submitGuess(losingGuess, 'self');

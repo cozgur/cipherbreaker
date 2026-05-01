@@ -116,11 +116,11 @@ export function MatchResultScreen(): React.JSX.Element {
   const route = useRoute<RouteParams>();
   const insets = useSafeAreaInsets();
   const user = useMockUser();
-  const { modeId, outcome, secret: routeSecret } = route.params;
+  const { modeId, outcome, opponentId, secret: routeSecret } = route.params;
 
   const view = OUTCOMES[outcome];
   const mode = useMemo(() => findMode(modeId), [modeId]);
-  const opponent = useMemo(() => findOpponent(`opp-1`), []);
+  const opponent = useMemo(() => findOpponent(opponentId), [opponentId]);
 
   const fallbackReward = view.tokens({
     rewardWin: mode?.meta.rewardWin ?? 0,
@@ -144,7 +144,12 @@ export function MatchResultScreen(): React.JSX.Element {
     // path is a synthetic outcome — recording it would inflate
     // gamesPlayed every time the developer opens the result screen.
     if (isEnginePath) {
-      useUserStore.getState().recordMatchResult({ modeId, outcome, turns });
+      useUserStore.getState().recordMatchResult({
+        modeId,
+        outcome,
+        turns,
+        tokensEarnedThisMatch: reward,
+      });
       if (xpGain > 0) useUserStore.getState().addXp(xpGain);
     }
   }, [reward, xpGain, isEnginePath, modeId, outcome, turns]);

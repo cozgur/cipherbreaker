@@ -13,7 +13,7 @@ describe('mode5Blackout — meta + rules wired from catalog (single source of tr
     expect(mode5Blackout.meta.name).toBe('BLACKOUT');
     expect(mode5Blackout.meta.section).toBe('ADVANCED');
     expect(mode5Blackout.meta.stake).toBe(100);
-    expect(mode5Blackout.meta.rewardWin).toBe(200);
+    expect(mode5Blackout.meta.rewardWin).toBe(250);
   });
 
   it('exposes catalog rules — Phase 5 flipped digitsUnique to true', () => {
@@ -107,7 +107,9 @@ describe('mode5Blackout — generateSecret (unique digits)', () => {
   });
 });
 
-describe('mode5Blackout — bot strategy (5040 unique pool, chunked filter mandatory)', () => {
+describe('mode5Blackout — bot strategy (4536 unique pool, chunked filter mandatory)', () => {
+  // Pool: 4-digit unique-digit candidates with first digit ≥ 1
+  // (10·9·8·7 − 9·8·7 = 5040 − 504 = 4536). pool[0] = '1023'.
   beforeEach(() => {
     __resetCandidatePoolCacheForTests();
   });
@@ -124,11 +126,11 @@ describe('mode5Blackout — bot strategy (5040 unique pool, chunked filter manda
     };
   }
 
-  it('initSolverState seeds a candidatePool of all 5040 unique-digit candidates', () => {
+  it('initSolverState seeds a candidatePool of all 4536 unique-digit candidates', () => {
     const s = mode5Blackout.bot.initSolverState('1234', mode5Blackout.rules);
     expect(s.kind).toBe('candidatePool');
     if (s.kind !== 'candidatePool') return;
-    expect(s.pool.length).toBe(5040);
+    expect(s.pool.length).toBe(4536);
     for (const c of s.pool) {
       expect(new Set(c.split('')).size).toBe(4);
     }
@@ -139,14 +141,14 @@ describe('mode5Blackout — bot strategy (5040 unique pool, chunked filter manda
     expect(out.guess).toMatch(/^\d{4}$/);
     expect(new Set(out.guess.split('')).size).toBe(4);
     if (out.newSolverState.kind !== 'candidatePool') return;
-    expect(out.newSolverState.pool.length).toBe(5040);
+    expect(out.newSolverState.pool.length).toBe(4536);
   });
 
-  it('hard difficulty picks pool[0] = "0123" (sorted, first unique-digit)', async () => {
+  it('hard difficulty picks pool[0] = "1023" (sorted, first unique-digit ≥ 1)', async () => {
     const out = await mode5Blackout.bot.makeGuess(
       makeContext({ difficulty: 'hard' }),
     );
-    expect(out.guess).toBe('0123');
+    expect(out.guess).toBe('1023');
   });
 
   it('makeGuess deterministic across identical RNG cursors', async () => {
@@ -187,7 +189,7 @@ describe('mode5Blackout — bot strategy (5040 unique pool, chunked filter manda
     const elapsed = Date.now() - start;
     if (next.newSolverState.kind !== 'candidatePool') throw new Error('wrong kind');
     expect(next.newSolverState.pool.length).toBeGreaterThan(0);
-    expect(next.newSolverState.pool.length).toBeLessThan(5040);
+    expect(next.newSolverState.pool.length).toBeLessThan(4536);
     // Every survivor reproduces the exact "1 locked" count against '0123'.
     for (const candidate of next.newSolverState.pool) {
       let locked = 0;

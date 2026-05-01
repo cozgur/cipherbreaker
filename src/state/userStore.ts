@@ -6,8 +6,12 @@
  * any structural translation.
  *
  * Migrations: every shape change bumps `STORE_VERSION` and adds a
- * `migrate` branch; the persist middleware drops anything older
- * than the current migration table can handle.
+ * `migrate` branch; the persist middleware runs the matching branch
+ * to map old shapes onto the current one. Phase 7A.1 (v1 → v2)
+ * renamed `stats.tokensEarned` → `stats.totalTokensEarned` (now
+ * cumulative, was a static placeholder) and added
+ * `stats.recentMatches` (rolling window of the last ten outcomes,
+ * fed by `recordMatchResult`, consumed by the Phase 7A.2 DDA).
  */
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -22,8 +26,23 @@ export interface UserStats {
   readonly currentStreak: number;
   readonly bestStreak: number;
   readonly avgTurns: number;
-  readonly tokensEarned: number;
+  /**
+   * Lifetime cumulative reward (tokens earned across every match).
+   * Was `tokensEarned` (static placeholder) in v1; renamed and now
+   * incremented by `recordMatchResult` each time a positive
+   * `tokensEarnedThisMatch` is supplied.
+   */
+  readonly totalTokensEarned: number;
+  /**
+   * Rolling window of the last ten match outcomes (most recent
+   * last). Fed by every `recordMatchResult` call; consumed by the
+   * Phase 7A.2 DDA to bias bot difficulty toward a hidden ~45% win
+   * target. Older entries are dropped beyond the cap.
+   */
+  readonly recentMatches: readonly MatchResultOutcome[];
 }
+
+const RECENT_MATCH_WINDOW = 10;
 
 export interface UserStoreState {
   readonly username: string;
@@ -40,6 +59,13 @@ export interface RecordMatchResultInput {
   readonly modeId: number;
   readonly outcome: MatchResultOutcome;
   readonly turns: number;
+  /**
+   * Net tokens credited for *this* match (rewardWin / rewardDraw /
+   * stake-refund / 0). Optional so legacy callers without economy
+   * context still bump stats; defaults to 0 — the lifetime counter
+   * only moves when a real reward was granted.
+   */
+  readonly tokensEarnedThisMatch?: number;
 }
 
 export interface UserStoreActions {
@@ -54,12 +80,14 @@ export interface UserStoreActions {
    * Per-mount, per-completed-match. Increments `gamesPlayed`, recomputes
    * `winRate` (treating only `'victory'` as a win), updates the streak
    * pair (victory → +1; defeat → reset to 0; draw/stalemate keep the
-   * streak), folds `turns` into the running `avgTurns` mean, and nudges
-   * `perMode[modeId].winRate` by the same victory rule.
+   * streak), folds `turns` into the running `avgTurns` mean, nudges
+   * `perMode[modeId].winRate` by the same victory rule, pushes the
+   * outcome onto the rolling `recentMatches` window (cap 10), and
+   * adds `tokensEarnedThisMatch` (when ≥0) onto `totalTokensEarned`.
    *
    * Win counts aren't persisted as a primitive — `winRate * gamesPlayed`
-   * is reversed at call time. Phase 7A will replace this with a real
-   * record once stats are sourced from the server.
+   * is reversed at call time. Phase 7A.2+ will replace the rate-back-
+   * to-wins trick once stats are sourced from a server.
    */
   recordMatchResult(input: RecordMatchResultInput): void;
   /** Positive-only. Raw counter — Phase 7A wires the level-up rollover. */
@@ -79,7 +107,8 @@ export const USER_STORE_DEFAULTS: UserStoreState = {
     currentStreak: 4,
     bestStreak: 11,
     avgTurns: 5.3,
-    tokensEarned: 12_400,
+    totalTokensEarned: 12_400,
+    recentMatches: [],
   },
   perMode: {
     1: { winRate: 72 },
@@ -92,7 +121,49 @@ export const USER_STORE_DEFAULTS: UserStoreState = {
   },
 };
 
-const STORE_VERSION = 1;
+const STORE_VERSION = 2;
+
+/**
+ * Migrate persisted state across `STORE_VERSION` bumps. The persist
+ * middleware feeds us whatever was on disk; we map it onto the
+ * current `UserStoreState` shape (actions are re-bound by zustand).
+ *
+ * v1 → v2: rename `stats.tokensEarned` → `stats.totalTokensEarned`,
+ * preserve the prior cumulative value (so the player keeps their
+ * lifetime credit), and seed `stats.recentMatches: []`.
+ */
+function migrateUserStore(persisted: unknown, version: number): UserStoreState {
+  if (version === STORE_VERSION) {
+    return persisted as UserStoreState;
+  }
+
+  if (version === 1) {
+    type V1Stats = Omit<UserStats, 'totalTokensEarned' | 'recentMatches'> & {
+      readonly tokensEarned?: number;
+    };
+    type V1State = Omit<UserStoreState, 'stats'> & { readonly stats?: V1Stats };
+    const v1 = (persisted ?? {}) as V1State;
+    const v1Stats = v1.stats ?? ({} as V1Stats);
+    return {
+      ...USER_STORE_DEFAULTS,
+      ...v1,
+      stats: {
+        gamesPlayed: v1Stats.gamesPlayed ?? USER_STORE_DEFAULTS.stats.gamesPlayed,
+        winRate: v1Stats.winRate ?? USER_STORE_DEFAULTS.stats.winRate,
+        currentStreak: v1Stats.currentStreak ?? USER_STORE_DEFAULTS.stats.currentStreak,
+        bestStreak: v1Stats.bestStreak ?? USER_STORE_DEFAULTS.stats.bestStreak,
+        avgTurns: v1Stats.avgTurns ?? USER_STORE_DEFAULTS.stats.avgTurns,
+        totalTokensEarned: v1Stats.tokensEarned ?? USER_STORE_DEFAULTS.stats.totalTokensEarned,
+        recentMatches: [],
+      },
+    };
+  }
+
+  // Older / unknown versions — fall back to defaults so the app
+  // still boots. The user loses their persisted progress, which is
+  // the documented behaviour for an unrecognised version stamp.
+  return USER_STORE_DEFAULTS;
+}
 
 export const useUserStore = create<UserStoreState & UserStoreActions>()(
   persist(
@@ -117,7 +188,7 @@ export const useUserStore = create<UserStoreState & UserStoreActions>()(
         set({ username: trimmed });
       },
 
-      recordMatchResult: ({ modeId, outcome, turns }) => {
+      recordMatchResult: ({ modeId, outcome, turns, tokensEarnedThisMatch = 0 }) => {
         set((s) => {
           const stats = s.stats;
           const isWin = outcome === 'victory';
@@ -151,6 +222,15 @@ export const useUserStore = create<UserStoreState & UserStoreActions>()(
           const newModeGames = estModeGames + 1;
           const newModeWinRate = Math.round((newModeWins / newModeGames) * 100);
 
+          // Rolling window — most recent outcome lands at the tail; older
+          // entries fall off when the cap is exceeded.
+          const nextRecent = [...stats.recentMatches, outcome].slice(-RECENT_MATCH_WINDOW);
+
+          // Lifetime cumulative — only credit the counter when there
+          // was real economic gain (negative inputs are clamped to 0).
+          const earnedDelta = Math.max(0, tokensEarnedThisMatch);
+          const newTotalTokensEarned = stats.totalTokensEarned + earnedDelta;
+
           return {
             stats: {
               gamesPlayed: newGamesPlayed,
@@ -158,7 +238,8 @@ export const useUserStore = create<UserStoreState & UserStoreActions>()(
               currentStreak: nextStreak,
               bestStreak: nextBestStreak,
               avgTurns: newAvgTurns,
-              tokensEarned: stats.tokensEarned,
+              totalTokensEarned: newTotalTokensEarned,
+              recentMatches: nextRecent,
             },
             perMode: { ...s.perMode, [modeId]: { winRate: newModeWinRate } },
           };
@@ -174,14 +255,14 @@ export const useUserStore = create<UserStoreState & UserStoreActions>()(
       name: 'cipherbreaker.user.v1',
       storage: createJSONStorage(() => AsyncStorage),
       version: STORE_VERSION,
-      // Stub migrate handler — there's only v1, but the entry point
-      // exists so future bumps don't have to retrofit the persist call.
       migrate: (persisted, version) => {
-        if (version !== STORE_VERSION) {
-          return USER_STORE_DEFAULTS as UserStoreState & UserStoreActions;
-        }
-        return persisted as UserStoreState & UserStoreActions;
+        const next = migrateUserStore(persisted, version);
+        return next as UserStoreState & UserStoreActions;
       },
     },
   ),
 );
+
+/** Test-only — exported so migration tests can call the pure mapper
+ *  without hitting AsyncStorage / zustand internals. */
+export const __migrateUserStoreForTests = migrateUserStore;

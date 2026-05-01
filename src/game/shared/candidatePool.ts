@@ -3,8 +3,13 @@
  * digit strings (`'1234'`) — half the memory of `number[]`, identity-
  * comparable, easy to sort/dedupe.
  *
+ * SPEC §3 — secrets never start with 0 (code-breaker display
+ * convention), so the bot pool excludes leading-zero candidates. The
+ * non-unique pool is 9 000 (1000–9999), the unique pool is 4 536
+ * (10·9·8·7 − 9·8·7 = 5040 − 504).
+ *
  * Generation is module-level cached: every mode shares the same
- * "all 10000" / "all 5040 unique" arrays, so registering all seven
+ * "all 9000" / "all 4536 unique" arrays, so registering all seven
  * modes still pays the build cost exactly twice.
  *
  * Filtering comes in two flavours:
@@ -24,8 +29,9 @@ let cachedUnique: readonly string[] | null = null;
 
 /**
  * Returns every 4-digit string the engine layer ever needs. `unique`
- * picks between the 10000-strong "any digit" pool (Modes 1, 2, 4, 6,
- * 7) and the 5040-strong "all distinct" pool (Modes 3, 5).
+ * picks between the 9000-strong "any digit" pool (Modes 1, 2, 4, 6,
+ * 7) and the 4536-strong "all distinct" pool (Modes 3, 5). Both pools
+ * exclude leading-zero candidates (SPEC §3).
  *
  * Lazy-init on first call, cached for the rest of the JS lifetime —
  * generation is ~5ms but it's pure overhead during cold start.
@@ -43,10 +49,11 @@ export function buildAllCandidates(unique: boolean): readonly string[] {
 
 function generate(unique: boolean): readonly string[] {
   const out: string[] = [];
-  // Iterate 0..9999 lexicographically; pad to SECRET_LENGTH so the
-  // string form sorts the same as the numeric form.
+  // Iterate 1000..9999 lexicographically; secrets cannot start with
+  // 0 (SPEC §3) so the pool is one-to-one with valid candidates.
+  const lower = 10 ** (SECRET_LENGTH - 1);
   const upper = 10 ** SECRET_LENGTH;
-  for (let i = 0; i < upper; i += 1) {
+  for (let i = lower; i < upper; i += 1) {
     const padded = i.toString(10).padStart(SECRET_LENGTH, '0');
     if (unique && hasRepeat(padded)) continue;
     out.push(padded);

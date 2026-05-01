@@ -73,7 +73,7 @@ describe('mode6SuddenDeath — generateSecret', () => {
   });
 });
 
-describe('mode6SuddenDeath — bot strategy re-uses Mode 1 (10K candidatePool)', () => {
+describe('mode6SuddenDeath — bot strategy re-uses Mode 1 (9K candidatePool)', () => {
   function makeContext(overrides: Partial<BotContext> = {}): BotContext {
     return {
       previousGuesses: [],
@@ -86,18 +86,18 @@ describe('mode6SuddenDeath — bot strategy re-uses Mode 1 (10K candidatePool)',
     };
   }
 
-  it('initSolverState seeds a candidatePool of 10 000 (duplicates allowed)', () => {
+  it('initSolverState seeds a candidatePool of 9 000 (duplicates allowed, no leading zero)', () => {
     const s = mode6SuddenDeath.bot.initSolverState('1234', mode6SuddenDeath.rules);
     expect(s.kind).toBe('candidatePool');
     if (s.kind !== 'candidatePool') return;
-    expect(s.pool.length).toBe(10_000);
+    expect(s.pool.length).toBe(9_000);
   });
 
-  it('hard difficulty picks pool[0] = "0000"', async () => {
+  it('hard difficulty picks pool[0] = "1000"', async () => {
     const out = await mode6SuddenDeath.bot.makeGuess(
       makeContext({ difficulty: 'hard' }),
     );
-    expect(out.guess).toBe('0000');
+    expect(out.guess).toBe('1000');
   });
 
   it('makeGuess deterministic across identical RNG cursors', async () => {

@@ -194,6 +194,7 @@ describe('MatchScreen — engine path completion forwards full params', () => {
     expect(route?.params).toEqual({
       modeId: 1,
       outcome: 'victory',
+      opponentId: 'op-1',
       secret: '7531',
       guessCount: 4,
       // Mode 1 catalog rewardWin = 100, victory XP = 30.
@@ -221,6 +222,7 @@ describe('MatchScreen — engine path completion forwards full params', () => {
     expect(route?.params).toEqual({
       modeId: 1,
       outcome: 'defeat',
+      opponentId: 'op-1',
       secret: '4242',
       guessCount: 5,
       reward: 0,

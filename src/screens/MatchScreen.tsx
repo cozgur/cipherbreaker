@@ -256,9 +256,9 @@ export function MatchScreen(): React.JSX.Element {
   const pickOutcome = useCallback(
     (outcome: MatchResultOutcome): void => {
       setPickerOpen(false);
-      navigation.replace('MatchResult', { modeId, outcome });
+      navigation.replace('MatchResult', { modeId, outcome, opponentId });
     },
-    [modeId, navigation],
+    [modeId, navigation, opponentId],
   );
 
   // Auto-scroll the timeline to the latest entry whenever a new guess
@@ -479,12 +479,13 @@ export function MatchScreen(): React.JSX.Element {
     navigation.replace('MatchResult', {
       modeId,
       outcome,
+      opponentId,
       secret: matchState.opponentSecret,
       guessCount: matchState.result.turns,
       reward: rewardForOutcome(matchState.result, mode),
       xpGain: XP_BY_OUTCOME[outcome],
     });
-  }, [isEngineMode, matchState, modeId, mode, navigation]);
+  }, [isEngineMode, matchState, modeId, mode, navigation, opponentId]);
 
   // Stake is debited at `matchStore.createMatch`, so forfeit no longer
   // touches tokens — doing so would double-charge. The Alert copy still

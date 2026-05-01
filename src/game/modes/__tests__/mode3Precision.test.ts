@@ -180,7 +180,9 @@ describe('mode3Precision — generateSecret (unique digits)', () => {
   });
 });
 
-describe('mode3Precision — bot strategy (5040 unique-digit pool, chunked filter)', () => {
+describe('mode3Precision — bot strategy (4536 unique-digit pool, chunked filter)', () => {
+  // Pool: 4-digit unique-digit candidates with first digit ≥ 1
+  // (10·9·8·7 − 9·8·7 = 5040 − 504 = 4536). pool[0] = '1023'.
   beforeEach(() => {
     __resetCandidatePoolCacheForTests();
   });
@@ -197,11 +199,11 @@ describe('mode3Precision — bot strategy (5040 unique-digit pool, chunked filte
     };
   }
 
-  it('initSolverState seeds a candidatePool with all 5040 unique-digit candidates', () => {
+  it('initSolverState seeds a candidatePool with all 4536 unique-digit candidates', () => {
     const s = mode3Precision.bot.initSolverState('1234', mode3Precision.rules);
     expect(s.kind).toBe('candidatePool');
     if (s.kind !== 'candidatePool') return;
-    expect(s.pool.length).toBe(5040);
+    expect(s.pool.length).toBe(4536);
     // Every candidate must have unique digits.
     for (const c of s.pool) {
       expect(new Set(c.split('')).size).toBe(4);
@@ -216,7 +218,7 @@ describe('mode3Precision — bot strategy (5040 unique-digit pool, chunked filte
     expect(out.newSolverState.kind).toBe('candidatePool');
     if (out.newSolverState.kind !== 'candidatePool') return;
     // Opening turn — no feedback yet, pool size unchanged.
-    expect(out.newSolverState.pool.length).toBe(5040);
+    expect(out.newSolverState.pool.length).toBe(4536);
   });
 
   it('makeGuess is deterministic across identical RNG cursors', async () => {
@@ -229,18 +231,18 @@ describe('mode3Precision — bot strategy (5040 unique-digit pool, chunked filte
     expect(a.guess).toBe(b.guess);
   });
 
-  it('hard difficulty picks pool[0] (sorted, first unique-digit candidate = "0123")', async () => {
+  it('hard difficulty picks pool[0] (sorted, first unique-digit candidate = "1023")', async () => {
     const out = await mode3Precision.bot.makeGuess(
       makeContext({
         difficulty: 'hard',
         rng: createRNG({ seed: 42, callCount: 0 }),
       }),
     );
-    expect(out.guess).toBe('0123');
+    expect(out.guess).toBe('1023');
   });
 
   it('opening uses the chunked filter — pool ≥ 1000 must yield to UI', async () => {
-    // Indirect assertion: with the synchronous filter, a 5040-entry
+    // Indirect assertion: with the synchronous filter, a 4536-entry
     // narrow would block. The fact that `makeGuess` uses the chunked
     // path means the function stays awaitable on the timeline. We
     // assert the resulting narrowed pool is sane (count > 0, all
@@ -263,8 +265,8 @@ describe('mode3Precision — bot strategy (5040 unique-digit pool, chunked filte
     const elapsed = Date.now() - start;
     if (next.newSolverState.kind !== 'candidatePool') throw new Error('wrong kind');
     expect(next.newSolverState.pool.length).toBeGreaterThan(0);
-    expect(next.newSolverState.pool.length).toBeLessThan(5040);
-    // Filtering 5040 candidates against an empty-set guess (no overlap
+    expect(next.newSolverState.pool.length).toBeLessThan(4536);
+    // Filtering 4536 candidates against an empty-set guess (no overlap
     // with 0/1/2/3) should leave only candidates from the digits 4–9.
     for (const candidate of next.newSolverState.pool) {
       expect(candidate).not.toMatch(/[0123]/);
@@ -290,7 +292,7 @@ describe('mode3Precision — bot strategy (5040 unique-digit pool, chunked filte
     const out = await mode3Precision.bot.makeGuess(ctx);
     if (out.newSolverState.kind !== 'candidatePool') throw new Error('wrong kind');
     // Every survivor must reproduce the +2/−1 feedback against guess '0123'.
-    expect(out.newSolverState.pool.length).toBeLessThan(5040);
+    expect(out.newSolverState.pool.length).toBeLessThan(4536);
     expect(out.newSolverState.pool.length).toBeGreaterThan(0);
   });
 
