@@ -107,9 +107,14 @@ export function startMatch(state: MatchState, rng: RNG): MatchState {
   }
   const mode = modeRegistry.get(state.modeId);
   const opponentSolver = mode.bot.initSolverState(state.opponentSecret, mode.rules);
-  // TODO(phase-7A): replace with `selectDifficulty(userStore.stats)` per
-  // SPEC §5.5. Parallel modes inherit the same Phase 3 hardcode as
-  // turn-based until the economy + DDA wiring lands.
+  // Phase 7A.2 wires DDA at `matchStore.createMatch` (stamps
+  // `state.botDifficulty` from `pickDifficultyFromOutcomes(userStore
+  // .stats.recentMatches)`). The engine stays userStore-naïve; the
+  // `?? 'normal'` fallback covers the resume path where state was
+  // hydrated mid-match and tests that construct state directly. Mode 6
+  // (`makeGuess`) and Mode 7 (`makeGuess` + `thinkingTime`) both reuse
+  // `mode1/bot.ts`, which consumes `ctx.difficulty` — so DDA reaches
+  // every mode through this stamp without per-mode wiring.
   const botDifficulty = state.botDifficulty ?? 'normal';
   const now = Date.now();
   return {

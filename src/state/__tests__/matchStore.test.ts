@@ -405,4 +405,92 @@ describe('useMatchStore', () => {
       expect(state.clockSnapshot).toBeUndefined();
     });
   });
+
+  describe('createMatch — Phase 7A.2 DDA wiring', () => {
+    // Reset `stats` (specifically `recentMatches`) so tests don't bleed
+    // into each other through the persisted userStore singleton.
+    beforeEach(() => {
+      useUserStore.setState({ stats: USER_STORE_DEFAULTS.stats });
+    });
+
+    it('warm-up (empty recentMatches) stamps botDifficulty=normal', () => {
+      registerStub(1);
+      useUserStore.setState({
+        stats: { ...USER_STORE_DEFAULTS.stats, recentMatches: [] },
+      });
+      useMatchStore.getState().createMatch(1, '1234');
+      expect(useMatchStore.getState().matchState?.botDifficulty).toBe('normal');
+    });
+
+    it('10 victories in the rolling window stamps botDifficulty=hard', () => {
+      registerStub(1);
+      useUserStore.setState({
+        stats: {
+          ...USER_STORE_DEFAULTS.stats,
+          recentMatches: Array.from({ length: 10 }, () => 'victory' as const),
+        },
+      });
+      useMatchStore.getState().createMatch(1, '1234');
+      expect(useMatchStore.getState().matchState?.botDifficulty).toBe('hard');
+    });
+
+    it('10 defeats in the rolling window stamps botDifficulty=easy', () => {
+      registerStub(1);
+      useUserStore.setState({
+        stats: {
+          ...USER_STORE_DEFAULTS.stats,
+          recentMatches: Array.from({ length: 10 }, () => 'defeat' as const),
+        },
+      });
+      useMatchStore.getState().createMatch(1, '1234');
+      expect(useMatchStore.getState().matchState?.botDifficulty).toBe('easy');
+    });
+
+    it('5V + 5D in the rolling window stamps botDifficulty=normal', () => {
+      registerStub(1);
+      useUserStore.setState({
+        stats: {
+          ...USER_STORE_DEFAULTS.stats,
+          recentMatches: [
+            'victory', 'defeat', 'victory', 'defeat', 'victory',
+            'defeat', 'victory', 'defeat', 'victory', 'defeat',
+          ],
+        },
+      });
+      useMatchStore.getState().createMatch(1, '1234');
+      expect(useMatchStore.getState().matchState?.botDifficulty).toBe('normal');
+    });
+
+    it('parallel-engine modes get the same DDA stamp (mode-agnostic)', () => {
+      registerStub(1, { parallelRace: true });
+      useUserStore.setState({
+        stats: {
+          ...USER_STORE_DEFAULTS.stats,
+          recentMatches: Array.from({ length: 10 }, () => 'victory' as const),
+        },
+      });
+      useMatchStore.getState().createMatch(1, '1234');
+      expect(useMatchStore.getState().matchState?.botDifficulty).toBe('hard');
+    });
+
+    it('freezes difficulty for the match lifetime — recentMatches changes do not retroactively shift the active match', () => {
+      registerStub(1);
+      useUserStore.setState({
+        stats: { ...USER_STORE_DEFAULTS.stats, recentMatches: [] },
+      });
+      useMatchStore.getState().createMatch(1, '1234');
+      const stamped = useMatchStore.getState().matchState?.botDifficulty;
+      expect(stamped).toBe('normal');
+      // Player wins 10 in a row mid-match — the active match's stamp
+      // must not move; the next createMatch picks up the new state.
+      useUserStore.setState({
+        stats: {
+          ...USER_STORE_DEFAULTS.stats,
+          recentMatches: Array.from({ length: 10 }, () => 'victory' as const),
+        },
+      });
+      useMatchStore.getState().startMatch();
+      expect(useMatchStore.getState().matchState?.botDifficulty).toBe('normal');
+    });
+  });
 });

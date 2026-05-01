@@ -976,6 +976,38 @@ The SPEC-vs-catalog reward mismatch (KI #6) was the single non-mechanical call. 
 
 ---
 
+## Phase 7A.2 — Hidden DDA (delta)
+
+Phase 7A.2 wires SPEC §5.5 dynamic difficulty adjustment. The pure mapping lives in `src/game/dda/pickDifficultyFromOutcomes.ts`; the wire happens at `matchStore.createMatch`, where the player's rolling last-10 outcome window picks one of `'easy' | 'normal' | 'hard'` and stamps it onto `MatchState.botDifficulty`. Engines stay userStore-naïve and pass the stamped value through. All seven modes pick up the new difficulty via the existing `BotContext.difficulty` channel — Modes 4/6/7 inherit it transparently because their bot façades reuse `mode1/bot.ts`'s `makeGuess` + `thinkingTime`.
+
+### Threshold — Option B (wide normal)
+
+`0–2 victories / 10 → easy`, `3–7 → normal`, `8–10 → hard`. Warm-up (`< 10` matches) returns `'normal'` so a 1- or 2-match streak doesn't overreact. Only `'victory'` counts as a win — `'draw'` and `'stalemate'` count toward the denominator but not the numerator. This keeps the DDA model coherent with `userStore.recordMatchResult`'s winRate semantics (which also treats victory-only as a win, draw/stalemate as streak-preserving non-events). Documented edge case: 10 consecutive draws → 0 wins → `'easy'`. Practically vanishing across current modes; not worth a weighted-draw scheme.
+
+### Wiring boundary — `matchStore.createMatch`, not the engines
+
+The engine purity invariant ("engines never touch React, AsyncStorage, or any UI primitive" — `turnBasedEngine.ts` header) is load-bearing for the engine test suite, which constructs `MatchState` directly without a userStore. Stamping `botDifficulty` at the orchestration layer (`matchStore.createMatch`, the same seam that already debits the stake from userStore) keeps the engines pure: their existing `state.botDifficulty ?? 'normal'` fallback covers (a) resume from a persisted pre-7A.2 match where the field is missing, and (b) tests that build state inline. Zero engine churn; one new import in `matchStore.ts`.
+
+The freeze point is `createMatch`, not `startMatch`. This means difficulty is locked the instant the player commits stake — by the time they actually start playing, recentMatches changes can't retroactively shift the active match. There is no exploitable window between commit and start (the player can't "tank" matches mid-sequence to soften the next bot, because next-match DDA reads from the post-recordMatchResult window the result screen wrote, not from a paused state).
+
+### Bot difficulty type — single literal in `types.ts`
+
+`'easy' | 'normal' | 'hard'` was inlined twice (`MatchState.botDifficulty`, `BotContext.difficulty`). Phase 7A.2 collapses both into `export type BotDifficulty` in `types.ts` and reuses it from `pickDifficultyFromOutcomes`. One canonical home, no drift seam.
+
+### Naming — `pickDifficultyFromOutcomes` (not `selectByDifficulty`)
+
+The bot module already exports `selectByDifficulty(pool, difficulty, rng)` — a different function in the same domain that picks a *guess* given a difficulty (`mode1/bot.ts:95`). The DDA function picks a *difficulty* given outcomes — the opposite direction of the same domain. Reusing the name would have made grep + import sites ambiguous; `pickDifficultyFromOutcomes` keeps each verb attached to a unique direction.
+
+### DDA Invariant — no UI surface
+
+**The DDA must remain hidden by design (SPEC §5.5).** No user-facing UI may render the strings `'easy'`, `'normal'`, or `'hard'`, and no screen may surface a "your bot is currently X" hint. `botDifficulty` exists on `MatchState` for engine + bot consumption only; the player feels difficulty through the bot's behaviour (pool selectivity + thinking time), not through copy. If a future feature needs to surface difficulty (e.g. a "bot strength meter" debug overlay, or a progression cosmetic that rewards a Hard streak), this invariant must be re-evaluated in the SPEC, not silently broken at the screen layer. The threshold tests don't enforce this — it's a documentation-level rule the reviewer (and future you) must check before adding any string lookup against `BotDifficulty` in a screen file.
+
+### Convergence test framing
+
+The scenario test file (`pickDifficultyFromOutcomes.scenarios.test.ts`) is **not** a stochastic convergence test — `pickDifficultyFromOutcomes` is a pure function with no internal state, so there's nothing to converge. It feeds deterministic outcome sequences (30%-win profile, 80%-win profile, swing trajectory) and asserts the difficulty each sequence produces. Threshold tests cover the band boundaries; scenario tests cover the rolling-window reaction.
+
+---
+
 ## Phase 7A.5 — Daily Challenge (planned)
 
 Anchor feature for launch marketing. Slot is **after 7A.4 (Onboarding)** — the onboarding flow's first slide will showcase Daily Challenge directly, so Daily Challenge has to exist before onboarding finalises. ~12–13 hours total, broken into seven CPs (engine refactor through commit). Outline below records the fourteen design decisions that fell out of the brainstorming pass — the implementation phase will turn them into code without re-litigating them.

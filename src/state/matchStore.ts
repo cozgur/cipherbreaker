@@ -19,6 +19,7 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 
 import { createRNG } from '@/lib/random';
 
+import { pickDifficultyFromOutcomes } from '../game/dda/pickDifficultyFromOutcomes';
 import { selectEngine } from '../game/engines';
 import { modeRegistry } from '../game/modeRegistry';
 import type {
@@ -100,7 +101,19 @@ export const useMatchStore = create<MatchStoreState & MatchStoreActions>()(
         const mode = modeRegistry.get(modeId);
         const engine = selectEngine(mode);
         const rngState = { seed: Date.now() >>> 0, callCount: 0 };
-        const next = engine.createMatch(modeId, playerSecret, rngState);
+        const created = engine.createMatch(modeId, playerSecret, rngState);
+        // Phase 7A.2 — DDA freeze point. Picks difficulty from the
+        // player's rolling last-10 outcome window the moment stake is
+        // committed; engines stay userStore-naïve and pass the stamped
+        // value through. Freezing here (not at startMatch) means the
+        // player can't game DDA by losing matches between commit and
+        // start — there is no such window.
+        const next = {
+          ...created,
+          botDifficulty: pickDifficultyFromOutcomes(
+            useUserStore.getState().stats.recentMatches,
+          ),
+        };
         // Stake debit lives here, not in HomeScreen/SecretSetup, so every
         // entry path (turn-based via SecretSetup, parallel via direct
         // navigation) charges exactly once. The in-progress guard above

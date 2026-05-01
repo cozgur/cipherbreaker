@@ -356,11 +356,19 @@ export interface SolverStates {
   readonly opponent?: SolverState;
 }
 
+/**
+ * Three-tier bot strength used by mode bots (`mode1/bot.ts` etc.) and
+ * stamped onto `MatchState` at match creation. Phase 7A.2 ties this to
+ * the player's recent outcome window via `pickDifficultyFromOutcomes`
+ * — see `src/game/dda/`.
+ */
+export type BotDifficulty = 'easy' | 'normal' | 'hard';
+
 /** Inputs a mode's `bot.makeGuess` consumes; immutable per turn. */
 export interface BotContext {
   readonly previousGuesses: readonly GuessEntry[];
   readonly mySecret: string;
-  readonly difficulty: 'easy' | 'normal' | 'hard';
+  readonly difficulty: BotDifficulty;
   readonly turnNumber: number;
   readonly solverState: SolverState;
   /**
@@ -400,16 +408,17 @@ export interface MatchState {
   readonly solverStates?: SolverStates;
 
   /**
-   * Bot difficulty rolled at `startMatch` and frozen for the lifetime of
-   * the match — must be durable so resume produces the same bot
-   * behaviour. Phase 3 hardcodes `'normal'`; Phase 7A wires SPEC §5.5
-   * dynamic difficulty adjustment from `userStore` stats.
+   * Bot difficulty stamped on `createMatch` and frozen for the lifetime
+   * of the match — must be durable so resume produces the same bot
+   * behaviour. Phase 7A.2 wires SPEC §5.5 hidden DDA at
+   * `matchStore.createMatch` (see `pickDifficultyFromOutcomes`); the
+   * engines stay userStore-naïve and pass this field through.
    *
    * Optional: pre-Phase-3 persisted match states hydrate with
-   * `botDifficulty=undefined`, which the orchestrator falls back to
+   * `botDifficulty=undefined`, which the engines fall back to
    * `'normal'` for — no persist version bump needed.
    */
-  readonly botDifficulty?: 'easy' | 'normal' | 'hard';
+  readonly botDifficulty?: BotDifficulty;
 
   /**
    * Side that took the very first turn — used by the UI to interleave

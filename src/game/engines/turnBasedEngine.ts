@@ -95,9 +95,11 @@ export function startMatch(state: MatchState, rng: RNG): MatchState {
   const playerStarts = rng.next() < 0.5;
   const phase = playerStarts ? 'active_turn_player' : 'active_turn_opponent';
   const opponentSolver = mode.bot.initSolverState(state.opponentSecret, mode.rules);
-  // TODO(phase-7A): replace with `selectDifficulty(userStore.stats)` per
-  // SPEC §5.5. Phase 3 hardcodes 'normal' so the bot is stable while the
-  // economy + DDA wiring is still mock-driven.
+  // Phase 7A.2 wires DDA at `matchStore.createMatch` (stamps
+  // `state.botDifficulty` from `pickDifficultyFromOutcomes(userStore
+  // .stats.recentMatches)`). The engine stays userStore-naïve; the
+  // `?? 'normal'` fallback covers the resume path where state was
+  // hydrated mid-match and tests that construct state directly.
   const botDifficulty = state.botDifficulty ?? 'normal';
   const now = Date.now();
   const limit = mode.rules.perPlayerTimeLimitMs;
