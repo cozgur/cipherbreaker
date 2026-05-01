@@ -1018,9 +1018,53 @@ The scenario test file (`pickDifficultyFromOutcomes.scenarios.test.ts`) is **not
 
 ---
 
-## Phase 7A.5 — Daily Challenge (planned)
+## Phase 7A — Revised Roadmap (Codex follow-up)
 
-Anchor feature for launch marketing. Slot is **after 7A.4 (Onboarding)** — the onboarding flow's first slide will showcase Daily Challenge directly, so Daily Challenge has to exist before onboarding finalises. ~12–13 hours total, broken into seven CPs (engine refactor through commit). Outline below records the fourteen design decisions that fell out of the brainstorming pass — the implementation phase will turn them into code without re-litigating them.
+The Phase 7A polish slice was originally sketched as five CPs in linear ROADMAP order. After the Phase 7A.2 Codex review's roadmap-level suggestions and a planning pass on the launch picture (marketing screenshots, onboarding shape, economy interactions), the remaining CPs were re-ordered. This section records the new order; ROADMAP-v4 is the un-grouped item list, this section is the source of truth for sequencing.
+
+### New CP order
+
+| CP    | Scope | Why now |
+|-------|-------|---------|
+| 7A.3  | Profile polish — Stats/Settings tab toggle (KI #5), `recentMatches` visualisation, per-mode performance, layout cleanup | Lowest-risk visible polish; surfaces the Phase 7A.1 `recentMatches` field; unblocks Profile screenshot asset. |
+| 7A.4  | Daily Challenge ⭐ (was 7A.5) — full feature (see "Phase 7A.4 — Daily Challenge" below) | Promoted ahead of Onboarding to break the chicken-and-egg loop. |
+| 7A.5  | Economy polish — ad cap (10/day), low-balance UX, reward pacing alignment with Daily | Split out of Profile because Economy interacts with Daily directly (ad cap timing, reward gradient). Bundling left half the work undone. |
+| 7A.6  | Onboarding — Daily-first slide + guided first 3 matches | Lands after Daily exists so the first slide ships the real feature, not a placeholder. |
+| 7A.7  | UX details — Haptics, Mirror premium feel mini-scope, sound | Mirror premium feel = 2–3h mini-scope (Mode 7 marketing differentiator). |
+
+### Why Daily Challenge moved ahead of Onboarding
+
+ROADMAP put Onboarding first, but Onboarding's first slide *is* Daily Challenge — and marketing screenshots lead with Daily. Building Onboarding before Daily exists means either (a) shipping a placeholder first slide and rewiring it later, or (b) gating Onboarding on Daily anyway. Promoting Daily fixes this without expanding scope; the Daily design (14 decisions) was already locked in the brainstorming pass — see "Phase 7A.4 — Daily Challenge" below.
+
+### Why Economy polish split from Profile
+
+Codex review argued ad cap + low-balance UX + reward pacing all touch Daily directly: Daily's 09:00 push interacts with the ad-watch loop (cap reset timing), Daily's 125-token max interacts with low-balance recovery (Daily is the free-tap), and Daily's reward gradient must align with the seven modes' stakes (so Daily doesn't trivialise stake recovery). These cannot polish as Profile sub-items; they need their own CP *after* Daily Challenge so the alignment is concrete, not speculative. The original "Economy as a Profile section" grouping was a Phase 7A planning shortcut that didn't survive the Daily-promotion decision.
+
+### Mirror premium feel — mini-scope, marketing-driven
+
+Mode 7 is the parallel-race differentiator. The current implementation is correct (CP6 fixed engine-path routing) but visually equivalent to the rest. Phase 7A.7 adds a 2–3h mini-scope: a particle accent on parallel submission, a subtle race-line motion, a result-screen chord cue — enough that the Mode 7 screenshot reads "race the bot in real time." Not a full polish pass; a marketing-asset-grade nudge. Without it Mode 7 is a string in the catalog; with it Mode 7 is a feature in the deck.
+
+### Rejected — DDA telemetry in Phase 7A
+
+Codex roadmap point also suggested instrumenting DDA win-rate distribution telemetry inside 7A. **Rejected**: telemetry without real users is empty data collection. Phase 7B is the analytics phase; the Option B threshold tuning decision (3–7 normal vs 4–6 normal) lives there with real distribution data, not in 7A on synthetic reasoning. SPEC §5.5 already documents the post-launch tuning intent at the source-of-truth seam.
+
+### Phase 9 — Post-launch roadmap
+
+Items intentionally pushed past launch (incorporating Codex roadmap suggestions #5/#6/#8):
+
+- **LiveOps surface** — events, weekly featured mode, streak rewards. Engagement layer after Daily fatigue surfaces in the retention curve. (Codex #5.)
+- **Bot persona variations** — typing cadence, aggressive vs conservative styles, opponent-name-correlated personality. (Codex #6.) Adds bot believability without a backend bot service.
+- **DDA tuning with real user data** — Option B threshold re-evaluated against the win-rate distribution from real telemetry. SPEC §5.5 already flags this seam.
+- **Friends mode** — room codes for two-player matches on Supabase. First feature requiring a real backend. (Codex #8.)
+- **Leaderboard** — async-first (daily best leaderboard); real-time only if engagement justifies it.
+
+Rationale for the Phase 9 push: launch needs the Daily anchor + the seven competitive modes + a complete onboarding. Bot variety, live ops, leaderboard are amplifiers, not foundations; they only earn dev time once retention proves the concept. Backend cost (Supabase, push volume, leaderboard infra) only makes sense once we have users to amortise it across.
+
+---
+
+## Phase 7A.4 — Daily Challenge (planned)
+
+Anchor feature for launch marketing. Promoted ahead of Onboarding (was Phase 7A.5, now 7A.4 — see "Phase 7A — Revised Roadmap" above for the chicken-and-egg loop rationale): the onboarding flow's first slide showcases Daily Challenge directly, so Daily Challenge has to exist before onboarding finalises. ~12–13 hours total, broken into seven CPs (engine refactor through commit). Outline below records the fourteen design decisions that fell out of the brainstorming pass — the implementation phase will turn them into code without re-litigating them.
 
 ### Marketing position
 
