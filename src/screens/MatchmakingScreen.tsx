@@ -25,7 +25,9 @@ import { TinyTag } from '@components/TinyTag';
 import { findMode } from '@data/modeCatalog';
 import { pickRandomOpponent, type MockOpponent } from '@data/mockOpponents';
 import { nextRouteAfterMatchmaking } from '@game/modeRouter';
+import { modeRegistry } from '@game/modeRegistry';
 import type { RootStackParamList } from '@navigation/routes';
+import { useMatchStore } from '@state/matchStore';
 import { colors, fonts, withAlpha } from '@theme/tokens';
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'Matchmaking'>;
@@ -79,6 +81,27 @@ export function MatchmakingScreen(): React.JSX.Element {
       };
       // `replace` so the back gesture cannot rewind to Matchmaking.
       if (target === 'Match') {
+        // Mode 7 (sharedSecret) — engine generates the secret, no
+        // SecretSetup step. Seed the store here so MatchScreen mounts
+        // with `matchState.modeId === modeId` and the engine path
+        // lights up; otherwise the gate at MatchScreen:131 falls back
+        // to the DevResultPicker mock flow. Modes 1-6 still seed
+        // inside SecretSetup.handleLockIn — this branch only fires
+        // when `nextRouteAfterMatchmaking` returns 'Match' (Mirror).
+        // Stake debit happens inside `matchStore.createMatch`; the
+        // debit timing is documented in ARCHITECTURE.md (Mode 7
+        // commits at the reveal moment because there is no later
+        // confirmation gesture; replace-navigation also forecloses
+        // a "back out before lock-in" path).
+        if (modeRegistry.getOrNull(modeId) !== null) {
+          const store = useMatchStore.getState();
+          store.clearMatch();
+          // '_' is the documented placeholder for sharedSecret modes
+          // (see mode7Integration.test.ts) — the engine generates the
+          // real code and overwrites it during `startMatch`.
+          store.createMatch(modeId, '_');
+          store.startMatch();
+        }
         navigation.replace('Match', params);
       } else {
         navigation.replace('SecretSetup', params);
