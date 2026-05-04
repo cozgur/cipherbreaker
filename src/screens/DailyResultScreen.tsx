@@ -4,8 +4,9 @@
  * Reads `userStore.dailyChallenge.lastResult` (stamped at submit
  * time by `dailyChallengeStore.submitGuess` → `recordDailyResult`).
  * Surfaces the just-completed attempt: success or failure header,
- * turn count, current streak, and the placeholder seams for share +
- * countdown that CP6 wires up.
+ * turn count, current streak, the share button (CP7 — native
+ * Share.share({message})) and the next-puzzle countdown (post-launch
+ * polish — current copy is "tomorrow").
  *
  * No replay path — Wordle-faithful "you played today, see you
  * tomorrow." Tapping the back affordance returns to Home; banner
@@ -14,7 +15,7 @@
  */
 
 import { useCallback } from 'react';
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, Share, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -37,11 +38,13 @@ export function DailyResultScreen(): React.JSX.Element {
 
   const goHome = useCallback(() => navigation.navigate('Home'), [navigation]);
   const onShare = useCallback(() => {
-    // Phase 7A.4 CP6 — wired share format. The native Share sheet
-    // hookup (Share.share({ message })) lands at iOS-test time so
-    // the alert here previews exactly what the share text will say.
+    // Phase 7A.4 CP7 — native Share sheet hookup. iOS surfaces the
+    // system share sheet (AirDrop / Messages / Mail / etc.); Android
+    // surfaces the equivalent intent picker. The promise rejects on
+    // user cancel on iOS — swallow it so the screen doesn't show an
+    // unhandled-rejection toast for a non-error path.
     if (lastResult === null) return;
-    Alert.alert('Share', formatDailyShare(lastResult));
+    void Share.share({ message: formatDailyShare(lastResult) }).catch(() => undefined);
   }, [lastResult]);
 
   // Defensive — direct navigation to this screen with no recorded

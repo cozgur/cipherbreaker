@@ -3,7 +3,9 @@
  */
 
 import { act, fireEvent } from '@testing-library/react-native';
+import { Share } from 'react-native';
 
+import { formatDailyShare } from '@game/daily/share';
 import type { DailyResultSummary } from '@game/daily/types';
 import {
   DAILY_CHALLENGE_DEFAULTS,
@@ -109,6 +111,75 @@ describe('DailyResultScreen', () => {
     setLastResult(null);
     const utils = renderWithNavigation('DailyResult', { DailyResult: DailyResultScreen });
     expect(utils.getByText('No daily result yet')).toBeTruthy();
+  });
+
+  describe('SHARE button — Phase 7A.4 CP7 native Share API hookup', () => {
+    let shareSpy: jest.SpyInstance;
+
+    beforeEach(() => {
+      // Spy locally rather than through jest.setup.js — keeps the
+      // assertion explicit + avoids global side effects on tests
+      // that don't tap SHARE.
+      shareSpy = jest
+        .spyOn(Share, 'share')
+        .mockResolvedValue({ action: 'sharedAction' } as unknown as Awaited<
+          ReturnType<typeof Share.share>
+        >);
+    });
+
+    afterEach(() => {
+      shareSpy.mockRestore();
+    });
+
+    it('SHARE press calls Share.share with the formatted share text', () => {
+      setLastResult(successResult);
+      const utils = renderWithNavigation('DailyResult', { DailyResult: DailyResultScreen });
+      act(() => {
+        fireEvent.press(utils.getByLabelText('SHARE'));
+      });
+      expect(shareSpy).toHaveBeenCalledTimes(1);
+      const arg = shareSpy.mock.calls[0]?.[0] as { message?: string } | undefined;
+      expect(arg?.message).toBe(formatDailyShare(successResult));
+    });
+
+    it('SHARE swallows a Share.share rejection (iOS user-cancel path)', async () => {
+      shareSpy.mockReset();
+      shareSpy.mockRejectedValue(new Error('User cancelled'));
+      setLastResult(successResult);
+      const utils = renderWithNavigation('DailyResult', { DailyResult: DailyResultScreen });
+      // The press itself must not throw; a rejected Share is the
+      // documented iOS cancel path and surfaces no error to the user.
+      expect(() => {
+        act(() => {
+          fireEvent.press(utils.getByLabelText('SHARE'));
+        });
+      }).not.toThrow();
+      // Drain the pending microtask so the .catch handler runs and
+      // the unhandled-rejection guard reports clean.
+      await Promise.resolve();
+      expect(shareSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('SHARE on a failure result still emits the same share format', () => {
+      setLastResult(failureResult);
+      const utils = renderWithNavigation('DailyResult', { DailyResult: DailyResultScreen });
+      act(() => {
+        fireEvent.press(utils.getByLabelText('SHARE'));
+      });
+      const arg = shareSpy.mock.calls[0]?.[0] as { message?: string } | undefined;
+      expect(arg?.message).toBe(formatDailyShare(failureResult));
+      expect(arg?.message).toContain('10/10');
+    });
+
+    it('SHARE button is not surfaced when no result is recorded', () => {
+      setLastResult(null);
+      const utils = renderWithNavigation('DailyResult', { DailyResult: DailyResultScreen });
+      // The empty state renders the HOME button but no SHARE button.
+      // Looking it up by label asserts the intended UX — SHARE is
+      // not surfaced when there is nothing to share.
+      expect(utils.queryByLabelText('SHARE')).toBeNull();
+      expect(shareSpy).not.toHaveBeenCalled();
+    });
   });
 
   describe('hint badge — Phase 7A.4 CP6 PURE SKILL surface', () => {
