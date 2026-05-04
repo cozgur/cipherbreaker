@@ -8,16 +8,19 @@ const FRESH: DailyChallengeState = {
   effectiveDayOffset: 0,
   lastResult: null,
   history: [],
+  earnedHints: 0,
+  lastHintEarnedAtStreak: 0,
 };
 
 const result = (overrides: Partial<DailyResultSummary> = {}): DailyResultSummary => ({
   date: '2026-05-01',
   digits: 4,
-  turnLimit: 6,
+  turnLimit: 10,
   turnsUsed: 4,
   success: true,
   secret: '1234',
   feedbackTrail: [],
+  hintsUsed: 0,
   ...overrides,
 });
 

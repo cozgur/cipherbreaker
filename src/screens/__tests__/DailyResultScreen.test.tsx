@@ -26,6 +26,7 @@ const successResult: DailyResultSummary = {
     { guess: '5678', plus: 0, minus: 2, isWin: false },
     { guess: '4321', plus: 4, minus: 0, isWin: true },
   ],
+  hintsUsed: 0,
 };
 
 const failureResult: DailyResultSummary = {

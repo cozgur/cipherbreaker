@@ -136,6 +136,7 @@ describe('HomeScreen', () => {
         success: true,
         secret: '4321',
         feedbackTrail: [],
+        hintsUsed: 0,
       };
       useUserStore.setState({
         dailyChallenge: { ...DAILY_CHALLENGE_DEFAULTS, lastResult: cracked, currentStreak: 5 },
@@ -154,6 +155,7 @@ describe('HomeScreen', () => {
         success: false,
         secret: '7382',
         feedbackTrail: [],
+        hintsUsed: 0,
       };
       useUserStore.setState({
         dailyChallenge: { ...DAILY_CHALLENGE_DEFAULTS, lastResult: failed, currentStreak: 0 },
@@ -183,6 +185,7 @@ describe('HomeScreen', () => {
         success: true,
         secret: '4321',
         feedbackTrail: [],
+        hintsUsed: 0,
       };
       useUserStore.setState({
         dailyChallenge: { ...DAILY_CHALLENGE_DEFAULTS, lastResult: cracked },
@@ -206,6 +209,7 @@ describe('HomeScreen', () => {
         success: false,
         secret: '7382',
         feedbackTrail: [],
+        hintsUsed: 0,
       };
       useUserStore.setState({
         dailyChallenge: { ...DAILY_CHALLENGE_DEFAULTS, lastResult: failed },

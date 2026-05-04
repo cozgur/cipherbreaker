@@ -68,8 +68,12 @@ describe('dailyChallengeStore.startToday', () => {
         date: '2026-05-10',
         secret: '1234',
         digits: 4,
-        turnLimit: 6,
+        turnLimit: 10,
         guesses: [],
+        hintsUsed: 0,
+        revealedPositions: [],
+        revealedDigits: [],
+        probedDigits: [],
       },
     });
     useUserStore.setState({
@@ -201,6 +205,7 @@ describe('dailyChallengeStore — userStore side-effects on completion', () => {
       digits: 4,
       turns: 5,
       success: true,
+      hintsUsed: 0,
     }));
     useUserStore.setState({
       dailyChallenge: { ...DAILY_CHALLENGE_DEFAULTS, history: ninety },
@@ -283,5 +288,212 @@ describe('userStore — recordMissedDay tier regression', () => {
     const next = useUserStore.getState().dailyChallenge;
     expect(next.currentStreak).toBe(0);
     expect(next.effectiveDayOffset).toBe(0);
+  });
+});
+
+describe('dailyChallengeStore.useHint — Hint A priority + cost paths', () => {
+  beforeEach(() => {
+    resetStores();
+  });
+
+  function seedAttempt(overrides: Partial<{
+    secret: string;
+    guesses: { guess: string; plus: number; minus: number; isWin: boolean }[];
+    revealedPositions: number[];
+    revealedDigits: number[];
+    probedDigits: { digit: number; exists: boolean }[];
+    hintsUsed: number;
+  }> = {}): void {
+    useDailyChallengeStore.setState({
+      currentAttempt: {
+        date: '2026-05-01',
+        secret: overrides.secret ?? '1234',
+        digits: 4,
+        turnLimit: 10,
+        guesses: overrides.guesses ?? [],
+        hintsUsed: overrides.hintsUsed ?? 0,
+        revealedPositions: overrides.revealedPositions ?? [],
+        revealedDigits: overrides.revealedDigits ?? [],
+        probedDigits: overrides.probedDigits ?? [],
+      },
+    });
+  }
+
+  it('no-attempt when nothing in flight', () => {
+    expect(useDailyChallengeStore.getState().useHint()).toEqual({ kind: 'no-attempt' });
+  });
+
+  it('warning when no informative signal — does NOT charge or count', () => {
+    seedAttempt({ guesses: [{ guess: '5678', plus: 0, minus: 0, isWin: false }] });
+    const tokensBefore = useUserStore.getState().tokens;
+    const r = useDailyChallengeStore.getState().useHint();
+    expect(r).toEqual({ kind: 'warning' });
+    expect(useUserStore.getState().tokens).toBe(tokensBefore);
+    expect(useDailyChallengeStore.getState().currentAttempt!.hintsUsed).toBe(0);
+  });
+
+  it('green path with earned hint: reveals position 0, decrements pool, hintsUsed +1', () => {
+    seedAttempt({ guesses: [{ guess: '1567', plus: 1, minus: 0, isWin: false }] });
+    useUserStore.setState({
+      dailyChallenge: { ...DAILY_CHALLENGE_DEFAULTS, earnedHints: 2 },
+    });
+    const r = useDailyChallengeStore.getState().useHint();
+    expect(r).toEqual({ kind: 'green', position: 0, digit: '1', cost: 'earned' });
+    expect(useUserStore.getState().dailyChallenge.earnedHints).toBe(1);
+    const attempt = useDailyChallengeStore.getState().currentAttempt!;
+    expect(attempt.hintsUsed).toBe(1);
+    expect(attempt.revealedPositions).toEqual([0]);
+  });
+
+  it('green path with token cost when pool is empty', () => {
+    seedAttempt({ guesses: [{ guess: '1567', plus: 1, minus: 0, isWin: false }] });
+    useUserStore.setState({ tokens: 500 });
+    const tokensBefore = useUserStore.getState().tokens;
+    const r = useDailyChallengeStore.getState().useHint();
+    expect(r.kind).toBe('green');
+    if (r.kind === 'green') {
+      expect(r.cost).toBe('tokens');
+    }
+    expect(useUserStore.getState().tokens).toBe(tokensBefore - 100);
+  });
+
+  it('yellow path: no plus signal but minus signal — reveals digit existence', () => {
+    // secret 1234; guess 4587 → plus=0, minus=1 (digit 4 in secret).
+    seedAttempt({ guesses: [{ guess: '4587', plus: 0, minus: 1, isWin: false }] });
+    useUserStore.setState({
+      dailyChallenge: { ...DAILY_CHALLENGE_DEFAULTS, earnedHints: 1 },
+    });
+    const r = useDailyChallengeStore.getState().useHint();
+    expect(r).toEqual({ kind: 'yellow', digit: 4, cost: 'earned' });
+    const attempt = useDailyChallengeStore.getState().currentAttempt!;
+    expect(attempt.revealedDigits).toEqual([4]);
+    expect(attempt.hintsUsed).toBe(1);
+  });
+
+  it('unaffordable when pool empty AND tokens < 100', () => {
+    seedAttempt({ guesses: [{ guess: '1567', plus: 1, minus: 0, isWin: false }] });
+    useUserStore.setState({ tokens: 50 });
+    const r = useDailyChallengeStore.getState().useHint();
+    expect(r).toEqual({ kind: 'unaffordable' });
+    expect(useUserStore.getState().tokens).toBe(50);
+    expect(useDailyChallengeStore.getState().currentAttempt!.hintsUsed).toBe(0);
+  });
+});
+
+describe('dailyChallengeStore.useProbe — Hint B', () => {
+  beforeEach(resetStores);
+
+  function seedAttempt(overrides: { secret?: string; probedDigits?: { digit: number; exists: boolean }[] } = {}): void {
+    useDailyChallengeStore.setState({
+      currentAttempt: {
+        date: '2026-05-01',
+        secret: overrides.secret ?? '1234',
+        digits: 4,
+        turnLimit: 10,
+        guesses: [],
+        hintsUsed: 0,
+        revealedPositions: [],
+        revealedDigits: [],
+        probedDigits: overrides.probedDigits ?? [],
+      },
+    });
+  }
+
+  it('no-attempt when nothing in flight', () => {
+    expect(useDailyChallengeStore.getState().useProbe(5)).toEqual({ kind: 'no-attempt' });
+  });
+
+  it('resolved=true when digit is in secret (earned cost)', () => {
+    seedAttempt({ secret: '1234' });
+    useUserStore.setState({
+      dailyChallenge: { ...DAILY_CHALLENGE_DEFAULTS, earnedHints: 1 },
+    });
+    const r = useDailyChallengeStore.getState().useProbe(2);
+    expect(r).toEqual({ kind: 'resolved', digit: 2, exists: true, cost: 'earned' });
+    expect(useUserStore.getState().dailyChallenge.earnedHints).toBe(0);
+    const attempt = useDailyChallengeStore.getState().currentAttempt!;
+    expect(attempt.hintsUsed).toBe(1);
+    expect(attempt.probedDigits).toEqual([{ digit: 2, exists: true }]);
+  });
+
+  it('resolved=false when digit is NOT in secret (token cost: 50)', () => {
+    seedAttempt({ secret: '1234' });
+    useUserStore.setState({ tokens: 200 });
+    const r = useDailyChallengeStore.getState().useProbe(7);
+    expect(r).toEqual({ kind: 'resolved', digit: 7, exists: false, cost: 'tokens' });
+    expect(useUserStore.getState().tokens).toBe(150);
+  });
+
+  it('already-probed when the digit was already interrogated', () => {
+    seedAttempt({ probedDigits: [{ digit: 5, exists: false }] });
+    useUserStore.setState({ tokens: 1000 });
+    const r = useDailyChallengeStore.getState().useProbe(5);
+    expect(r).toEqual({ kind: 'already-probed' });
+    expect(useUserStore.getState().tokens).toBe(1000);
+    expect(useDailyChallengeStore.getState().currentAttempt!.hintsUsed).toBe(0);
+  });
+
+  it('unaffordable when pool empty AND tokens < 50', () => {
+    seedAttempt();
+    useUserStore.setState({ tokens: 25 });
+    const r = useDailyChallengeStore.getState().useProbe(3);
+    expect(r).toEqual({ kind: 'unaffordable' });
+    expect(useUserStore.getState().tokens).toBe(25);
+  });
+});
+
+describe('userStore.recordDailyResult — earnedHints integration', () => {
+  beforeEach(resetStores);
+
+  it('crossing streak 7 grants +1 earnedHint atomically with the streak update', () => {
+    useUserStore.setState({
+      dailyChallenge: {
+        ...DAILY_CHALLENGE_DEFAULTS,
+        lastPlayedDate: '2026-05-06',
+        currentStreak: 6,
+        longestStreak: 6,
+      },
+    });
+    useUserStore.getState().recordDailyResult({
+      date: '2026-05-07',
+      digits: 4,
+      turnLimit: 10,
+      turnsUsed: 5,
+      success: true,
+      secret: '1234',
+      feedbackTrail: [],
+      hintsUsed: 0,
+    });
+    const next = useUserStore.getState().dailyChallenge;
+    expect(next.currentStreak).toBe(7);
+    expect(next.earnedHints).toBe(1);
+    expect(next.lastHintEarnedAtStreak).toBe(7);
+  });
+
+  it('streak break (gap >= 2) wipes earnedHints in lockstep', () => {
+    useUserStore.setState({
+      dailyChallenge: {
+        ...DAILY_CHALLENGE_DEFAULTS,
+        lastPlayedDate: '2026-05-10',
+        currentStreak: 8,
+        longestStreak: 8,
+        earnedHints: 2,
+        lastHintEarnedAtStreak: 7,
+      },
+    });
+    useUserStore.getState().recordDailyResult({
+      date: '2026-05-13',
+      digits: 4,
+      turnLimit: 10,
+      turnsUsed: 10,
+      success: false,
+      secret: '1234',
+      feedbackTrail: [],
+      hintsUsed: 0,
+    });
+    const next = useUserStore.getState().dailyChallenge;
+    expect(next.currentStreak).toBe(0);
+    expect(next.earnedHints).toBe(0);
+    expect(next.lastHintEarnedAtStreak).toBe(0);
   });
 });

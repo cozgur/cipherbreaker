@@ -293,7 +293,7 @@ describe('useUserStore', () => {
           longestStreak: 12,
           effectiveDayOffset: 7,
           history: [
-            { date: '2026-05-10', digits: 4, turns: 3, success: true },
+            { date: '2026-05-10', digits: 4, turns: 3, success: true, hintsUsed: 0 },
           ],
         },
       });
@@ -385,6 +385,8 @@ describe('useUserStore', () => {
         effectiveDayOffset: 0,
         lastResult: null,
         history: [],
+        earnedHints: 0,
+        lastHintEarnedAtStreak: 0,
       });
     });
 

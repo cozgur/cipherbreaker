@@ -19,6 +19,7 @@ import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
 import type { DailyChallengeState, DailyResultSummary } from '@game/daily/types';
+import { computeEarnedHints } from '@game/daily/hint';
 import { computeNextDailyStreakState } from '@game/daily/streak';
 import { calendarDayIndex, effectiveDigitTier, TIER_4_PERIOD, TIER_5_PERIOD } from '@game/daily/dailyConfig';
 import type { MatchResultOutcome } from '@navigation/routes';
@@ -138,6 +139,8 @@ export const DAILY_CHALLENGE_DEFAULTS: DailyChallengeState = {
   effectiveDayOffset: 0,
   lastResult: null,
   history: [],
+  earnedHints: 0,
+  lastHintEarnedAtStreak: 0,
 };
 
 export const USER_STORE_DEFAULTS: UserStoreState = {
@@ -348,11 +351,21 @@ export const useUserStore = create<UserStoreState & UserStoreActions>()(
         set((s) => {
           const prev = s.dailyChallenge;
           const streakUpdate = computeNextDailyStreakState(prev, result.date, result);
+          // Hint pool earning — runs alongside the streak transition
+          // so a streak that just crossed 7 / 14 / 21 grants the +1
+          // in the same atomic update (CP6).
+          const hintUpdate = computeEarnedHints(
+            prev.earnedHints,
+            prev.lastHintEarnedAtStreak,
+            prev.currentStreak,
+            streakUpdate.currentStreak,
+          );
           const historyEntry = {
             date: result.date,
             digits: result.digits,
             turns: result.turnsUsed,
             success: result.success,
+            hintsUsed: result.hintsUsed,
           };
           // Cap 90 — slice at write time so selectors stay O(1) and
           // a one-shot 91-entry blob can't sneak in via direct setState.
@@ -364,6 +377,8 @@ export const useUserStore = create<UserStoreState & UserStoreActions>()(
               currentStreak: streakUpdate.currentStreak,
               longestStreak: streakUpdate.longestStreak,
               effectiveDayOffset: streakUpdate.effectiveDayOffset,
+              earnedHints: hintUpdate.earnedHints,
+              lastHintEarnedAtStreak: hintUpdate.lastHintEarnedAtStreak,
               lastResult: result,
               history: nextHistory,
             },
@@ -425,6 +440,10 @@ export const useUserStore = create<UserStoreState & UserStoreActions>()(
               lastPlayedDate: today,
               currentStreak: 0,
               effectiveDayOffset: prev.effectiveDayOffset + regressionDelta,
+              // Streak break (CP6) — earned-hint pool resets in
+              // lockstep with the streak counter.
+              earnedHints: 0,
+              lastHintEarnedAtStreak: 0,
             },
           };
         });

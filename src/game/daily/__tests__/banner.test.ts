@@ -9,6 +9,7 @@ const successResult = (date: string): DailyResultSummary => ({
   success: true,
   secret: '4321',
   feedbackTrail: [],
+  hintsUsed: 0,
 });
 
 const failureResult = (date: string): DailyResultSummary => ({

@@ -46,19 +46,61 @@ export interface DailyGuessRecord {
  * counts as a missed day, breaks the streak, triggers tier
  * regression. Wordle-faithful — see ARCHITECTURE Phase 7A.4 delta
  * for the rejected alternatives ("you missed yesterday" toast).
+ *
+ * `revealedPositions` (Phase 7A.4 CP6 hint system): positions the
+ * player has already paid to reveal via the hint mechanic. The hint
+ * picker draws from `(0..digits-1) \ revealedPositions ∩ correct
+ * positions in the current attempt's most-informative guess set`.
+ * `hintsUsed` is the local counter that ends up on the result
+ * summary + history entry; the userStore-side `earnedHints` is the
+ * separate "free hints remaining" pool.
  */
+export interface DailyProbeRecord {
+  readonly digit: number;
+  readonly exists: boolean;
+}
+
 export interface DailyInProgress {
   readonly date: string; // 'YYYY-MM-DD' local-calendar string
   readonly secret: string;
   readonly digits: number;
   readonly turnLimit: number;
   readonly guesses: readonly DailyGuessRecord[];
+  /**
+   * Phase 7A.4 CP6 — total hint button taps (Hint A + Hint B
+   * combined). Drives the post-game "PURE SKILL" badge + the share
+   * format. Always strictly increasing per attempt.
+   */
+  readonly hintsUsed: number;
+  /**
+   * Hint A green-tier reveals — positions where the player has
+   * paid to learn `(position, digit)`. Skipped by the next reveal
+   * picker so a second hint surfaces a fresh position.
+   */
+  readonly revealedPositions: readonly number[];
+  /**
+   * Hint A yellow-tier reveals — digits the player has paid to
+   * confirm exist in the secret (without committing to a position).
+   * Each `useHint()` that returns `'yellow'` appends here.
+   */
+  readonly revealedDigits: readonly number[];
+  /**
+   * Hint B probe results — every digit the player has interrogated
+   * via the probe button, with whether that digit appears in the
+   * secret. The keypad reads this list to render existence dots /
+   * strikethroughs and the picker disables already-probed digits.
+   */
+  readonly probedDigits: readonly DailyProbeRecord[];
 }
 
 /**
  * One entry in the cap-90 rolling history log (3 months). Slice to
  * cap happens at write time (`recordDailyResult` action in CP4),
  * never at read time — selectors stay O(1).
+ *
+ * `hintsUsed` (Phase 7A.4 CP6) tags the entry so the share text
+ * + DailyResult "PURE SKILL" badge can grade the run. Zero is the
+ * common case (no hint button taps).
  */
 export interface DailyHistoryEntry {
   readonly date: string;
@@ -66,6 +108,7 @@ export interface DailyHistoryEntry {
   /** Turns used (success path) or `turnLimit` (failure path). */
   readonly turns: number;
   readonly success: boolean;
+  readonly hintsUsed: number;
 }
 
 /**
@@ -89,6 +132,8 @@ export interface DailyResultSummary {
   readonly secret: string;
   /** Full +N/-M trail for the share text and the result reveal. */
   readonly feedbackTrail: readonly DailyGuessRecord[];
+  /** Phase 7A.4 CP6 — hint button taps during the attempt. */
+  readonly hintsUsed: number;
 }
 
 /**
@@ -120,4 +165,17 @@ export interface DailyChallengeState {
   readonly lastResult: DailyResultSummary | null;
   /** Cap 90 — see `DailyHistoryEntry`. */
   readonly history: readonly DailyHistoryEntry[];
+  /**
+   * Phase 7A.4 CP6 — free hint pool earned from streak milestones.
+   * Cap 3. Decrements on each `useHint()`; once empty, hint usage
+   * falls back to a 100-token cost. Streak break resets to 0.
+   */
+  readonly earnedHints: number;
+  /**
+   * The streak threshold (7, 14, or 21) at which the most-recent
+   * earnedHints bump landed. Idempotency guard so a streak of 8, 9,
+   * 10... doesn't re-grant the +1 the player already collected at
+   * streak 7. `0` means no threshold has been crossed yet.
+   */
+  readonly lastHintEarnedAtStreak: number;
 }

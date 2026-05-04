@@ -145,8 +145,12 @@ describe('DailyMatchScreen', () => {
         date: FIXED_TODAY,
         secret: '5234',
         digits: 4,
-        turnLimit: 6,
+        turnLimit: 10,
         guesses: [{ guess: '1234', plus: 1, minus: 0, isWin: false }],
+        hintsUsed: 0,
+        revealedPositions: [],
+        revealedDigits: [],
+        probedDigits: [],
       },
     });
     renderWithNavigation('Daily', { Daily: DailyMatchScreen });

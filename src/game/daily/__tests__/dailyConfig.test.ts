@@ -15,6 +15,8 @@ const FRESH_STATE: DailyChallengeState = {
   effectiveDayOffset: 0,
   lastResult: null,
   history: [],
+  earnedHints: 0,
+  lastHintEarnedAtStreak: 0,
 };
 
 const stateWithOffset = (offset: number): DailyChallengeState => ({
