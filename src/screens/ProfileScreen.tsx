@@ -44,6 +44,9 @@ import { modeCatalog } from '@data/modeCatalog';
 import { toggleSetting, useMockUser } from '@data/mockUser';
 import type { MockUserSettings } from '@data/mockUser';
 import type { MatchResultOutcome, RootStackParamList } from '@navigation/routes';
+import { useDailyChallengeStore } from '@state/dailyChallengeStore';
+import { useMatchStore } from '@state/matchStore';
+import { useUserStore } from '@state/userStore';
 import { colors, fonts, withAlpha } from '@theme/tokens';
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'Profile'>;
@@ -353,40 +356,74 @@ function SettingsPanel({
   openUsernameEdit,
   stubAlert,
 }: SettingsPanelProps): React.JSX.Element {
+  const onResetPlayStats = useCallback(() => {
+    Alert.alert(
+      'Reset all play stats?',
+      'Wipes game stats, per-mode win rates, recent matches, and Daily Challenge progress. Tokens, level, and XP stay. Cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Reset',
+          style: 'destructive',
+          onPress: () => {
+            useUserStore.getState().resetPlayStats();
+            useMatchStore.getState().clearMatch();
+            useDailyChallengeStore.getState().clearAttempt();
+          },
+        },
+      ],
+    );
+  }, []);
+
   return (
-    <View style={styles.section}>
-      <SectionLabel>SETTINGS</SectionLabel>
-      <View style={styles.settingsList}>
-        <SettingsRow label="Change Username" onPress={openUsernameEdit} isLast={false} />
-        <SettingsRow
-          label="Notifications"
-          onPress={() => stubAlert('Notifications')}
-          isLast={false}
-        />
-        <SettingsToggleRow
-          label="Sound"
-          settingKey="sound"
-          value={settings.sound}
-          isLast={false}
-        />
-        <SettingsToggleRow
-          label="Haptics"
-          settingKey="haptics"
-          value={settings.haptics}
-          isLast={false}
-        />
-        <SettingsRow
-          label="Privacy Policy"
-          onPress={() => stubAlert('Privacy Policy')}
-          isLast={false}
-        />
-        <SettingsRow
-          label="Terms of Service"
-          onPress={() => stubAlert('Terms of Service')}
-          isLast={false}
-        />
-        <SettingsRow label="Support" onPress={() => stubAlert('Support')} isLast />
+    <View>
+      <View style={styles.section}>
+        <SectionLabel>SETTINGS</SectionLabel>
+        <View style={styles.settingsList}>
+          <SettingsRow label="Change Username" onPress={openUsernameEdit} isLast={false} />
+          <SettingsRow
+            label="Notifications"
+            onPress={() => stubAlert('Notifications')}
+            isLast={false}
+          />
+          <SettingsToggleRow
+            label="Sound"
+            settingKey="sound"
+            value={settings.sound}
+            isLast={false}
+          />
+          <SettingsToggleRow
+            label="Haptics"
+            settingKey="haptics"
+            value={settings.haptics}
+            isLast={false}
+          />
+          <SettingsRow
+            label="Privacy Policy"
+            onPress={() => stubAlert('Privacy Policy')}
+            isLast={false}
+          />
+          <SettingsRow
+            label="Terms of Service"
+            onPress={() => stubAlert('Terms of Service')}
+            isLast={false}
+          />
+          <SettingsRow label="Support" onPress={() => stubAlert('Support')} isLast />
+        </View>
       </View>
+
+      {__DEV__ ? (
+        <View style={styles.section}>
+          <SectionLabel color={colors.danger}>ADMIN · DEV</SectionLabel>
+          <View style={styles.settingsList}>
+            <SettingsRow
+              label="Reset Play Stats"
+              onPress={onResetPlayStats}
+              isLast
+            />
+          </View>
+        </View>
+      ) : null}
     </View>
   );
 }

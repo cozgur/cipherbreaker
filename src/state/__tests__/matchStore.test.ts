@@ -1,8 +1,17 @@
 import { __resetRegistryForTests, modeRegistry } from '../../game/modeRegistry';
-import type { ModeDefinition } from '../../game/types';
+import type { GuessEntry, ModeDefinition } from '../../game/types';
 import { useLiveMatchStore } from '../liveMatchStore';
 import { useMatchStore } from '../matchStore';
 import { useUserStore, USER_STORE_DEFAULTS } from '../userStore';
+
+// Wall-clock isn't part of resume identity (see ARCHITECTURE
+// "stripTimestamp helper — wall-clock isn't part of resume identity").
+// Two runOpponentTurn calls a millisecond apart can land different
+// `createdAt` values; the test compares the bot-deterministic
+// content, not the timestamp.
+function stripTimestamp({ createdAt: _createdAt, ...rest }: GuessEntry): Omit<GuessEntry, 'createdAt'> {
+  return rest;
+}
 
 interface StubOptions {
   alwaysWin?: boolean;
@@ -319,7 +328,10 @@ describe('useMatchStore', () => {
       const restoredAfter = useMatchStore.getState().matchState!;
 
       // Same guess + same RNG cursor + same opponent guesses count.
-      expect(restoredAfter.opponentGuesses).toEqual(liveAfter.opponentGuesses);
+      // Strip `createdAt` (wall-clock, not part of resume identity).
+      expect(restoredAfter.opponentGuesses.map(stripTimestamp)).toEqual(
+        liveAfter.opponentGuesses.map(stripTimestamp),
+      );
       expect(restoredAfter.rngState).toEqual(liveAfter.rngState);
     });
   });

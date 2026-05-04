@@ -118,6 +118,17 @@ export interface UserStoreActions {
    * not an attempt.
    */
   recordMissedDay(today: string): void;
+  /**
+   * Phase 7A.4 admin — wipe game-side stats so the user looks like a
+   * fresh player. Clears `stats` (gamesPlayed, winRate, streaks,
+   * avgTurns, totalTokensEarned, recentMatches), zeroes `perMode`
+   * win rates, and resets `dailyChallenge` to defaults. **Keeps**
+   * `tokens`, `level`, `currentXP`, `targetXP`, `username`,
+   * `hasOnboarded` — economy + identity persist (they're not what
+   * "play stats" means here). DEV-only entry point — surfaced on
+   * ProfileScreen behind `__DEV__`.
+   */
+  resetPlayStats(): void;
 }
 
 export const DAILY_CHALLENGE_DEFAULTS: DailyChallengeState = {
@@ -358,6 +369,30 @@ export const useUserStore = create<UserStoreState & UserStoreActions>()(
             },
           };
         });
+      },
+
+      resetPlayStats: () => {
+        set(() => ({
+          stats: {
+            gamesPlayed: 0,
+            winRate: 0,
+            currentStreak: 0,
+            bestStreak: 0,
+            avgTurns: 0,
+            totalTokensEarned: 0,
+            recentMatches: [],
+          },
+          perMode: {
+            1: { winRate: 0 },
+            2: { winRate: 0 },
+            3: { winRate: 0 },
+            4: { winRate: 0 },
+            5: { winRate: 0 },
+            6: { winRate: 0 },
+            7: { winRate: 0 },
+          },
+          dailyChallenge: DAILY_CHALLENGE_DEFAULTS,
+        }));
       },
 
       recordMissedDay: (today) => {

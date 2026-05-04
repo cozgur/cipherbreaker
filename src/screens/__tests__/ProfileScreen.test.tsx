@@ -1,3 +1,4 @@
+import { Alert } from 'react-native';
 import { act, fireEvent } from '@testing-library/react-native';
 
 import { __resetMockUserForTests, mockUser } from '@data/mockUser';
@@ -167,6 +168,56 @@ describe('ProfileScreen', () => {
       const utils = renderWithNavigation('Profile', { Profile: ProfileScreen });
       expect(utils.queryAllByLabelText('trend up')).toHaveLength(0);
       expect(utils.queryAllByLabelText('trend down')).toHaveLength(0);
+    });
+  });
+
+  describe('Admin · DEV — reset play stats', () => {
+    it('admin row is visible inside Settings tab (DEV-only — __DEV__ is true in jest)', () => {
+      const utils = renderWithNavigation('Profile', { Profile: ProfileScreen });
+      act(() => {
+        fireEvent.press(utils.getByLabelText('Settings'));
+      });
+      expect(utils.getByText('ADMIN · DEV')).toBeTruthy();
+      expect(utils.getByLabelText('Reset Play Stats')).toBeTruthy();
+    });
+
+    it('confirmation flow zeroes stats + perMode + dailyChallenge', () => {
+      const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation((_t, _m, buttons) => {
+        // Auto-press the destructive "Reset" button on the alert
+        // dialog to exercise the action without a real prompt.
+        const reset = buttons?.find((b) => b.text === 'Reset');
+        reset?.onPress?.();
+      });
+
+      // Seed real-looking state.
+      useUserStore.setState({
+        stats: {
+          ...USER_STORE_DEFAULTS.stats,
+          gamesPlayed: 30,
+          winRate: 60,
+          recentMatches: ['victory'],
+        },
+        perMode: { 1: { winRate: 70 } } as typeof USER_STORE_DEFAULTS.perMode,
+      });
+
+      const utils = renderWithNavigation('Profile', { Profile: ProfileScreen });
+      act(() => {
+        fireEvent.press(utils.getByLabelText('Settings'));
+      });
+      act(() => {
+        fireEvent.press(utils.getByLabelText('Reset Play Stats'));
+      });
+
+      const next = useUserStore.getState();
+      expect(next.stats.gamesPlayed).toBe(0);
+      expect(next.stats.winRate).toBe(0);
+      expect(next.stats.recentMatches).toEqual([]);
+      expect(next.perMode[1]).toEqual({ winRate: 0 });
+      // Tokens / level untouched.
+      expect(next.tokens).toBe(USER_STORE_DEFAULTS.tokens);
+      expect(next.level).toBe(USER_STORE_DEFAULTS.level);
+
+      alertSpy.mockRestore();
     });
   });
 

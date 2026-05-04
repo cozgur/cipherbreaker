@@ -264,6 +264,82 @@ describe('useUserStore', () => {
     });
   });
 
+  describe('resetPlayStats — admin DEV action', () => {
+    it('zeroes game stats, per-mode rates, recentMatches, and dailyChallenge', () => {
+      // Pre-load some real-looking play history.
+      useUserStore.setState({
+        stats: {
+          gamesPlayed: 50,
+          winRate: 65,
+          currentStreak: 4,
+          bestStreak: 9,
+          avgTurns: 5.2,
+          totalTokensEarned: 8_400,
+          recentMatches: ['victory', 'defeat', 'victory'],
+        },
+        perMode: {
+          1: { winRate: 72 },
+          2: { winRate: 60 },
+          3: { winRate: 58 },
+          4: { winRate: 55 },
+          5: { winRate: 49 },
+          6: { winRate: 61 },
+          7: { winRate: 52 },
+        },
+        dailyChallenge: {
+          ...USER_STORE_DEFAULTS.dailyChallenge,
+          lastPlayedDate: '2026-05-10',
+          currentStreak: 7,
+          longestStreak: 12,
+          effectiveDayOffset: 7,
+          history: [
+            { date: '2026-05-10', digits: 4, turns: 3, success: true },
+          ],
+        },
+      });
+
+      useUserStore.getState().resetPlayStats();
+
+      const next = useUserStore.getState();
+      expect(next.stats.gamesPlayed).toBe(0);
+      expect(next.stats.winRate).toBe(0);
+      expect(next.stats.currentStreak).toBe(0);
+      expect(next.stats.bestStreak).toBe(0);
+      expect(next.stats.avgTurns).toBe(0);
+      expect(next.stats.totalTokensEarned).toBe(0);
+      expect(next.stats.recentMatches).toEqual([]);
+      for (const id of [1, 2, 3, 4, 5, 6, 7]) {
+        expect(next.perMode[id]).toEqual({ winRate: 0 });
+      }
+      expect(next.dailyChallenge.lastPlayedDate).toBeNull();
+      expect(next.dailyChallenge.currentStreak).toBe(0);
+      expect(next.dailyChallenge.longestStreak).toBe(0);
+      expect(next.dailyChallenge.effectiveDayOffset).toBe(0);
+      expect(next.dailyChallenge.history).toEqual([]);
+    });
+
+    it('preserves identity + economy fields (tokens, level, XP, username, hasOnboarded)', () => {
+      useUserStore.setState({
+        username: 'phoenix',
+        tokens: 5000,
+        level: 18,
+        currentXP: 1500,
+        targetXP: 2400,
+        hasOnboarded: true,
+      });
+
+      useUserStore.getState().resetPlayStats();
+
+      const next = useUserStore.getState();
+      expect(next.username).toBe('phoenix');
+      expect(next.tokens).toBe(5000);
+      expect(next.level).toBe(18);
+      expect(next.currentXP).toBe(1500);
+      expect(next.targetXP).toBe(2400);
+      expect(next.hasOnboarded).toBe(true);
+    });
+  });
+
   describe('migration — chained v1 → v2 → v3', () => {
     // Phase 7A.4 CP3: chained migration pattern. A v1 blob hydrates
     // through both upgrade steps to land at v3; a v2 blob takes the
