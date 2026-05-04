@@ -12,7 +12,9 @@ import type { DailyResultSummary } from '@game/daily/types';
 import { useUserStore, USER_STORE_DEFAULTS, DAILY_CHALLENGE_DEFAULTS } from '../userStore';
 import { getDailySecret } from '@game/daily/dailySeed';
 
-const FRESH_CONFIG = { digits: 4, turnLimit: 6 };
+// Phase 7A.4 CP5 iOS-test correction: tier-4 turn budget bumped
+// from 6 to 10 (Mastermind paradigm — see dailyConfig.ts comment).
+const FRESH_CONFIG = { digits: 4, turnLimit: 10 };
 
 function resetStores(): void {
   useDailyChallengeStore.setState({ currentAttempt: null, isSubmitting: false });
@@ -33,7 +35,7 @@ describe('dailyChallengeStore.startToday', () => {
     expect(attempt).not.toBeNull();
     expect(attempt!.date).toBe('2026-05-10');
     expect(attempt!.digits).toBe(4);
-    expect(attempt!.turnLimit).toBe(6);
+    expect(attempt!.turnLimit).toBe(10);
     expect(attempt!.guesses).toEqual([]);
   });
 
@@ -134,6 +136,7 @@ describe('dailyChallengeStore.submitGuess — validation + evaluation', () => {
     expect(result.summary).not.toBeNull();
     expect(result.summary!.success).toBe(true);
     expect(result.summary!.turnsUsed).toBe(1);
+    expect(result.summary!.turnLimit).toBe(10);
     // currentAttempt cleared.
     expect(useDailyChallengeStore.getState().currentAttempt).toBeNull();
     // userStore took the result.
@@ -144,11 +147,23 @@ describe('dailyChallengeStore.submitGuess — validation + evaluation', () => {
   });
 
   it('hitting the turn limit without winning closes the attempt as a failure', () => {
-    // Submit 6 guaranteed-wrong guesses. We pick guesses that share
+    // Submit 10 guaranteed-wrong guesses (tier-4 turn budget post
+    // Mastermind paradigm correction). We pick guesses that share
     // no digits with the secret to deterministically miss; if the
     // secret somehow contains every digit, the test gracefully
     // detects an early win and skips.
-    const wrong = ['1111', '2222', '3333', '4444', '5555', '6666'];
+    const wrong = [
+      '1111',
+      '2222',
+      '3333',
+      '4444',
+      '5555',
+      '6666',
+      '7777',
+      '8888',
+      '9999',
+      '1212',
+    ];
     let summary: DailyResultSummary | null = null;
     for (const g of wrong) {
       const r = useDailyChallengeStore.getState().submitGuess(g);
@@ -159,7 +174,7 @@ describe('dailyChallengeStore.submitGuess — validation + evaluation', () => {
       throw new Error('test fixture failed to exhaust the turn limit');
     }
     expect(summary.success).toBe(false);
-    expect(summary.turnsUsed).toBe(6);
+    expect(summary.turnsUsed).toBe(10);
     expect(useDailyChallengeStore.getState().currentAttempt).toBeNull();
     expect(useUserStore.getState().dailyChallenge.lastResult!.success).toBe(false);
     // Streak: failure on first play stays at 0.

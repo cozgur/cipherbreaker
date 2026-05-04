@@ -17,7 +17,7 @@ import { renderWithNavigation } from '@/test-utils/renderWithNavigation';
 const successResult: DailyResultSummary = {
   date: '2026-05-01',
   digits: 4,
-  turnLimit: 6,
+  turnLimit: 10,
   turnsUsed: 3,
   success: true,
   secret: '4321',
@@ -30,10 +30,10 @@ const successResult: DailyResultSummary = {
 
 const failureResult: DailyResultSummary = {
   ...successResult,
-  turnsUsed: 6,
+  turnsUsed: 10,
   success: false,
   secret: '7382',
-  feedbackTrail: Array.from({ length: 6 }, () => ({
+  feedbackTrail: Array.from({ length: 10 }, () => ({
     guess: '1111',
     plus: 0,
     minus: 0,
@@ -62,7 +62,7 @@ describe('DailyResultScreen', () => {
   it('renders the success headline with turns used / turn limit', () => {
     setLastResult(successResult, { currentStreak: 3, longestStreak: 7 });
     const utils = renderWithNavigation('DailyResult', { DailyResult: DailyResultScreen });
-    expect(utils.getByText('Cracked in 3/6')).toBeTruthy();
+    expect(utils.getByText('Cracked in 3/10')).toBeTruthy();
   });
 
   it('renders the failure headline when the day was not cracked', () => {

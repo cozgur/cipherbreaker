@@ -4,7 +4,7 @@ import { buildBannerCopy, getDailyBannerState, timeUntilNextDaily } from '../ban
 const successResult = (date: string): DailyResultSummary => ({
   date,
   digits: 4,
-  turnLimit: 6,
+  turnLimit: 10,
   turnsUsed: 3,
   success: true,
   secret: '4321',
@@ -14,7 +14,7 @@ const successResult = (date: string): DailyResultSummary => ({
 const failureResult = (date: string): DailyResultSummary => ({
   ...successResult(date),
   success: false,
-  turnsUsed: 6,
+  turnsUsed: 10,
 });
 
 describe('getDailyBannerState', () => {
@@ -70,7 +70,7 @@ describe('timeUntilNextDaily', () => {
 });
 
 describe('buildBannerCopy', () => {
-  const config = { digits: 4, turnLimit: 6 };
+  const config = { digits: 4, turnLimit: 10 };
 
   it('fresh state shows the puzzle CTA + tier + countdown', () => {
     const copy = buildBannerCopy('fresh', config, 1, '14h 32m', null, 0);
@@ -81,9 +81,9 @@ describe('buildBannerCopy', () => {
   });
 
   it('cracked state shows the turn ratio + streak + countdown', () => {
-    const result = { ...successResult('2026-05-01'), turnsUsed: 3, turnLimit: 6 };
+    const result = { ...successResult('2026-05-01'), turnsUsed: 3, turnLimit: 10 };
     const copy = buildBannerCopy('cracked', config, 1, '14h 32m', result, 12);
-    expect(copy.headline).toContain('Cracked in 3/6');
+    expect(copy.headline).toContain('Cracked in 3/10');
     expect(copy.subline).toContain('Streak 12');
     expect(copy.subline).toContain('14h 32m');
   });

@@ -42,22 +42,26 @@ describe('LAUNCH_EPOCH + calendarDayIndex', () => {
 });
 
 describe('effectiveDigitTier — pure tier mapping', () => {
-  it.each([1, 2, 5, 7])('effectiveDay=%i → tier 4 (4 digits, 6 turns)', (day) => {
-    expect(effectiveDigitTier(day)).toEqual({ digits: 4, turnLimit: 6 });
+  // Turn budgets corrected post-CP5 iOS test (Mastermind paradigm —
+  // less info per row than Wordle, multiset confusion). 10/12/14
+  // lands the casual-friendly win band; hardcore skill solve still
+  // achievable in 5-7 turns.
+  it.each([1, 2, 5, 7])('effectiveDay=%i → tier 4 (4 digits, 10 turns)', (day) => {
+    expect(effectiveDigitTier(day)).toEqual({ digits: 4, turnLimit: 10 });
   });
 
-  it.each([8, 12, 17])('effectiveDay=%i → tier 5 (5 digits, 7 turns)', (day) => {
-    expect(effectiveDigitTier(day)).toEqual({ digits: 5, turnLimit: 7 });
+  it.each([8, 12, 17])('effectiveDay=%i → tier 5 (5 digits, 12 turns)', (day) => {
+    expect(effectiveDigitTier(day)).toEqual({ digits: 5, turnLimit: 12 });
   });
 
-  it.each([18, 50, 365])('effectiveDay=%i → tier 6 (6 digits, 8 turns) — cap', (day) => {
-    expect(effectiveDigitTier(day)).toEqual({ digits: 6, turnLimit: 8 });
+  it.each([18, 50, 365])('effectiveDay=%i → tier 6 (6 digits, 14 turns) — cap', (day) => {
+    expect(effectiveDigitTier(day)).toEqual({ digits: 6, turnLimit: 14 });
   });
 
   it('floors at tier-4 for non-positive effective day (pre-launch / heavy regression)', () => {
-    expect(effectiveDigitTier(0)).toEqual({ digits: 4, turnLimit: 6 });
-    expect(effectiveDigitTier(-5)).toEqual({ digits: 4, turnLimit: 6 });
-    expect(effectiveDigitTier(-100)).toEqual({ digits: 4, turnLimit: 6 });
+    expect(effectiveDigitTier(0)).toEqual({ digits: 4, turnLimit: 10 });
+    expect(effectiveDigitTier(-5)).toEqual({ digits: 4, turnLimit: 10 });
+    expect(effectiveDigitTier(-100)).toEqual({ digits: 4, turnLimit: 10 });
   });
 
   it('boundaries: 7→tier4, 8→tier5; 17→tier5, 18→tier6', () => {
@@ -75,79 +79,65 @@ describe('effectiveDigitTier — pure tier mapping', () => {
 
 describe('getDailyConfig — user-aware (Reading A + effectiveDayOffset)', () => {
   it('fresh user, calendar Day 7 → tier 4 (no offset to apply)', () => {
-    expect(getDailyConfig('2026-05-07', FRESH_STATE)).toEqual({ digits: 4, turnLimit: 6 });
+    expect(getDailyConfig('2026-05-07', FRESH_STATE)).toEqual({ digits: 4, turnLimit: 10 });
   });
 
   it('fresh user, calendar Day 8 → tier 5 (calendar promotion)', () => {
-    expect(getDailyConfig('2026-05-08', FRESH_STATE)).toEqual({ digits: 5, turnLimit: 7 });
+    expect(getDailyConfig('2026-05-08', FRESH_STATE)).toEqual({ digits: 5, turnLimit: 12 });
   });
 
   it('fresh user, calendar Day 18 → tier 6 (calendar promotion)', () => {
-    expect(getDailyConfig('2026-05-18', FRESH_STATE)).toEqual({ digits: 6, turnLimit: 8 });
+    expect(getDailyConfig('2026-05-18', FRESH_STATE)).toEqual({ digits: 6, turnLimit: 14 });
   });
 
   it('regressed user (offset 7), calendar Day 18 → effective Day 11 → tier 5', () => {
-    // User was at tier-6 on Day 18, broke streak: offset += 10? No,
-    // Reading A drops by the prior tier period — tier-6 break drops
-    // to tier-5 with offset += TIER_5_PERIOD (10). Verified below.
-    // Here we assert the simpler "offset 7" case: a tier-5 break
-    // pushes the player back to tier-4 territory. effectiveDay = 18-7 = 11
-    // — still inside tier-5 band (8..17). The regression "lands" at
-    // effectiveDay = (calendarDay - offset).
     expect(getDailyConfig('2026-05-18', stateWithOffset(7))).toEqual({
       digits: 5,
-      turnLimit: 7,
+      turnLimit: 12,
     });
   });
 
   it('heavily regressed user (offset 14), calendar Day 18 → effective Day 4 → tier 4', () => {
     expect(getDailyConfig('2026-05-18', stateWithOffset(14))).toEqual({
       digits: 4,
-      turnLimit: 6,
+      turnLimit: 10,
     });
   });
 
   it('tier-6 → tier-5 regression (offset 10), calendar Day 18 → effective Day 8 → tier 5', () => {
-    // Player at tier-6 (Day 18+) broke streak. Offset += TIER_5_PERIOD (10).
-    // effectiveDay = 18 - 10 = 8 → tier 5 (the band the player
-    // re-enters and must climb out of by playing the next 10 days).
     expect(getDailyConfig('2026-05-18', stateWithOffset(10))).toEqual({
       digits: 5,
-      turnLimit: 7,
+      turnLimit: 12,
     });
   });
 
   it('regression takes 10 calendar days at tier-5 to climb back to tier-6', () => {
-    // After a tier-6 break on Day 18 (offset=10), we expect the
-    // player to re-promote to tier-6 at calendar Day 28.
     expect(getDailyConfig('2026-05-27', stateWithOffset(10))).toEqual({
       digits: 5,
-      turnLimit: 7,
+      turnLimit: 12,
     });
     expect(getDailyConfig('2026-05-28', stateWithOffset(10))).toEqual({
       digits: 6,
-      turnLimit: 8,
+      turnLimit: 14,
     });
   });
 
   it('regression takes 7 calendar days at tier-4 to climb back to tier-5', () => {
-    // Tier-5 break on Day 8 → offset += TIER_4_PERIOD (7).
-    // effectiveDay = 8-7 = 1 → tier 4. Climb back at Day 15.
     expect(getDailyConfig('2026-05-08', stateWithOffset(7))).toEqual({
       digits: 4,
-      turnLimit: 6,
+      turnLimit: 10,
     });
     expect(getDailyConfig('2026-05-14', stateWithOffset(7))).toEqual({
       digits: 4,
-      turnLimit: 6,
+      turnLimit: 10,
     });
     expect(getDailyConfig('2026-05-15', stateWithOffset(7))).toEqual({
       digits: 5,
-      turnLimit: 7,
+      turnLimit: 12,
     });
   });
 
   it('pre-launch date floors to tier-4 even with offset zero', () => {
-    expect(getDailyConfig('2026-04-30', FRESH_STATE)).toEqual({ digits: 4, turnLimit: 6 });
+    expect(getDailyConfig('2026-04-30', FRESH_STATE)).toEqual({ digits: 4, turnLimit: 10 });
   });
 });

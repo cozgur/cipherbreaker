@@ -88,12 +88,12 @@ describe('DailyMatchScreen', () => {
     expect(utils.getByText('DAY #1')).toBeTruthy();
   });
 
-  it('seeds a fresh attempt at tier-4 (Day 1 → 4 digits, 6 turns)', () => {
+  it('seeds a fresh attempt at tier-4 (Day 1 → 4 digits, 10 turns)', () => {
     renderWithNavigation('Daily', { Daily: DailyMatchScreen });
     const attempt = useDailyChallengeStore.getState().currentAttempt;
     expect(attempt).not.toBeNull();
     expect(attempt!.digits).toBe(4);
-    expect(attempt!.turnLimit).toBe(6);
+    expect(attempt!.turnLimit).toBe(10);
     expect(attempt!.guesses).toHaveLength(0);
   });
 

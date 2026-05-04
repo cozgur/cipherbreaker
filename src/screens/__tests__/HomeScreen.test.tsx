@@ -131,7 +131,7 @@ describe('HomeScreen', () => {
       const cracked: DailyResultSummary = {
         date: '2026-05-01',
         digits: 4,
-        turnLimit: 6,
+        turnLimit: 10,
         turnsUsed: 3,
         success: true,
         secret: '4321',
@@ -141,7 +141,7 @@ describe('HomeScreen', () => {
         dailyChallenge: { ...DAILY_CHALLENGE_DEFAULTS, lastResult: cracked, currentStreak: 5 },
       });
       const utils = renderWithNavigation('Home', { Home: HomeScreen });
-      expect(utils.getByText('✓ Cracked in 3/6')).toBeTruthy();
+      expect(utils.getByText('✓ Cracked in 3/10')).toBeTruthy();
       expect(utils.getByText(/Streak 5/)).toBeTruthy();
     });
 
@@ -149,8 +149,8 @@ describe('HomeScreen', () => {
       const failed: DailyResultSummary = {
         date: '2026-05-01',
         digits: 4,
-        turnLimit: 6,
-        turnsUsed: 6,
+        turnLimit: 10,
+        turnsUsed: 10,
         success: false,
         secret: '7382',
         feedbackTrail: [],
@@ -178,7 +178,7 @@ describe('HomeScreen', () => {
       const cracked: DailyResultSummary = {
         date: '2026-05-01',
         digits: 4,
-        turnLimit: 6,
+        turnLimit: 10,
         turnsUsed: 3,
         success: true,
         secret: '4321',
@@ -201,8 +201,8 @@ describe('HomeScreen', () => {
       const failed: DailyResultSummary = {
         date: '2026-05-01',
         digits: 4,
-        turnLimit: 6,
-        turnsUsed: 6,
+        turnLimit: 10,
+        turnsUsed: 10,
         success: false,
         secret: '7382',
         feedbackTrail: [],

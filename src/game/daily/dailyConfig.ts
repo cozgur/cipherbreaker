@@ -35,10 +35,21 @@ import { dayDifferenceLocal, parseDailyDate } from './dailyDate';
  */
 export const LAUNCH_EPOCH = '2026-05-01';
 
+/**
+ * Turn budgets — Phase 7A.4 CP5 iOS-test correction. Original draft
+ * inherited Wordle's 6-tries baseline; iOS playthrough surfaced that
+ * the Mastermind +N/-M paradigm carries less per-row information
+ * than Wordle's letter-color grid AND adds multiset confusion. 6
+ * turns at 4 digits frustrated even careful players; mathematical
+ * Mastermind benchmark for 4 digits is ~5 optimal / ~7-8 human /
+ * ~9-10 for an ~85% retention-friendly win rate. The 10/12/14
+ * ladder lands a casual-friendly win band while keeping the
+ * hardcore-skill challenge intact (5-turn solve still possible).
+ */
 const TIER_BANDS = {
-  TIER_4: { digits: 4, turnLimit: 6 },
-  TIER_5: { digits: 5, turnLimit: 7 },
-  TIER_6: { digits: 6, turnLimit: 8 },
+  TIER_4: { digits: 4, turnLimit: 10 },
+  TIER_5: { digits: 5, turnLimit: 12 },
+  TIER_6: { digits: 6, turnLimit: 14 },
 } as const;
 
 /**
