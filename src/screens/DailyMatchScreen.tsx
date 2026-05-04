@@ -1,38 +1,61 @@
 /**
- * Phase 7A.4 CP4 — Daily Challenge play surface.
+ * Phase 7A.4 CP6 — Daily Challenge play surface.
  *
- * Single-player Wordle-style flow. No bot, no SoloRaceBanner, no
- * PlayerCardPair — those primitives belong to PvP-shaped Modes 1-7.
- * The screen is intentionally lean: identity badge ("DAY #N"), turn
- * counter, history (Mode 3 row reuse — same `+N / -M` precision
- * paint), and the digit input row.
+ * Single-player Wordle-style flow with the CP6 hint mechanic
+ * layered on. No bot, no PvP primitives. Two hint actions sit
+ * above the keypad:
  *
- * Resume on mount: `dailyChallengeStore.startToday(today, config)`.
- * The store handles the cross-midnight stale-drop case (silent +
- * `recordMissedDay`) and either resumes the persisted board or
- * seeds a fresh attempt for today's calendar tier. The user-aware
- * `getDailyConfig(today, userStore.dailyChallenge)` honours Reading
- * A regression: a recently-broken streak shows fewer digits.
+ *   💡 HINT  — Hint A reveal (priority green > yellow > warning).
+ *              Pulls the picker via `analyzeHintCandidates(...)`.
+ *              Cost: 1 earned hint OR 100 tokens. `'warning'`
+ *              short-circuits and charges nothing — no info, no
+ *              charge.
+ *   🔍 PROBE — Hint B existence test. Player taps PROBE → digit
+ *              picker modal → confirm → result modal. Already-
+ *              probed digits disabled in the picker. Cost: 1 earned
+ *              hint OR 50 tokens. probedDigits state drives the
+ *              keypad indicator overlay (green dot for `exists`,
+ *              strikethrough for `!exists`).
  *
- * Win / loss → navigate to `DailyResult`. The store has already
- * stamped `lastResult` on userStore by the time we navigate, so
- * DailyResultScreen renders synchronously with no further fetch.
+ * Draft input:
+ *   - Revealed positions (from green hints) auto-fill the draft
+ *     row with the secret digit and lock the cell (a green border).
+ *   - User taps fill the remaining (non-revealed) positions in
+ *     order. Backspace removes the last user-typed digit.
+ *
+ * Hint A yellow reveals don't auto-fill — they confirm "this digit
+ * exists somewhere" without binding it. The keypad indicator
+ * surfaces the same digit; the player chooses where to place it.
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import {
+  Alert,
+  Modal,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
-import { DigitKeypad } from '@components/DigitKeypad';
+import { DigitKeypad, type DigitKeypadIndicator } from '@components/DigitKeypad';
 import { DigitTile } from '@components/DigitTile';
 import { Mode3Row } from '@components/game/rows/Mode3Row';
 import { Screen } from '@components/Screen';
 import { calendarDayIndex, getDailyConfig } from '@game/daily/dailyConfig';
 import { formatDailyDate } from '@game/daily/dailyDate';
-import type { DailyGuessRecord } from '@game/daily/types';
+import {
+  analyzeHintCandidates,
+  canProbeDigit,
+  hintCostForState,
+  HINT_PROBE_TOKEN_COST,
+  HINT_REVEAL_TOKEN_COST,
+} from '@game/daily/hint';
+import type { DailyGuessRecord, DailyInProgress } from '@game/daily/types';
 import type { GuessRowProps, NormalizedFeedback } from '@game/types';
 import type { RootStackParamList } from '@navigation/routes';
 import { useDailyChallengeStore } from '@state/dailyChallengeStore';
@@ -41,70 +64,159 @@ import { colors, fonts, withAlpha } from '@theme/tokens';
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'Daily'>;
 
+const PROBE_DIGITS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] as const;
+
 export function DailyMatchScreen(): React.JSX.Element {
   const navigation = useNavigation<Nav>();
   const insets = useSafeAreaInsets();
   const username = useUserStore((s) => s.username);
+  const tokens = useUserStore((s) => s.tokens);
   const dailyState = useUserStore((s) => s.dailyChallenge);
   const currentAttempt = useDailyChallengeStore((s) => s.currentAttempt);
   const submitGuess = useDailyChallengeStore((s) => s.submitGuess);
 
-  // `today` is captured once on mount. A user who lingers past
-  // midnight gets the cross-midnight stale-drop on their NEXT visit,
-  // not mid-session — that's Wordle behaviour. (A 5-hour idle session
-  // crossing midnight is a rare path; not worth a real-time tick to
-  // detect.)
   const [today] = useState(() => formatDailyDate(new Date()));
-
   const config = useMemo(() => getDailyConfig(today, dailyState), [today, dailyState]);
   const dayNumber = useMemo(() => calendarDayIndex(today), [today]);
 
-  // Initialize-or-resume on mount. `startToday` is idempotent for
-  // same-day re-entries (returns false; existing currentAttempt
-  // persists), drops stale attempts via the store-level guard.
   useEffect(() => {
     useDailyChallengeStore.getState().startToday(today, config);
   }, [today, config]);
 
-  const [draft, setDraft] = useState('');
+  const [userInput, setUserInput] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [isPickingProbe, setIsPickingProbe] = useState(false);
 
   const onDigit = useCallback(
     (digit: number) => {
       setError(null);
-      setDraft((prev) => {
-        if (prev.length >= config.digits) return prev;
+      setUserInput((prev) => {
+        const remaining = config.digits - (currentAttempt?.revealedPositions.length ?? 0);
+        if (prev.length >= remaining) return prev;
         return prev + digit.toString();
       });
     },
-    [config.digits],
+    [config.digits, currentAttempt],
   );
 
   const onBackspace = useCallback(() => {
     setError(null);
-    setDraft((prev) => prev.slice(0, -1));
+    setUserInput((prev) => prev.slice(0, -1));
   }, []);
 
+  const fullDraft = useMemo(
+    () => composeDraft(userInput, currentAttempt?.revealedPositions ?? [], currentAttempt?.secret ?? '', config.digits),
+    [userInput, currentAttempt, config.digits],
+  );
+
   const onSubmit = useCallback(() => {
-    if (draft.length !== config.digits) {
-      setError(`Enter ${config.digits} digits.`);
+    if (currentAttempt === null) return;
+    const remaining = config.digits - currentAttempt.revealedPositions.length;
+    if (userInput.length !== remaining) {
+      setError(`Enter ${remaining} more digit${remaining === 1 ? '' : 's'}.`);
       return;
     }
-    const result = submitGuess(draft);
+    const guess = fullDraft.join('');
+    const result = submitGuess(guess);
     if (result.error !== null) {
       setError(result.error.message);
       return;
     }
-    setDraft('');
+    setUserInput('');
     setError(null);
     if (result.summary !== null) {
       navigation.replace('DailyResult');
     }
-  }, [draft, config.digits, submitGuess, navigation]);
+  }, [currentAttempt, config.digits, userInput, fullDraft, submitGuess, navigation]);
 
-  const onClose = useCallback(() => {
-    navigation.navigate('Home');
-  }, [navigation]);
+  const onClose = useCallback(() => navigation.navigate('Home'), [navigation]);
+
+  // ── Hint A button state machine ──
+  const hintCandidate = useMemo(
+    () =>
+      currentAttempt
+        ? analyzeHintCandidates(
+            currentAttempt.secret,
+            currentAttempt.guesses,
+            currentAttempt.revealedPositions,
+            currentAttempt.revealedDigits,
+          )
+        : null,
+    [currentAttempt],
+  );
+  const hintAffordability = useMemo(
+    () => hintCostForState(dailyState.earnedHints, tokens, HINT_REVEAL_TOKEN_COST),
+    [dailyState.earnedHints, tokens],
+  );
+  const hintButton = useMemo(
+    () => buildHintButtonState(currentAttempt, hintCandidate, hintAffordability, dailyState.earnedHints),
+    [currentAttempt, hintCandidate, hintAffordability, dailyState.earnedHints],
+  );
+
+  const onHintPress = useCallback(() => {
+    if (currentAttempt === null) return;
+    const r = useDailyChallengeStore.getState().useHint();
+    if (r.kind === 'no-attempt' || r.kind === 'unaffordable') {
+      // Both should be UI-prevented; defensive no-op.
+      return;
+    }
+    if (r.kind === 'warning') {
+      Alert.alert('No correct digits yet', 'Try a guess that lands at least one position or digit first.');
+      return;
+    }
+    if (r.kind === 'green') {
+      Alert.alert('Hint', `Position ${r.position + 1} is ${r.digit}.`);
+      return;
+    }
+    // yellow
+    Alert.alert('Hint', `Digit ${r.digit} is somewhere in the secret. Place it to find out where.`);
+  }, [currentAttempt]);
+
+  // ── Hint B (Probe) state machine ──
+  const probeAffordability = useMemo(
+    () => hintCostForState(dailyState.earnedHints, tokens, HINT_PROBE_TOKEN_COST),
+    [dailyState.earnedHints, tokens],
+  );
+  const probeButton = useMemo(
+    () => buildProbeButtonState(currentAttempt, probeAffordability, dailyState.earnedHints),
+    [currentAttempt, probeAffordability, dailyState.earnedHints],
+  );
+
+  const onProbePress = useCallback(() => {
+    if (currentAttempt === null || probeButton.disabled) return;
+    setIsPickingProbe(true);
+  }, [currentAttempt, probeButton.disabled]);
+
+  const onPickProbeDigit = useCallback(
+    (digit: number) => {
+      setIsPickingProbe(false);
+      const costLabel =
+        probeAffordability === 'earned'
+          ? '1 earned hint'
+          : `${HINT_PROBE_TOKEN_COST} tokens`;
+      Alert.alert(`Probe digit ${digit}?`, `Costs ${costLabel}.`, [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Probe',
+          onPress: () => {
+            const r = useDailyChallengeStore.getState().useProbe(digit);
+            if (r.kind === 'resolved') {
+              Alert.alert(
+                r.exists ? `✅ ${r.digit} is in the secret` : `❌ ${r.digit} is not in the secret`,
+              );
+            }
+          },
+        },
+      ]);
+    },
+    [probeAffordability],
+  );
+
+  // ── Keypad indicators ──
+  const indicators = useMemo(
+    () => buildKeypadIndicators(currentAttempt),
+    [currentAttempt],
+  );
 
   const guesses = currentAttempt?.guesses ?? [];
   const turnsUsed = guesses.length;
@@ -157,42 +269,218 @@ export function DailyMatchScreen(): React.JSX.Element {
 
         <View style={styles.draftBlock}>
           <View style={styles.draftRow}>
-            {Array.from({ length: config.digits }, (_, i) => {
-              const digit = draft[i];
+            {fullDraft.map((digit, i) => {
+              const isRevealed = currentAttempt?.revealedPositions.includes(i) === true;
               return (
-                <DigitTile
-                  key={i}
-                  digit={digit !== undefined ? Number.parseInt(digit, 10) : undefined}
-                  state="neutral"
-                  size={42}
-                />
+                <View key={i} style={[isRevealed && styles.draftCellRevealed]}>
+                  <DigitTile
+                    digit={digit !== '' ? Number.parseInt(digit, 10) : undefined}
+                    state={isRevealed ? 'green' : 'neutral'}
+                    size={42}
+                  />
+                </View>
               );
             })}
           </View>
           {error !== null ? <Text style={styles.error}>{error}</Text> : null}
         </View>
 
+        <View style={styles.hintRow}>
+          <HintButton
+            label={hintButton.label}
+            sublabel={hintButton.sublabel}
+            disabled={hintButton.disabled}
+            tone="hint"
+            onPress={onHintPress}
+            accessibilityLabel="Hint button"
+          />
+          <HintButton
+            label={probeButton.label}
+            sublabel={probeButton.sublabel}
+            disabled={probeButton.disabled}
+            tone="probe"
+            onPress={onProbePress}
+            accessibilityLabel="Probe button"
+          />
+        </View>
+
         <View style={styles.keypadWrap}>
-          <DigitKeypad onDigit={onDigit} onBackspace={onBackspace} />
+          <DigitKeypad onDigit={onDigit} onBackspace={onBackspace} indicators={indicators} />
         </View>
 
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Submit guess"
           onPress={onSubmit}
-          disabled={draft.length !== config.digits}
+          disabled={
+            userInput.length !==
+            config.digits - (currentAttempt?.revealedPositions.length ?? 0)
+          }
           style={({ pressed }) => [
             styles.submitButton,
-            draft.length !== config.digits && styles.submitButtonDisabled,
-            pressed && draft.length === config.digits ? styles.submitButtonPressed : null,
+            userInput.length !==
+              config.digits - (currentAttempt?.revealedPositions.length ?? 0) &&
+              styles.submitButtonDisabled,
+            pressed &&
+            userInput.length === config.digits - (currentAttempt?.revealedPositions.length ?? 0)
+              ? styles.submitButtonPressed
+              : null,
             { marginBottom: insets.bottom + 16 },
           ]}
         >
           <Text style={styles.submitLabel}>SUBMIT</Text>
         </Pressable>
       </View>
+
+      <Modal
+        visible={isPickingProbe}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setIsPickingProbe(false)}
+      >
+        <Pressable
+          accessibilityLabel="Dismiss probe picker"
+          onPress={() => setIsPickingProbe(false)}
+          style={styles.modalBackdrop}
+        >
+          <Pressable
+            accessibilityLabel="Probe digit picker"
+            onPress={() => undefined}
+            style={styles.probeSheet}
+          >
+            <Text style={styles.probeSheetTitle}>Pick a digit to probe</Text>
+            <Text style={styles.probeSheetSubtitle}>
+              {probeAffordability === 'earned'
+                ? '1 earned hint'
+                : `${HINT_PROBE_TOKEN_COST} tokens`}
+            </Text>
+            <View style={styles.probeGrid}>
+              {PROBE_DIGITS.map((d) => {
+                const probed = currentAttempt
+                  ? !canProbeDigit(d, currentAttempt.probedDigits)
+                  : false;
+                return (
+                  <Pressable
+                    key={d}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Probe digit ${d}${probed ? ' (already probed)' : ''}`}
+                    disabled={probed}
+                    onPress={() => onPickProbeDigit(d)}
+                    style={({ pressed }) => [
+                      styles.probeChoice,
+                      probed && styles.probeChoiceDisabled,
+                      pressed && !probed && styles.probeChoicePressed,
+                    ]}
+                  >
+                    <Text
+                      style={[styles.probeChoiceLabel, probed && styles.probeChoiceLabelDisabled]}
+                    >
+                      {d}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Cancel probe"
+              onPress={() => setIsPickingProbe(false)}
+              style={styles.probeCancel}
+            >
+              <Text style={styles.probeCancelLabel}>CANCEL</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </Screen>
   );
+}
+
+// ─────────────────────────────────────────────────────────────
+// Helpers — pure
+// ─────────────────────────────────────────────────────────────
+
+interface ButtonState {
+  readonly label: string;
+  readonly sublabel: string;
+  readonly disabled: boolean;
+}
+
+function buildHintButtonState(
+  attempt: DailyInProgress | null,
+  candidate: ReturnType<typeof analyzeHintCandidates> | null,
+  affordability: ReturnType<typeof hintCostForState>,
+  earnedHints: number,
+): ButtonState {
+  if (attempt === null) {
+    return { label: 'HINT', sublabel: '—', disabled: true };
+  }
+  if (attempt.guesses.length === 0) {
+    return { label: 'HINT', sublabel: 'Make a guess first', disabled: true };
+  }
+  if (candidate === null || candidate.kind === 'warning') {
+    return { label: 'HINT', sublabel: 'No correct digits yet', disabled: true };
+  }
+  if (affordability === 'unaffordable') {
+    return { label: 'HINT', sublabel: 'Need 100 tokens', disabled: true };
+  }
+  const sub = affordability === 'earned' ? `Free (${earnedHints} left)` : '100 tokens';
+  return { label: 'HINT', sublabel: sub, disabled: false };
+}
+
+function buildProbeButtonState(
+  attempt: DailyInProgress | null,
+  affordability: ReturnType<typeof hintCostForState>,
+  earnedHints: number,
+): ButtonState {
+  if (attempt === null) {
+    return { label: 'PROBE', sublabel: '—', disabled: true };
+  }
+  // All digits already probed → nothing left to ask about.
+  if (attempt.probedDigits.length >= 10) {
+    return { label: 'PROBE', sublabel: 'All digits probed', disabled: true };
+  }
+  if (affordability === 'unaffordable') {
+    return { label: 'PROBE', sublabel: 'Need 50 tokens', disabled: true };
+  }
+  const sub = affordability === 'earned' ? `Free (${earnedHints} left)` : '50 tokens';
+  return { label: 'PROBE', sublabel: sub, disabled: false };
+}
+
+function buildKeypadIndicators(
+  attempt: DailyInProgress | null,
+): Readonly<Record<number, DigitKeypadIndicator>> {
+  if (attempt === null) return {};
+  const out: Record<number, DigitKeypadIndicator> = {};
+  // Hint A yellow reveals → positive (digit confirmed in secret).
+  for (const d of attempt.revealedDigits) out[d] = 'positive';
+  // Hint B probes → positive if exists, negative if not. Probe
+  // wins over yellow on collision (it's the more recent / explicit
+  // signal — the player paid for the answer).
+  for (const r of attempt.probedDigits) {
+    out[r.digit] = r.exists ? 'positive' : 'negative';
+  }
+  return out;
+}
+
+function composeDraft(
+  userInput: string,
+  revealedPositions: readonly number[],
+  secret: string,
+  digits: number,
+): string[] {
+  const taken = new Set(revealedPositions);
+  const out: string[] = [];
+  let userIdx = 0;
+  for (let i = 0; i < digits; i += 1) {
+    if (taken.has(i)) {
+      out.push(secret[i] ?? '');
+    } else {
+      out.push(userInput[userIdx] ?? '');
+      userIdx += 1;
+    }
+  }
+  return out;
 }
 
 function buildRowProps(record: DailyGuessRecord, avatar: string): GuessRowProps {
@@ -212,6 +500,50 @@ function buildRowProps(record: DailyGuessRecord, avatar: string): GuessRowProps 
     digits,
     feedback,
   };
+}
+
+// ─────────────────────────────────────────────────────────────
+// Subcomponents
+// ─────────────────────────────────────────────────────────────
+
+interface HintButtonProps {
+  readonly label: string;
+  readonly sublabel: string;
+  readonly disabled: boolean;
+  readonly tone: 'hint' | 'probe';
+  readonly onPress: () => void;
+  readonly accessibilityLabel: string;
+}
+
+function HintButton({
+  label,
+  sublabel,
+  disabled,
+  tone,
+  onPress,
+  accessibilityLabel,
+}: HintButtonProps): React.JSX.Element {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      accessibilityState={{ disabled }}
+      onPress={onPress}
+      disabled={disabled}
+      style={({ pressed }) => [
+        styles.hintButton,
+        tone === 'probe' ? styles.hintButtonProbe : styles.hintButtonHint,
+        disabled && styles.hintButtonDisabled,
+        pressed && !disabled && styles.hintButtonPressed,
+      ]}
+    >
+      <Text style={[styles.hintButtonLabel, disabled && styles.hintButtonLabelDisabled]}>
+        {tone === 'hint' ? '💡 ' : '🔍 '}
+        {label}
+      </Text>
+      <Text style={styles.hintButtonSublabel}>{sublabel}</Text>
+    </Pressable>
+  );
 }
 
 const styles = StyleSheet.create({
@@ -271,7 +603,7 @@ const styles = StyleSheet.create({
   },
   history: {
     marginTop: 16,
-    minHeight: 120,
+    minHeight: 80,
     flexShrink: 1,
   },
   placeholder: {
@@ -289,14 +621,66 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 8,
   },
+  draftCellRevealed: {
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: withAlpha(colors.success, 0.6),
+  },
   error: {
     marginTop: 8,
     fontFamily: fonts.body,
     fontSize: 12,
     color: colors.danger,
   },
+  hintRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 12,
+  },
+  hintButton: {
+    flex: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  hintButtonHint: {
+    backgroundColor: withAlpha(colors.violet, 0.14),
+    borderColor: withAlpha(colors.violet, 0.4),
+  },
+  hintButtonProbe: {
+    backgroundColor: withAlpha(colors.warning, 0.14),
+    borderColor: withAlpha(colors.warning, 0.4),
+  },
+  hintButtonDisabled: {
+    backgroundColor: colors.bgElevated,
+    borderColor: colors.borderSubtle,
+    opacity: 0.7,
+  },
+  hintButtonPressed: {
+    opacity: 0.8,
+    transform: [{ scale: 0.99 }],
+  },
+  hintButtonLabel: {
+    fontFamily: fonts.bodySemibold,
+    fontSize: 13,
+    letterSpacing: 1.2,
+    color: colors.text,
+    textTransform: 'uppercase',
+  },
+  hintButtonLabelDisabled: {
+    color: colors.textSecondary,
+  },
+  hintButtonSublabel: {
+    marginTop: 2,
+    fontFamily: fonts.body,
+    fontSize: 10,
+    color: colors.textSecondary,
+  },
   keypadWrap: {
-    marginTop: 14,
+    marginTop: 12,
   },
   submitButton: {
     marginTop: 14,
@@ -319,9 +703,81 @@ const styles = StyleSheet.create({
     color: colors.text,
     textTransform: 'uppercase',
   },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: withAlpha('#000000', 0.55),
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+  },
+  probeSheet: {
+    width: '100%',
+    backgroundColor: colors.bgElevated,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
+    paddingHorizontal: 18,
+    paddingVertical: 22,
+    alignItems: 'center',
+  },
+  probeSheetTitle: {
+    fontFamily: fonts.display,
+    fontSize: 18,
+    color: colors.text,
+    letterSpacing: -0.2,
+  },
+  probeSheetSubtitle: {
+    marginTop: 4,
+    fontFamily: fonts.body,
+    fontSize: 12,
+    color: colors.textSecondary,
+  },
+  probeGrid: {
+    marginTop: 14,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    justifyContent: 'center',
+  },
+  probeChoice: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: colors.bgBase,
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  probeChoiceDisabled: {
+    backgroundColor: withAlpha(colors.borderSubtle, 0.4),
+    opacity: 0.55,
+  },
+  probeChoicePressed: {
+    opacity: 0.7,
+    transform: [{ scale: 0.97 }],
+  },
+  probeChoiceLabel: {
+    fontFamily: fonts.mono,
+    fontSize: 22,
+    color: colors.text,
+  },
+  probeChoiceLabelDisabled: {
+    color: colors.textDim,
+  },
+  probeCancel: {
+    marginTop: 16,
+    paddingVertical: 10,
+    paddingHorizontal: 24,
+  },
+  probeCancelLabel: {
+    fontFamily: fonts.bodySemibold,
+    fontSize: 12,
+    letterSpacing: 1.6,
+    color: colors.textSecondary,
+    textTransform: 'uppercase',
+  },
 });
 
-// Identity export — keeps the file's type alias visible to test
-// helpers that pass `useDailyChallengeStore` through type-checked
-// imports without a recursive cycle.
-export const __TEST_ONLY = { buildRowProps };
+// Identity export — keeps test helpers stable.
+export const __TEST_ONLY = { buildRowProps, composeDraft, buildKeypadIndicators };

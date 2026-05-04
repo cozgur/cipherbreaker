@@ -1,7 +1,18 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 
-import { colors, fonts } from '@theme/tokens';
+import { colors, fonts, withAlpha } from '@theme/tokens';
+
+/**
+ * Per-digit visual indicator. Phase 7A.4 CP6 introduced the seam
+ * for Daily Challenge — `'positive'` flags digits the player has
+ * paid to confirm exist (Hint A yellow + Hint B exists), `'negative'`
+ * strikethroughs digits Hint B confirmed are NOT in the secret.
+ *
+ * Optional + screen-driven. SecretSetup + Mode 1-7 paths leave it
+ * undefined and the keypad renders neutral.
+ */
+export type DigitKeypadIndicator = 'positive' | 'negative';
 
 interface DigitKeypadProps {
   /** Called with `0-9` for digit taps. */
@@ -9,6 +20,17 @@ interface DigitKeypadProps {
   readonly onBackspace: () => void;
   /** When set, every key ignores taps and dims. */
   readonly disabled?: boolean;
+  /**
+   * Per-digit visual indicator overlay. Map from `0..9` to either
+   * `'positive'` (green dot — digit exists in secret) or
+   * `'negative'` (strikethrough — digit confirmed absent). Omitted
+   * digits render neutral.
+   *
+   * Tap behaviour is unchanged — `'negative'` digits are still
+   * tappable so the player can still type a guess containing the
+   * absent digit (a wrong guess but a legitimate input).
+   */
+  readonly indicators?: Readonly<Record<number, DigitKeypadIndicator>>;
 }
 
 const DIGIT_ROWS: readonly (readonly number[])[] = [
@@ -26,6 +48,7 @@ export function DigitKeypad({
   onDigit,
   onBackspace,
   disabled = false,
+  indicators,
 }: DigitKeypadProps): React.JSX.Element {
   return (
     <View style={[styles.grid, disabled && styles.disabled]} accessibilityRole="keyboardkey">
@@ -37,13 +60,19 @@ export function DigitKeypad({
               label={String(digit)}
               onPress={() => onDigit(digit)}
               disabled={disabled}
+              indicator={indicators?.[digit]}
             />
           ))}
         </View>
       ))}
       <View style={styles.row}>
         <View style={styles.keySlot} />
-        <DigitKey label="0" onPress={() => onDigit(0)} disabled={disabled} />
+        <DigitKey
+          label="0"
+          onPress={() => onDigit(0)}
+          disabled={disabled}
+          indicator={indicators?.[0]}
+        />
         <DigitKey
           onPress={onBackspace}
           disabled={disabled}
@@ -69,22 +98,41 @@ interface DigitKeyProps {
   readonly icon?: React.JSX.Element;
   readonly onPress: () => void;
   readonly disabled: boolean;
+  readonly indicator?: DigitKeypadIndicator;
 }
 
-function DigitKey({ label, icon, onPress, disabled }: DigitKeyProps): React.JSX.Element {
+function DigitKey({ label, icon, onPress, disabled, indicator }: DigitKeyProps): React.JSX.Element {
+  const a11ySuffix =
+    indicator === 'positive'
+      ? ' (in secret)'
+      : indicator === 'negative'
+        ? ' (not in secret)'
+        : '';
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={label ?? 'Delete digit'}
+      accessibilityLabel={(label ?? 'Delete digit') + a11ySuffix}
       disabled={disabled}
       onPress={onPress}
       style={({ pressed }) => [
         styles.keySlot,
         styles.key,
+        indicator === 'positive' && styles.keyPositive,
+        indicator === 'negative' && styles.keyNegative,
         pressed && !disabled ? styles.keyPressed : null,
       ]}
     >
-      {icon ?? <Text style={styles.keyLabel}>{label}</Text>}
+      {icon ?? (
+        <Text
+          style={[
+            styles.keyLabel,
+            indicator === 'negative' && styles.keyLabelNegative,
+          ]}
+        >
+          {label}
+        </Text>
+      )}
+      {indicator === 'positive' ? <View style={styles.positiveDot} /> : null}
     </Pressable>
   );
 }
@@ -121,5 +169,26 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     fontSize: 22,
     color: colors.text,
+  },
+  keyPositive: {
+    backgroundColor: withAlpha(colors.success, 0.12),
+    borderColor: withAlpha(colors.success, 0.45),
+  },
+  keyNegative: {
+    backgroundColor: withAlpha(colors.danger, 0.06),
+    borderColor: withAlpha(colors.danger, 0.28),
+  },
+  keyLabelNegative: {
+    color: withAlpha(colors.text, 0.4),
+    textDecorationLine: 'line-through',
+  },
+  positiveDot: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    width: 6,
+    height: 6,
+    borderRadius: 999,
+    backgroundColor: colors.success,
   },
 });

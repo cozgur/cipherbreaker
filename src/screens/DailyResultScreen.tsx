@@ -21,6 +21,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { Screen } from '@components/Screen';
 import { calendarDayIndex } from '@game/daily/dailyConfig';
+import { formatDailyShare } from '@game/daily/share';
 import type { RootStackParamList } from '@navigation/routes';
 import { useUserStore } from '@state/userStore';
 import { colors, fonts, withAlpha } from '@theme/tokens';
@@ -36,11 +37,12 @@ export function DailyResultScreen(): React.JSX.Element {
 
   const goHome = useCallback(() => navigation.navigate('Home'), [navigation]);
   const onShare = useCallback(() => {
-    // Phase 7A.4 CP6 wires `formatDailyShare` + the React Native
-    // Share API. Today the button is a placeholder so the layout
-    // and the affordance position lock in.
-    Alert.alert('Share', 'Share format ships in Phase 7A.4 CP6.');
-  }, []);
+    // Phase 7A.4 CP6 — wired share format. The native Share sheet
+    // hookup (Share.share({ message })) lands at iOS-test time so
+    // the alert here previews exactly what the share text will say.
+    if (lastResult === null) return;
+    Alert.alert('Share', formatDailyShare(lastResult));
+  }, [lastResult]);
 
   // Defensive — direct navigation to this screen with no recorded
   // result is a programmer error in production but handled cleanly
@@ -80,6 +82,16 @@ export function DailyResultScreen(): React.JSX.Element {
             </Text>
           </View>
         ) : null}
+
+        <View style={styles.skillBadge}>
+          {lastResult.hintsUsed === 0 ? (
+            <Text style={styles.skillBadgeText}>🎯 PURE SKILL</Text>
+          ) : (
+            <Text style={styles.hintsBadgeText}>
+              {lastResult.hintsUsed === 1 ? 'Used 1 hint' : `Used ${lastResult.hintsUsed} hints`}
+            </Text>
+          )}
+        </View>
 
         <View style={styles.statsBlock}>
           <Stat label="Streak" value={`${currentStreak} ${currentStreak === 1 ? 'day' : 'days'}`} />
@@ -212,6 +224,30 @@ const styles = StyleSheet.create({
     fontSize: 26,
     letterSpacing: 4,
     color: colors.text,
+  },
+  skillBadge: {
+    marginTop: 22,
+    alignSelf: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: withAlpha(colors.gold, 0.4),
+    backgroundColor: withAlpha(colors.gold, 0.12),
+  },
+  skillBadgeText: {
+    fontFamily: fonts.bodySemibold,
+    fontSize: 12,
+    letterSpacing: 1.6,
+    color: colors.gold,
+    textTransform: 'uppercase',
+  },
+  hintsBadgeText: {
+    fontFamily: fonts.bodySemibold,
+    fontSize: 12,
+    letterSpacing: 1.4,
+    color: colors.textSecondary,
+    textTransform: 'uppercase',
   },
   statsBlock: {
     marginTop: 32,

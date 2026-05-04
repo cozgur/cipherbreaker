@@ -138,6 +138,91 @@ describe('DailyMatchScreen', () => {
     expect(utils.navRef.current?.getCurrentRoute()?.name).toBe('DailyResult');
   });
 
+  describe('hint + probe button states — Phase 7A.4 CP6', () => {
+    it('HINT button is disabled when no guess submitted yet', () => {
+      const utils = renderWithNavigation('Daily', { Daily: DailyMatchScreen });
+      const hint = utils.getByLabelText('Hint button');
+      expect(hint.props.accessibilityState.disabled).toBe(true);
+      expect(utils.getByText('Make a guess first')).toBeTruthy();
+    });
+
+    it('HINT button is disabled (warning) when player has guessed but no plus/minus signal', () => {
+      // Seed an attempt with one all-wrong guess.
+      useDailyChallengeStore.setState({
+        currentAttempt: {
+          date: FIXED_TODAY,
+          secret: '1234',
+          digits: 4,
+          turnLimit: 10,
+          guesses: [{ guess: '5678', plus: 0, minus: 0, isWin: false }],
+          hintsUsed: 0,
+          revealedPositions: [],
+          revealedDigits: [],
+          probedDigits: [],
+        },
+      });
+      const utils = renderWithNavigation('Daily', { Daily: DailyMatchScreen });
+      expect(utils.getByText('No correct digits yet')).toBeTruthy();
+    });
+
+    it('HINT button is disabled when pool empty AND tokens < 100', () => {
+      useDailyChallengeStore.setState({
+        currentAttempt: {
+          date: FIXED_TODAY,
+          secret: '1234',
+          digits: 4,
+          turnLimit: 10,
+          guesses: [{ guess: '1567', plus: 1, minus: 0, isWin: false }],
+          hintsUsed: 0,
+          revealedPositions: [],
+          revealedDigits: [],
+          probedDigits: [],
+        },
+      });
+      useUserStore.setState({ tokens: 50 });
+      const utils = renderWithNavigation('Daily', { Daily: DailyMatchScreen });
+      expect(utils.getByText('Need 100 tokens')).toBeTruthy();
+    });
+
+    it('HINT button is enabled with earned-hint sublabel when pool > 0', () => {
+      useDailyChallengeStore.setState({
+        currentAttempt: {
+          date: FIXED_TODAY,
+          secret: '1234',
+          digits: 4,
+          turnLimit: 10,
+          guesses: [{ guess: '1567', plus: 1, minus: 0, isWin: false }],
+          hintsUsed: 0,
+          revealedPositions: [],
+          revealedDigits: [],
+          probedDigits: [],
+        },
+      });
+      useUserStore.setState({
+        dailyChallenge: { ...DAILY_CHALLENGE_DEFAULTS, earnedHints: 2 },
+      });
+      const utils = renderWithNavigation('Daily', { Daily: DailyMatchScreen });
+      // Both HINT and PROBE share the same earned pool, so both
+      // sub-labels render "Free (2 left)". Two matches is the
+      // expected state.
+      expect(utils.getAllByText('Free (2 left)')).toHaveLength(2);
+      expect(utils.getByLabelText('Hint button').props.accessibilityState.disabled).toBe(false);
+    });
+
+    it('PROBE button is enabled and shows the 50-token sublabel when pool empty', () => {
+      const utils = renderWithNavigation('Daily', { Daily: DailyMatchScreen });
+      const probe = utils.getByLabelText('Probe button');
+      expect(probe.props.accessibilityState.disabled).toBe(false);
+      expect(utils.getByText('50 tokens')).toBeTruthy();
+    });
+
+    it('PROBE button is disabled when pool empty AND tokens < 50', () => {
+      useUserStore.setState({ tokens: 20 });
+      const utils = renderWithNavigation('Daily', { Daily: DailyMatchScreen });
+      expect(utils.getByText('Need 50 tokens')).toBeTruthy();
+    });
+  });
+
   it('resumes a persisted in-progress attempt without re-seeding', () => {
     setUserDailyState();
     useDailyChallengeStore.setState({

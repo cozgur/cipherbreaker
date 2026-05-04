@@ -110,4 +110,24 @@ describe('DailyResultScreen', () => {
     const utils = renderWithNavigation('DailyResult', { DailyResult: DailyResultScreen });
     expect(utils.getByText('No daily result yet')).toBeTruthy();
   });
+
+  describe('hint badge — Phase 7A.4 CP6 PURE SKILL surface', () => {
+    it('zero hints used shows the gold "PURE SKILL" badge', () => {
+      setLastResult({ ...successResult, hintsUsed: 0 });
+      const utils = renderWithNavigation('DailyResult', { DailyResult: DailyResultScreen });
+      expect(utils.getByText('🎯 PURE SKILL')).toBeTruthy();
+    });
+
+    it('one hint used shows singular phrasing', () => {
+      setLastResult({ ...successResult, hintsUsed: 1 });
+      const utils = renderWithNavigation('DailyResult', { DailyResult: DailyResultScreen });
+      expect(utils.getByText('Used 1 hint')).toBeTruthy();
+    });
+
+    it('multiple hints used shows plural phrasing', () => {
+      setLastResult({ ...successResult, hintsUsed: 3 });
+      const utils = renderWithNavigation('DailyResult', { DailyResult: DailyResultScreen });
+      expect(utils.getByText('Used 3 hints')).toBeTruthy();
+    });
+  });
 });
