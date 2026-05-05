@@ -169,7 +169,7 @@ export function HomeScreen(): React.JSX.Element {
         </Pressable>
         <View style={styles.topRight}>
           <Pressable accessibilityRole="button" accessibilityLabel="Open shop" onPress={openShop}>
-            <TokenBadge amount={user.tokens.toLocaleString()} size="sm" />
+            <TokenBadge amount={user.tokens} size="sm" />
           </Pressable>
           <Pressable
             accessibilityRole="button"

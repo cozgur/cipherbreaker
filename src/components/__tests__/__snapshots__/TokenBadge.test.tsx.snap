@@ -214,15 +214,18 @@ exports[`TokenBadge snapshots the lg size 1`] = `
     <Text
       style={
         [
-          {
-            "color": "#fbbf24",
-            "fontFamily": "JetBrainsMono-Bold",
-            "fontWeight": "700",
-            "letterSpacing": 0.28,
-          },
-          {
-            "fontSize": 18,
-          },
+          {},
+          [
+            {
+              "color": "#fbbf24",
+              "fontFamily": "JetBrainsMono-Bold",
+              "fontWeight": "700",
+              "letterSpacing": 0.28,
+            },
+            {
+              "fontSize": 18,
+            },
+          ],
         ]
       }
     >
@@ -446,15 +449,18 @@ exports[`TokenBadge snapshots the md size 1`] = `
     <Text
       style={
         [
-          {
-            "color": "#fbbf24",
-            "fontFamily": "JetBrainsMono-Bold",
-            "fontWeight": "700",
-            "letterSpacing": 0.28,
-          },
-          {
-            "fontSize": 14,
-          },
+          {},
+          [
+            {
+              "color": "#fbbf24",
+              "fontFamily": "JetBrainsMono-Bold",
+              "fontWeight": "700",
+              "letterSpacing": 0.28,
+            },
+            {
+              "fontSize": 14,
+            },
+          ],
         ]
       }
     >
@@ -678,15 +684,18 @@ exports[`TokenBadge snapshots the sm size 1`] = `
     <Text
       style={
         [
-          {
-            "color": "#fbbf24",
-            "fontFamily": "JetBrainsMono-Bold",
-            "fontWeight": "700",
-            "letterSpacing": 0.28,
-          },
-          {
-            "fontSize": 12,
-          },
+          {},
+          [
+            {
+              "color": "#fbbf24",
+              "fontFamily": "JetBrainsMono-Bold",
+              "fontWeight": "700",
+              "letterSpacing": 0.28,
+            },
+            {
+              "fontSize": 12,
+            },
+          ],
         ]
       }
     >

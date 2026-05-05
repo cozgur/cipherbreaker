@@ -5618,19 +5618,23 @@ exports[`MatchResultScreen snapshots the defeat variant 1`] = `
                                           "children": [
                                             {
                                               "children": [
-                                                "+0",
+                                                "+",
+                                                "0",
                                               ],
                                               "props": {
                                                 "style": [
-                                                  {
-                                                    "fontFamily": "ChakraPetch-Bold",
-                                                    "fontSize": 22,
-                                                    "letterSpacing": -0.3,
-                                                    "lineHeight": 24,
-                                                  },
-                                                  {
-                                                    "color": "#fbbf24",
-                                                  },
+                                                  {},
+                                                  [
+                                                    {
+                                                      "fontFamily": "ChakraPetch-Bold",
+                                                      "fontSize": 22,
+                                                      "letterSpacing": -0.3,
+                                                      "lineHeight": 24,
+                                                    },
+                                                    {
+                                                      "color": "#fbbf24",
+                                                    },
+                                                  ],
                                                 ],
                                               },
                                               "type": "Text",
@@ -11998,19 +12002,23 @@ exports[`MatchResultScreen snapshots the draw variant 1`] = `
                                           "children": [
                                             {
                                               "children": [
-                                                "+50",
+                                                "+",
+                                                "50",
                                               ],
                                               "props": {
                                                 "style": [
-                                                  {
-                                                    "fontFamily": "ChakraPetch-Bold",
-                                                    "fontSize": 22,
-                                                    "letterSpacing": -0.3,
-                                                    "lineHeight": 24,
-                                                  },
-                                                  {
-                                                    "color": "#fbbf24",
-                                                  },
+                                                  {},
+                                                  [
+                                                    {
+                                                      "fontFamily": "ChakraPetch-Bold",
+                                                      "fontSize": 22,
+                                                      "letterSpacing": -0.3,
+                                                      "lineHeight": 24,
+                                                    },
+                                                    {
+                                                      "color": "#fbbf24",
+                                                    },
+                                                  ],
                                                 ],
                                               },
                                               "type": "Text",
@@ -18378,19 +18386,23 @@ exports[`MatchResultScreen snapshots the stalemate variant 1`] = `
                                           "children": [
                                             {
                                               "children": [
-                                                "+50",
+                                                "+",
+                                                "50",
                                               ],
                                               "props": {
                                                 "style": [
-                                                  {
-                                                    "fontFamily": "ChakraPetch-Bold",
-                                                    "fontSize": 22,
-                                                    "letterSpacing": -0.3,
-                                                    "lineHeight": 24,
-                                                  },
-                                                  {
-                                                    "color": "#fbbf24",
-                                                  },
+                                                  {},
+                                                  [
+                                                    {
+                                                      "fontFamily": "ChakraPetch-Bold",
+                                                      "fontSize": 22,
+                                                      "letterSpacing": -0.3,
+                                                      "lineHeight": 24,
+                                                    },
+                                                    {
+                                                      "color": "#fbbf24",
+                                                    },
+                                                  ],
                                                 ],
                                               },
                                               "type": "Text",
@@ -26272,19 +26284,23 @@ exports[`MatchResultScreen snapshots the victory variant 1`] = `
                                           "children": [
                                             {
                                               "children": [
-                                                "+100",
+                                                "+",
+                                                "100",
                                               ],
                                               "props": {
                                                 "style": [
-                                                  {
-                                                    "fontFamily": "ChakraPetch-Bold",
-                                                    "fontSize": 22,
-                                                    "letterSpacing": -0.3,
-                                                    "lineHeight": 24,
-                                                  },
-                                                  {
-                                                    "color": "#fbbf24",
-                                                  },
+                                                  {},
+                                                  [
+                                                    {
+                                                      "fontFamily": "ChakraPetch-Bold",
+                                                      "fontSize": 22,
+                                                      "letterSpacing": -0.3,
+                                                      "lineHeight": 24,
+                                                    },
+                                                    {
+                                                      "color": "#fbbf24",
+                                                    },
+                                                  ],
                                                 ],
                                               },
                                               "type": "Text",

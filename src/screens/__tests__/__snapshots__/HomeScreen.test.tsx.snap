@@ -5455,15 +5455,18 @@ exports[`HomeScreen snapshots the seven-mode layout 1`] = `
                                                   ],
                                                   "props": {
                                                     "style": [
-                                                      {
-                                                        "color": "#fbbf24",
-                                                        "fontFamily": "JetBrainsMono-Bold",
-                                                        "fontWeight": "700",
-                                                        "letterSpacing": 0.28,
-                                                      },
-                                                      {
-                                                        "fontSize": 12,
-                                                      },
+                                                      {},
+                                                      [
+                                                        {
+                                                          "color": "#fbbf24",
+                                                          "fontFamily": "JetBrainsMono-Bold",
+                                                          "fontWeight": "700",
+                                                          "letterSpacing": 0.28,
+                                                        },
+                                                        {
+                                                          "fontSize": 12,
+                                                        },
+                                                      ],
                                                     ],
                                                   },
                                                   "type": "Text",

@@ -25,12 +25,14 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
+import { AnimatedTokenCounter } from '@components/AnimatedTokenCounter';
 import { Button } from '@components/Button';
 import { ConfettiOverlay } from '@components/ConfettiOverlay';
 import { DigitTile } from '@components/DigitTile';
 import { Screen } from '@components/Screen';
 import { TinyTag } from '@components/TinyTag';
 import { TokenCoin } from '@components/TokenCoin';
+import { TokenRewardFloater } from '@components/TokenRewardFloater';
 import { findMode } from '@data/modeCatalog';
 import { secretFor } from '@data/mockSecrets';
 import { findOpponent } from '@data/mockOpponents';
@@ -261,6 +263,15 @@ export function MatchResultScreen(): React.JSX.Element {
   const adsWatchedToday = useUserStore((s) => s.adsWatchedToday);
   const adsWatchedLastDate = useUserStore((s) => s.adsWatchedLastDate);
   const [skipDoubleTapped, setSkipDoubleTapped] = useState(false);
+  // Phase 7A.5 CP7 — TokenRewardFloater shows the "+N" pill that
+  // translates upward + fades out. Mounted on win/draw paths
+  // when there's a positive reward; the floater itself fires
+  // `onComplete` to dismiss after the 1.5s animation. The
+  // mock-path doesn't grant tokens (no engine reward), so the
+  // floater also gates on `isEnginePath`.
+  const [showRewardFloater, setShowRewardFloater] = useState<boolean>(
+    isEnginePath && reward > 0,
+  );
 
   const isWinOrDraw = outcome === 'victory' || outcome === 'draw';
   const alreadyDoubled = matchState?.doubledReward === true;
@@ -372,11 +383,22 @@ export function MatchResultScreen(): React.JSX.Element {
         <View style={styles.rewardRow}>
           <RewardChip
             icon={<TokenCoin size={18} />}
-            value={`+${reward.toLocaleString()}`}
+            // Phase 7A.5 CP7 — animate the token count up from 0
+            // to `reward` on mount. XP chip stays static (small
+            // number, less impact from animation).
+            value={{ animateNumber: reward, prefix: '+' }}
             color={colors.gold}
             label={view.tokenLabel}
           />
           <RewardChip value={`+${xpGain}`} color={colors.violet} label="XP" />
+          {showRewardFloater ? (
+            <View style={styles.floaterAnchor} pointerEvents="none">
+              <TokenRewardFloater
+                amount={reward}
+                onComplete={() => setShowRewardFloater(false)}
+              />
+            </View>
+          ) : null}
         </View>
 
         <View style={styles.statsGrid}>
@@ -427,7 +449,14 @@ export function MatchResultScreen(): React.JSX.Element {
 
 interface RewardChipProps {
   readonly icon?: React.JSX.Element;
-  readonly value: string;
+  /**
+   * Phase 7A.5 CP7 — `value` accepts either a pre-formatted
+   * string (XP chip stays static) or an animated token amount
+   * (`{ animateNumber: number }`) which renders an
+   * `AnimatedTokenCounter` so the count-up animation lands on
+   * mount. The chip framing is unchanged in either branch.
+   */
+  readonly value: string | { readonly animateNumber: number; readonly prefix?: string };
   readonly color: string;
   readonly label: string;
 }
@@ -453,7 +482,15 @@ function RewardChip({ icon, value, color, label }: RewardChipProps): React.JSX.E
     >
       {icon}
       <View>
-        <Text style={[styles.chipValue, { color }]}>{value}</Text>
+        {typeof value === 'string' ? (
+          <Text style={[styles.chipValue, { color }]}>{value}</Text>
+        ) : (
+          <AnimatedTokenCounter
+            value={value.animateNumber}
+            prefix={value.prefix ?? '+'}
+            style={[styles.chipValue, { color }]}
+          />
+        )}
         <Text style={styles.chipLabel}>{label}</Text>
       </View>
     </View>
@@ -520,6 +557,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     gap: 14,
+  },
+  floaterAnchor: {
+    position: 'absolute',
+    top: -14,
+    alignSelf: 'center',
+    zIndex: 10,
   },
   chip: {
     flexDirection: 'row',

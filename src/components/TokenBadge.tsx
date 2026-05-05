@@ -1,6 +1,7 @@
 import { Platform, StyleSheet, Text, View, type ViewStyle } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
+import { AnimatedTokenCounter } from '@components/AnimatedTokenCounter';
 import { colors, withAlpha } from '@theme/tokens';
 import { fonts } from '@theme/tokens';
 import { TokenCoin } from './TokenCoin';
@@ -8,10 +9,21 @@ import { TokenCoin } from './TokenCoin';
 export type TokenBadgeSize = 'sm' | 'md' | 'lg';
 
 interface TokenBadgeProps {
-  /** Display amount — pre-formatted (e.g. `"1,840"`). */
+  /**
+   * Token amount. A `number` triggers the Phase 7A.5 CP7 count-up
+   * animation when the value changes (HomeScreen wallet, Shop
+   * header). A `string` skips the animation — used by call sites
+   * that want a literal label (pre-formatted ranges, "—", "?",
+   * etc.).
+   */
   readonly amount: number | string;
   readonly size?: TokenBadgeSize;
   readonly style?: ViewStyle;
+  /**
+   * Override the count-up duration. Default 1000 ms (per
+   * `AnimatedTokenCounter`). No-op when `amount` is a string.
+   */
+  readonly animationDuration?: number;
 }
 
 interface SizeSpec {
@@ -31,7 +43,12 @@ const SIZE_SPEC: Record<TokenBadgeSize, SizeSpec> = {
  * Gold pill with the C-coin glyph and a monospace amount. Rendered
  * across Home (top-right wallet), Shop (header), Result (reward).
  */
-export function TokenBadge({ amount, size = 'md', style }: TokenBadgeProps): React.JSX.Element {
+export function TokenBadge({
+  amount,
+  size = 'md',
+  style,
+  animationDuration,
+}: TokenBadgeProps): React.JSX.Element {
   const spec = SIZE_SPEC[size];
   return (
     <View style={[styles.shadow, style]}>
@@ -48,7 +65,15 @@ export function TokenBadge({ amount, size = 'md', style }: TokenBadgeProps): Rea
         ]}
       >
         <TokenCoin size={spec.coin} />
-        <Text style={[styles.amount, { fontSize: spec.fontSize }]}>{amount}</Text>
+        {typeof amount === 'number' ? (
+          <AnimatedTokenCounter
+            value={amount}
+            duration={animationDuration}
+            style={[styles.amount, { fontSize: spec.fontSize }]}
+          />
+        ) : (
+          <Text style={[styles.amount, { fontSize: spec.fontSize }]}>{amount}</Text>
+        )}
       </LinearGradient>
     </View>
   );

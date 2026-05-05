@@ -108,7 +108,7 @@ export function ShopScreen(): React.JSX.Element {
             />
           </Svg>
         </Pressable>
-        <TokenBadge amount={user.tokens.toLocaleString()} size="sm" />
+        <TokenBadge amount={user.tokens} size="sm" />
       </View>
 
       <View style={styles.intro}>
