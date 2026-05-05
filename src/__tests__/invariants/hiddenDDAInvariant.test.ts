@@ -50,11 +50,18 @@ const FORBIDDEN = /(?:'(?:easy|normal|hard)'|"(?:easy|normal|hard)")/g;
  * is documented at the call site; this map is the audit trail.
  */
 const WHITELIST: Readonly<Record<string, number>> = {
-  // MatchScreen.tsx lines 306, 381 — both `BotContext` initialisers
-  // pass `state.botDifficulty ?? 'normal'` so the bot's `makeGuess`
-  // and `thinkingTime` receive the engine-stamped difficulty (or the
-  // hydrated-pre-7A.2 fallback). These are plumbing, not UI surface.
-  'screens/MatchScreen.tsx': 2,
+  // MatchScreen.tsx — three plumbing sites, NOT UI surface:
+  //   - lines 306, 381 — `BotContext` initialisers passing
+  //     `state.botDifficulty ?? 'normal'` to the bot's `makeGuess`
+  //     and `thinkingTime` (Phase 7A.2 DDA wiring + hydrated-pre-
+  //     7A.2 fallback).
+  //   - line ~487 — `rewardForOutcome(matchState.result, mode,
+  //     matchState.botDifficulty ?? 'normal')` (Phase 7A.5 CP2 —
+  //     the same fallback shape, this time threading difficulty
+  //     into reward multiplication). Reward is a numeric chip on
+  //     MatchResultScreen — the literal here is plumbing for the
+  //     pure `computeReward` helper, never rendered as copy.
+  'screens/MatchScreen.tsx': 3,
 };
 
 function shouldSkipDirEntry(name: string): boolean {

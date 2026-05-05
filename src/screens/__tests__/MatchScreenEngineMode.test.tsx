@@ -26,6 +26,21 @@ function registerMode1(): void {
   modeRegistry.register(mode1ColorMatch);
 }
 
+/**
+ * Narrow the union-typed route params to the MatchResult branch so
+ * deep-property assertions on `reward` typecheck cleanly. The
+ * runtime navigation contract guarantees this branch when the
+ * test's outer flow lands on MatchResult; the cast surfaces that
+ * guarantee to the type checker.
+ */
+function readMatchResultReward(
+  utils: ReturnType<typeof renderWithNavigation>,
+): number | undefined {
+  const route = utils.navRef.current?.getCurrentRoute();
+  expect(route?.name).toBe('MatchResult');
+  return (route?.params as { readonly reward?: number } | undefined)?.reward;
+}
+
 function seedActiveMatch(playerSecret = '1234', forcePhase: 'player' | 'opponent' = 'player'): MatchState {
   const store = useMatchStore.getState();
   store.clearMatch();
@@ -197,8 +212,10 @@ describe('MatchScreen — engine path completion forwards full params', () => {
       opponentId: 'op-1',
       secret: '7531',
       guessCount: 4,
-      // Mode 1 catalog rewardWin = 100, victory XP = 30.
-      reward: 100,
+      // Mode 1 catalog rewardWin = 100, DDA-multiplied at the
+      // default 'normal' band (warm-up <10 matches). 100 × 1.2 = 120.
+      // Phase 7A.5 CP2.
+      reward: 120,
       xpGain: 30,
     });
   });
@@ -225,8 +242,126 @@ describe('MatchScreen — engine path completion forwards full params', () => {
       opponentId: 'op-1',
       secret: '4242',
       guessCount: 5,
+      // Defeat path is multiplier-immune — 0 stays 0 even on hard
+      // (no consolation reward today; the Phase 7A.5 CP2 policy
+      // only multiplies player_won + draw paths).
       reward: 0,
       xpGain: 5,
+    });
+  });
+
+  describe('reward pacing — Phase 7A.5 CP2 DDA-aware multiplier', () => {
+    it('easy difficulty: Mode 1 win pays the catalog base (1.0× — no premium)', () => {
+      const state = seedActiveMatch('1234', 'player');
+      useMatchStore.setState({
+        matchState: {
+          ...state,
+          opponentSecret: '7531',
+          phase: 'completed',
+          result: { outcome: 'player_won', reason: 'cracked', turns: 4 },
+          botDifficulty: 'easy',
+        },
+      });
+      const utils = renderWithNavigation(
+        'Match',
+        { Match: MatchScreen, MatchResult: RouteStubScreen },
+        { modeId: 1, opponentId: 'op-1' },
+      );
+      // 100 × 1.0 = 100 — easy is the baseline.
+      expect(readMatchResultReward(utils)).toBe(100);
+    });
+
+    it('hard difficulty: Mode 1 win pays 1.5× the catalog base', () => {
+      const state = seedActiveMatch('1234', 'player');
+      useMatchStore.setState({
+        matchState: {
+          ...state,
+          opponentSecret: '7531',
+          phase: 'completed',
+          result: { outcome: 'player_won', reason: 'cracked', turns: 4 },
+          botDifficulty: 'hard',
+        },
+      });
+      const utils = renderWithNavigation(
+        'Match',
+        { Match: MatchScreen, MatchResult: RouteStubScreen },
+        { modeId: 1, opponentId: 'op-1' },
+      );
+      // 100 × 1.5 = 150.
+      expect(readMatchResultReward(utils)).toBe(150);
+    });
+
+    it('stalemate refunds the raw stake (no multiplier — refund is the original transaction unwinding)', () => {
+      const state = seedActiveMatch('1234', 'player');
+      useMatchStore.setState({
+        matchState: {
+          ...state,
+          opponentSecret: '7531',
+          phase: 'completed',
+          result: { outcome: 'stalemate', reason: 'both_exhausted', turns: 8 },
+          botDifficulty: 'hard',
+        },
+      });
+      const utils = renderWithNavigation(
+        'Match',
+        { Match: MatchScreen, MatchResult: RouteStubScreen },
+        { modeId: 1, opponentId: 'op-1' },
+      );
+      // Mode 1 stake = 50. Hard difficulty does NOT scale the
+      // refund; the player gets back exactly what they staked.
+      expect(readMatchResultReward(utils)).toBe(50);
+    });
+
+    it('falls back to normal multiplier when botDifficulty is missing (legacy persisted match)', () => {
+      // Pre-7A.2 / pre-DDA persisted matchState may have no
+      // `botDifficulty` field. The screen defaults to 'normal'
+      // so the reward chip never reads `NaN` or undefined.
+      const state = seedActiveMatch('1234', 'player');
+      useMatchStore.setState({
+        matchState: {
+          ...state,
+          opponentSecret: '7531',
+          phase: 'completed',
+          result: { outcome: 'player_won', reason: 'cracked', turns: 4 },
+          botDifficulty: undefined,
+        },
+      });
+      const utils = renderWithNavigation(
+        'Match',
+        { Match: MatchScreen, MatchResult: RouteStubScreen },
+        { modeId: 1, opponentId: 'op-1' },
+      );
+      // 100 × 1.2 = 120 — same as the canonical normal-band test.
+      expect(readMatchResultReward(utils)).toBe(120);
+    });
+
+    it('Mode 7 chain invariance: stamped difficulty propagates from createMatch through completion', () => {
+      // Phase 7A.2 invariant — once `createMatch` stamps
+      // botDifficulty, no mid-match action mutates it. CP2 layers
+      // reward multiplication on top of that immutability: the
+      // reward computed at completion uses the stamp from
+      // createMatch, NOT a re-derived value from the player's
+      // current `recentMatches` window.
+      const state = seedActiveMatch('1234', 'player');
+      useMatchStore.setState({
+        matchState: {
+          ...state,
+          opponentSecret: '7531',
+          phase: 'completed',
+          result: { outcome: 'player_won', reason: 'cracked', turns: 4 },
+          // Pretend the player started this match on hard, then
+          // racked up losses mid-match (recentMatches now points
+          // toward 'easy'). The stamp on matchState is what wins.
+          botDifficulty: 'hard',
+        },
+      });
+      const utils = renderWithNavigation(
+        'Match',
+        { Match: MatchScreen, MatchResult: RouteStubScreen },
+        { modeId: 1, opponentId: 'op-1' },
+      );
+      // Hard-stamp wins → 100 × 1.5 = 150, not 100 × 1.0 = 100.
+      expect(readMatchResultReward(utils)).toBe(150);
     });
   });
 });

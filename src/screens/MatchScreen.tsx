@@ -53,8 +53,10 @@ import { matchOutcomeToRoute } from '@game/adapters/matchOutcomeToRoute';
 import { subscribeBlitzLifecycle } from '@/lib/appLifecycle';
 import { modeRegistry } from '@game/modeRegistry';
 import { getRowRenderer } from '@game/renderers';
+import { computeReward } from '@game/economy/rewardPacing';
 import type {
   BotContext,
+  BotDifficulty,
   GuessEntry,
   GuessRowAdaptorContext,
   MatchResult as EngineMatchResult,
@@ -482,7 +484,7 @@ export function MatchScreen(): React.JSX.Element {
       opponentId,
       secret: matchState.opponentSecret,
       guessCount: matchState.result.turns,
-      reward: rewardForOutcome(matchState.result, mode),
+      reward: rewardForOutcome(matchState.result, mode, matchState.botDifficulty ?? 'normal'),
       xpGain: XP_BY_OUTCOME[outcome],
     });
   }, [isEngineMode, matchState, modeId, mode, navigation, opponentId]);
@@ -1010,12 +1012,20 @@ const XP_BY_OUTCOME: Readonly<Record<MatchResultOutcome, number>> = {
 function rewardForOutcome(
   result: EngineMatchResult,
   mode: ModeCatalogEntry,
+  difficulty: BotDifficulty,
 ): number {
+  // Phase 7A.5 CP2 — DDA-aware reward multiplier applied on the
+  // earned-credit paths (player_won, draw). Stalemate refunds the
+  // raw stake (it's the original transaction unwinding, not new
+  // tokens earned). Defeat stays at 0; multiplying zero is still
+  // zero, but the explicit branch keeps the policy decision
+  // documented for the case where a future "consolation reward"
+  // variant lands.
   switch (result.outcome) {
     case 'player_won':
-      return mode.meta.rewardWin;
+      return computeReward(mode.meta.rewardWin, difficulty);
     case 'draw':
-      return mode.meta.rewardDraw;
+      return computeReward(mode.meta.rewardDraw, difficulty);
     case 'stalemate':
       return mode.meta.stake;
     case 'opponent_won':

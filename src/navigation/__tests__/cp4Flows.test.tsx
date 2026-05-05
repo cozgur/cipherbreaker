@@ -68,13 +68,15 @@ describe('CP4 engine-path flows', () => {
     useMatchStore.getState().clearMatch();
   });
 
-  // Mode 1 catalog: stake=50, rewardWin=100. Net flow:
-  //   victory  → -50 (createMatch debit) +100 (reward) = +50
+  // Mode 1 catalog: stake=50, rewardWin=100. Phase 7A.5 CP2 layered
+  // a DDA-aware multiplier over the catalog base; the seeded fresh
+  // user lands on `'normal'` (warm-up — fewer than 10 recentMatches),
+  // so the credited amount is `Math.floor(100 × 1.2) = 120`. Net flow:
+  //   victory  → -50 (createMatch debit) +120 (reward) = +70
   //   defeat   → -50 (createMatch debit)               = -50
   //   stalemate→ -50 (createMatch debit) +50 (refund)  =   0
-  // The seeded match here calls `createMatch` inside `seedActiveMatch`
-  // so the stake debit has already applied by the time we measure
-  // `beforeTokens` — that's why the deltas below are pure +reward / 0.
+  // Stalemate refund stays raw (no multiplier — refunding the
+  // stake, not earning new tokens).
   it('victory grants reward + xp + bumps gamesPlayed by one', () => {
     const state = seedActiveMatch('1234');
     completeMatch(state, 'player_won', 4);
@@ -92,7 +94,8 @@ describe('CP4 engine-path flows', () => {
     act(() => {});
 
     expect(utils.navRef.current?.getCurrentRoute()?.name).toBe('MatchResult');
-    expect(mockUser.tokens).toBe(beforeTokens + 100);
+    // Mode 1 win × normal = 100 × 1.2 = 120 tokens credited.
+    expect(mockUser.tokens).toBe(beforeTokens + 120);
     expect(mockUser.currentXP).toBe(beforeXp + 30);
     expect(mockUser.stats.gamesPlayed).toBe(beforeGames + 1);
   });
@@ -119,7 +122,7 @@ describe('CP4 engine-path flows', () => {
     expect(mockUser.tokens).toBe(beforeTokens - 50);
   });
 
-  it('Bug 1 — net victory token = rewardWin - stake (50 net for Mode 1)', () => {
+  it('Bug 1 — net victory token = (rewardWin × DDA multiplier) - stake (+70 net for Mode 1 normal)', () => {
     const beforeTokens = mockUser.tokens;
     const state = seedActiveMatch('1234');
     completeMatch(state, 'player_won', 4);
@@ -127,8 +130,9 @@ describe('CP4 engine-path flows', () => {
     renderWithNavigation('Match', stack, { modeId: 1, opponentId: 'opp-1' });
     act(() => {});
 
-    // -50 (stake at createMatch) + 100 (reward at MatchResult mount) = +50.
-    expect(mockUser.tokens).toBe(beforeTokens + 50);
+    // -50 (stake at createMatch) + 120 (DDA-multiplied reward at
+    // MatchResult mount; Mode 1 normal = 100 × 1.2) = +70 net.
+    expect(mockUser.tokens).toBe(beforeTokens + 70);
   });
 
   it('Bug 1 — stalemate refunds the stake (net zero)', () => {
