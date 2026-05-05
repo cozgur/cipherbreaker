@@ -46,7 +46,7 @@ import type { MockUserSettings } from '@data/mockUser';
 import type { MatchResultOutcome, RootStackParamList } from '@navigation/routes';
 import { useDailyChallengeStore } from '@state/dailyChallengeStore';
 import { useMatchStore } from '@state/matchStore';
-import { useUserStore } from '@state/userStore';
+import { USER_STORE_DEFAULTS, useUserStore } from '@state/userStore';
 import { colors, fonts, withAlpha } from '@theme/tokens';
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'Profile'>;
@@ -375,6 +375,27 @@ function SettingsPanel({
     );
   }, []);
 
+  // Phase 7A.5 admin — reset the wallet to the seeded default.
+  // Sister surface to "Reset Play Stats" but scoped narrowly to
+  // tokens — useful for QA testing low-balance / ad-cap recovery
+  // loops without wiping match/Daily history. `__DEV__`-gated.
+  const onResetCredits = useCallback(() => {
+    Alert.alert(
+      'Reset wallet to default?',
+      `Sets your token balance to ${USER_STORE_DEFAULTS.tokens.toLocaleString()}. Match history, Daily progress, and onboarding flags stay. Cannot be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Reset',
+          style: 'destructive',
+          onPress: () => {
+            useUserStore.setState({ tokens: USER_STORE_DEFAULTS.tokens });
+          },
+        },
+      ],
+    );
+  }, []);
+
   return (
     <View>
       <View style={styles.section}>
@@ -419,6 +440,11 @@ function SettingsPanel({
             <SettingsRow
               label="Reset Play Stats"
               onPress={onResetPlayStats}
+              isLast={false}
+            />
+            <SettingsRow
+              label="Reset Credits"
+              onPress={onResetCredits}
               isLast={false}
             />
             <DevAdsRemovedToggleRow />

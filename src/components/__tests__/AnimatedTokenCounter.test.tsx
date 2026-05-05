@@ -7,17 +7,21 @@
  */
 
 import { act, render } from '@testing-library/react-native';
-import { AccessibilityInfo } from 'react-native';
 
 import { AnimatedTokenCounter } from '../AnimatedTokenCounter';
+// Phase 7A.5 Codex round 2 finding 3 — useReducedMotion is mocked
+// in jest.setup.js as a `jest.fn(() => false)`. Per-test overrides
+// flip the return value via the standard mockReturnValue API.
+import { useReducedMotion } from '@/lib/useReducedMotion';
+const mockedUseReducedMotion = useReducedMotion as jest.MockedFunction<
+  typeof useReducedMotion
+>;
 
 describe('AnimatedTokenCounter', () => {
   beforeEach(() => {
     jest.useFakeTimers();
-    // Default: reduced motion off (animations enabled).
-    jest
-      .spyOn(AccessibilityInfo, 'isReduceMotionEnabled')
-      .mockResolvedValue(false);
+    // Reset to the default (animations enabled) before each test.
+    mockedUseReducedMotion.mockReturnValue(false);
   });
 
   afterEach(() => {
@@ -64,22 +68,13 @@ describe('AnimatedTokenCounter', () => {
     expect(utils.queryByText('3')).toBeTruthy();
   });
 
-  it('reduced motion: skips animation, sets value directly on prop change', async () => {
-    jest
-      .spyOn(AccessibilityInfo, 'isReduceMotionEnabled')
-      .mockResolvedValue(true);
+  it('reduced motion: skips animation, sets value directly on prop change', () => {
+    mockedUseReducedMotion.mockReturnValue(true);
     const utils = render(<AnimatedTokenCounter value={100} duration={1000} />);
-    // First render — initial state shows 100. After the async
-    // isReduceMotionEnabled resolve, the hook flips to true.
-    await act(async () => {
-      await Promise.resolve();
-    });
     utils.rerender(<AnimatedTokenCounter value={500} duration={1000} />);
-    // No timer advance needed — reduced-motion path sets state
-    // synchronously inside the effect.
+    // Reduced-motion path sets state synchronously inside the effect.
     expect(utils.queryByText('500')).toBeTruthy();
-    // No intermediate frames: even if we advance time, the
-    // display stays at 500.
+    // No intermediate frames: even if we advance time, display stays at 500.
     act(() => {
       jest.advanceTimersByTime(500);
     });
@@ -121,5 +116,63 @@ describe('AnimatedTokenCounter', () => {
     // No timers should be running.
     expect(jest.getTimerCount()).toBe(0);
     expect(utils.queryByText('100')).toBeTruthy();
+  });
+
+  describe('Phase 7A.5 Codex round 2 finding 2 — animateOnMount + initialValue', () => {
+    it('default (animateOnMount=false): renders value directly on mount, no animation', () => {
+      const utils = render(<AnimatedTokenCounter value={500} duration={1000} />);
+      // Mount shows 500 immediately — no count-up frames.
+      expect(utils.queryByText('500')).toBeTruthy();
+      // No interval running; bail-out path on first render.
+      expect(jest.getTimerCount()).toBe(0);
+    });
+
+    it('animateOnMount=true: starts at initialValue (default 0) and animates to value', () => {
+      const utils = render(
+        <AnimatedTokenCounter value={120} duration={1000} animateOnMount />,
+      );
+      // First render: shows initialValue (0).
+      expect(utils.queryByText('0')).toBeTruthy();
+      expect(utils.queryByText('120')).toBeNull();
+      // Drain a portion: easeOutQuad at t=0.5 → 0.75 → ~90.
+      act(() => {
+        jest.advanceTimersByTime(500);
+      });
+      const intermediateNode = utils.queryByText(/^[6-9][0-9]$/);
+      expect(intermediateNode).toBeTruthy();
+      // Drain the rest: should land at 120.
+      act(() => {
+        jest.advanceTimersByTime(600);
+      });
+      expect(utils.queryByText('120')).toBeTruthy();
+    });
+
+    it('animateOnMount=true with custom initialValue: animates from custom start', () => {
+      const utils = render(
+        <AnimatedTokenCounter value={500} duration={1000} animateOnMount initialValue={100} />,
+      );
+      // First render: shows custom initial.
+      expect(utils.queryByText('100')).toBeTruthy();
+      // After full duration: lands at target.
+      act(() => {
+        jest.advanceTimersByTime(1100);
+      });
+      expect(utils.queryByText('500')).toBeTruthy();
+    });
+
+    it('animateOnMount=true respects reduced motion (jumps directly to value)', () => {
+      mockedUseReducedMotion.mockReturnValue(true);
+      const utils = render(
+        <AnimatedTokenCounter value={120} duration={1000} animateOnMount />,
+      );
+      // Reduced-motion path: even though animateOnMount is true,
+      // the first effect run sets value directly. The display
+      // starts at initialValue (0) for the first paint, then the
+      // effect immediately syncs to value (120).
+      act(() => {
+        jest.advanceTimersByTime(0);
+      });
+      expect(utils.queryByText('120')).toBeTruthy();
+    });
   });
 });

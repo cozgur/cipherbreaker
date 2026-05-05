@@ -263,14 +263,20 @@ export function MatchResultScreen(): React.JSX.Element {
   const adsWatchedToday = useUserStore((s) => s.adsWatchedToday);
   const adsWatchedLastDate = useUserStore((s) => s.adsWatchedLastDate);
   const [skipDoubleTapped, setSkipDoubleTapped] = useState(false);
-  // Phase 7A.5 CP7 — TokenRewardFloater shows the "+N" pill that
-  // translates upward + fades out. Mounted on win/draw paths
-  // when there's a positive reward; the floater itself fires
-  // `onComplete` to dismiss after the 1.5s animation. The
-  // mock-path doesn't grant tokens (no engine reward), so the
-  // floater also gates on `isEnginePath`.
+  // Phase 7A.5 CP7 + Codex round 2 finding 1 fix —
+  // TokenRewardFloater shows the "+N" pill that translates
+  // upward + fades out. Mounted ONLY on victory or draw paths
+  // (with positive reward + engine path), never on stalemate.
+  //
+  // Stalemate refunds the raw stake (no multiplier, no "earned"
+  // reading); Mode 6 Sudden Death budget exhaust hits this path
+  // routinely. Pre-fix the gate was `isEnginePath && reward > 0`
+  // which Mode 6 stalemate satisfies (stake refund > 0). The
+  // floater then surfaced as a "+50" pop, misleadingly framing
+  // the refund as earned tokens. The fix tightens the gate to
+  // also require `outcome ∈ {victory, draw}`.
   const [showRewardFloater, setShowRewardFloater] = useState<boolean>(
-    isEnginePath && reward > 0,
+    isEnginePath && reward > 0 && (outcome === 'victory' || outcome === 'draw'),
   );
 
   const isWinOrDraw = outcome === 'victory' || outcome === 'draw';
@@ -383,10 +389,19 @@ export function MatchResultScreen(): React.JSX.Element {
         <View style={styles.rewardRow}>
           <RewardChip
             icon={<TokenCoin size={18} />}
-            // Phase 7A.5 CP7 — animate the token count up from 0
-            // to `reward` on mount. XP chip stays static (small
-            // number, less impact from animation).
-            value={{ animateNumber: reward, prefix: '+' }}
+            // Phase 7A.5 CP7 + Codex round 2 finding 2 fix —
+            // animate the token count up from 0 → reward on
+            // mount. The pre-fix call site omitted `animateOnMount`
+            // / `initialValue`, which silently rendered the final
+            // number without animation (counter's bail-out path).
+            // The chip first appears post-match; counting up makes
+            // the win moment feel earned.
+            value={{
+              animateNumber: reward,
+              prefix: '+',
+              animateOnMount: true,
+              initialValue: 0,
+            }}
             color={colors.gold}
             label={view.tokenLabel}
           />
@@ -450,13 +465,28 @@ export function MatchResultScreen(): React.JSX.Element {
 interface RewardChipProps {
   readonly icon?: React.JSX.Element;
   /**
-   * Phase 7A.5 CP7 — `value` accepts either a pre-formatted
-   * string (XP chip stays static) or an animated token amount
-   * (`{ animateNumber: number }`) which renders an
-   * `AnimatedTokenCounter` so the count-up animation lands on
-   * mount. The chip framing is unchanged in either branch.
+   * Phase 7A.5 CP7 + Codex round 2 finding 2 — `value` accepts
+   * either a pre-formatted string (XP chip stays static) or an
+   * animated token amount (`{ animateNumber: number,
+   * animateOnMount?: boolean, initialValue?: number }`) which
+   * renders an `AnimatedTokenCounter`.
+   *
+   * `animateOnMount` defaults to `false` (subsequent-change
+   * behaviour, matches the wallet semantic). The reward chip
+   * call site sets `animateOnMount: true, initialValue: 0` so
+   * the +reward number counts up from zero on first render —
+   * pre-fix it silently rendered the final number with no
+   * animation because the counter mounted with `value` already
+   * displayed.
    */
-  readonly value: string | { readonly animateNumber: number; readonly prefix?: string };
+  readonly value:
+    | string
+    | {
+        readonly animateNumber: number;
+        readonly prefix?: string;
+        readonly animateOnMount?: boolean;
+        readonly initialValue?: number;
+      };
   readonly color: string;
   readonly label: string;
 }
@@ -488,6 +518,8 @@ function RewardChip({ icon, value, color, label }: RewardChipProps): React.JSX.E
           <AnimatedTokenCounter
             value={value.animateNumber}
             prefix={value.prefix ?? '+'}
+            animateOnMount={value.animateOnMount}
+            initialValue={value.initialValue}
             style={[styles.chipValue, { color }]}
           />
         )}

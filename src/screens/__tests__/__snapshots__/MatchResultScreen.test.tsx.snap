@@ -12003,7 +12003,7 @@ exports[`MatchResultScreen snapshots the draw variant 1`] = `
                                             {
                                               "children": [
                                                 "+",
-                                                "50",
+                                                "0",
                                               ],
                                               "props": {
                                                 "style": [
@@ -18387,7 +18387,7 @@ exports[`MatchResultScreen snapshots the stalemate variant 1`] = `
                                             {
                                               "children": [
                                                 "+",
-                                                "50",
+                                                "0",
                                               ],
                                               "props": {
                                                 "style": [
@@ -26285,7 +26285,7 @@ exports[`MatchResultScreen snapshots the victory variant 1`] = `
                                             {
                                               "children": [
                                                 "+",
-                                                "100",
+                                                "0",
                                               ],
                                               "props": {
                                                 "style": [

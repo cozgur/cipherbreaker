@@ -7,16 +7,18 @@
  */
 
 import { act, render } from '@testing-library/react-native';
-import { AccessibilityInfo } from 'react-native';
 
 import { TokenRewardFloater } from '../TokenRewardFloater';
+import { useReducedMotion } from '@/lib/useReducedMotion';
+
+const mockedUseReducedMotion = useReducedMotion as jest.MockedFunction<
+  typeof useReducedMotion
+>;
 
 describe('TokenRewardFloater', () => {
   beforeEach(() => {
     jest.useFakeTimers();
-    jest
-      .spyOn(AccessibilityInfo, 'isReduceMotionEnabled')
-      .mockResolvedValue(false);
+    mockedUseReducedMotion.mockReturnValue(false);
   });
 
   afterEach(() => {
@@ -72,10 +74,8 @@ describe('TokenRewardFloater', () => {
     expect(onComplete).not.toHaveBeenCalled();
   });
 
-  it('reduced motion: fires onComplete immediately on next tick (no animation frames)', async () => {
-    jest
-      .spyOn(AccessibilityInfo, 'isReduceMotionEnabled')
-      .mockResolvedValue(true);
+  it('reduced motion: fires onComplete immediately on next tick (no animation frames)', () => {
+    mockedUseReducedMotion.mockReturnValue(true);
     const onComplete = jest.fn();
     render(
       <TokenRewardFloater
@@ -84,10 +84,6 @@ describe('TokenRewardFloater', () => {
         duration={1500}
       />,
     );
-    // The reduced-motion hook resolves async; flush the promise.
-    await act(async () => {
-      await Promise.resolve();
-    });
     // The 0ms setTimeout in the reduced-motion branch fires on
     // the next macrotask.
     act(() => {

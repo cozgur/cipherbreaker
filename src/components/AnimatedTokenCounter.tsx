@@ -56,6 +56,34 @@ interface AnimatedTokenCounterProps {
    * even mid-animation.
    */
   readonly accessibilityLabel?: string;
+  /**
+   * Phase 7A.5 Codex round 2 finding 2 fix — opt-in mount
+   * animation. When `true`, the counter starts at `initialValue`
+   * (default `0`) on first render and animates to `value` over
+   * `duration` ms. When `false` (default), the counter renders
+   * `value` directly on first render and animates only when
+   * `value` changes thereafter.
+   *
+   * Two distinct use cases:
+   *   - Wallet display (HomeScreen + Shop): subsequent-change
+   *     animation. The badge already shows the current balance;
+   *     when the wallet credits, the count animates to the new
+   *     value. `animateOnMount` stays `false`.
+   *   - Reward chip (MatchResultScreen win): mount animation.
+   *     The chip first appears with the +reward number; counting
+   *     up from 0 makes the win moment feel earned. The pre-fix
+   *     behaviour (counter mounted with `value` already displayed
+   *     → bail-out via `startValue === value`) silently rendered
+   *     the final number with no animation. Setting
+   *     `animateOnMount={true}` + `initialValue={0}` gives the
+   *     intended 0 → reward count-up.
+   */
+  readonly animateOnMount?: boolean;
+  /**
+   * Starting value for the mount animation. No effect when
+   * `animateOnMount` is `false`. Default `0`.
+   */
+  readonly initialValue?: number;
 }
 
 const DEFAULT_DURATION_MS = 1000;
@@ -73,9 +101,18 @@ export function AnimatedTokenCounter({
   prefix = '',
   style,
   accessibilityLabel,
+  animateOnMount = false,
+  initialValue = 0,
 }: AnimatedTokenCounterProps): React.JSX.Element {
   const reduced = useReducedMotion();
-  const [displayValue, setDisplayValue] = useState<number>(value);
+  // When `animateOnMount` is set, seed the display with the
+  // start value so the first effect run animates `initialValue`
+  // → `value`. Default behaviour (mount-equals-value) is the
+  // pre-fix wallet contract; the bail-out at effect entry stays
+  // intact for subsequent re-renders that don't change `value`.
+  const [displayValue, setDisplayValue] = useState<number>(
+    animateOnMount ? initialValue : value,
+  );
   // Track the latest `displayValue` via a ref so the animation
   // effect can snapshot the start point without re-running on
   // every interval tick (which would happen if `displayValue`
@@ -85,7 +122,7 @@ export function AnimatedTokenCounter({
   // mirror is intentional — the ref is only read inside
   // `useEffect`, never during the next render, so the policy
   // concern (cascading renders) does not apply.
-  const displayValueRef = useRef<number>(value);
+  const displayValueRef = useRef<number>(animateOnMount ? initialValue : value);
   // eslint-disable-next-line react-hooks/refs -- intentional read-mirror for the animation start snapshot
   displayValueRef.current = displayValue;
 

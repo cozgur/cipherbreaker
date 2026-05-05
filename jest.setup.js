@@ -73,6 +73,21 @@ jest.mock('react-native-reanimated', () => {
   };
 });
 
+// Phase 7A.5 Codex round 2 finding 3 — `useReducedMotion` wraps
+// `AccessibilityInfo.isReduceMotionEnabled()` which resolves
+// asynchronously. Without a mock, every test that mounts a
+// component using the hook produces an `act()` warning when the
+// promise resolves and triggers a setReducedMotion. The default
+// returns `false` so animations run normally in tests; per-test
+// overrides flip via `(useReducedMotion as jest.Mock)
+// .mockReturnValue(true)`. The exported reference is a `jest.fn`
+// so the import-binding resolution stays stable across the
+// destructure boundary (a plain function would not be re-mockable
+// post-import).
+jest.mock('@/lib/useReducedMotion', () => ({
+  useReducedMotion: jest.fn(() => false),
+}));
+
 // Moti spins up reanimated worklets under MotiView/animate — in Jest we
 // just need the children to render; animations are visual concerns the
 // device screenshot covers.

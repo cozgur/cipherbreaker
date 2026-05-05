@@ -24,6 +24,16 @@ interface TokenBadgeProps {
    * `AnimatedTokenCounter`). No-op when `amount` is a string.
    */
   readonly animationDuration?: number;
+  /**
+   * Phase 7A.5 Codex round 2 finding 2 — opt-in mount animation
+   * forwarded to the inner `AnimatedTokenCounter`. When `true`,
+   * the badge counts from `initialValue` (default 0) to `amount`
+   * on first render. Default `false` (wallet-style: render
+   * `amount` directly, animate only on subsequent change). No-op
+   * when `amount` is a string.
+   */
+  readonly animateOnMount?: boolean;
+  readonly initialValue?: number;
 }
 
 interface SizeSpec {
@@ -48,6 +58,8 @@ export function TokenBadge({
   size = 'md',
   style,
   animationDuration,
+  animateOnMount,
+  initialValue,
 }: TokenBadgeProps): React.JSX.Element {
   const spec = SIZE_SPEC[size];
   return (
@@ -69,6 +81,8 @@ export function TokenBadge({
           <AnimatedTokenCounter
             value={amount}
             duration={animationDuration}
+            animateOnMount={animateOnMount}
+            initialValue={initialValue}
             style={[styles.amount, { fontSize: spec.fontSize }]}
           />
         ) : (

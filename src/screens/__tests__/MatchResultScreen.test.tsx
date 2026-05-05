@@ -83,7 +83,13 @@ describe('MatchResultScreen', () => {
     const before = mockUser.tokens;
     const utils = renderResult(6, 'stalemate'); // Sudden Death stake 50
     expect(mockUser.tokens).toBe(before + 50);
-    expect(utils.queryByText('+0')).toBeTruthy();
+    // Phase 7A.5 Codex round 2 finding 2 — the reward chip now
+    // mounts at `initialValue: 0` and animates up; that means
+    // both the token chip (mid-animation 0) and the XP chip
+    // (literally +0) match `queryByText('+0')`. Use queryAllByText
+    // to assert at least one is on screen rather than tripping
+    // the "multiple matches" guard.
+    expect(utils.queryAllByText('+0').length).toBeGreaterThanOrEqual(1);
     expect(utils.queryAllByText('STALEMATE').length).toBeGreaterThanOrEqual(1);
     expect(utils.queryByText('refunded')).toBeTruthy();
   });
@@ -417,6 +423,92 @@ describe('MatchResultScreen — Phase 7A.5 CP3 interstitial counter + trigger', 
     // is gone; a separate match completion would create a new
     // route with a fresh grantedRef).
     expect(useUserStore.getState().matchesSinceLastInterstitial).toBe(0);
+  });
+});
+
+describe('MatchResultScreen — Phase 7A.5 Codex round 2 finding 1 fix (stalemate floater exclusion)', () => {
+  beforeEach(() => {
+    __resetMockUserForTests();
+    jest.useFakeTimers();
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  // The pre-fix gate was `isEnginePath && reward > 0`. Mode 6
+  // Sudden Death stalemate refunds the stake, which satisfies
+  // `reward > 0`, so the floater popped a "+50" pill that
+  // misleadingly framed the refund as earned tokens. The fix
+  // tightens the gate to also require `outcome ∈ {victory, draw}`.
+
+  it('stalemate path: does NOT render the reward floater (refund is not earned)', () => {
+    const utils = renderWithNavigation(
+      'MatchResult',
+      { MatchResult: MatchResultScreen, Matchmaking: RouteStubScreen, Home: RouteStubScreen },
+      {
+        modeId: 6, // Sudden Death — typical stalemate path.
+        outcome: 'stalemate',
+        opponentId: 'opp-1',
+        secret: '1234',
+        guessCount: 8,
+        reward: 50, // stake refund > 0
+        xpGain: 0,
+      },
+    );
+    // The floater is the only element with this accessibility label.
+    expect(utils.queryByLabelText(/Reward earned: \+/)).toBeNull();
+  });
+
+  it('victory path: renders the reward floater (earned tokens)', () => {
+    const utils = renderWithNavigation(
+      'MatchResult',
+      { MatchResult: MatchResultScreen, Matchmaking: RouteStubScreen, Home: RouteStubScreen },
+      {
+        modeId: 1,
+        outcome: 'victory',
+        opponentId: 'opp-1',
+        secret: '1234',
+        guessCount: 4,
+        reward: 120,
+        xpGain: 30,
+      },
+    );
+    expect(utils.queryByLabelText('Reward earned: +120 tokens')).toBeTruthy();
+  });
+
+  it('draw path: renders the reward floater (earned tokens, smaller amount)', () => {
+    const utils = renderWithNavigation(
+      'MatchResult',
+      { MatchResult: MatchResultScreen, Matchmaking: RouteStubScreen, Home: RouteStubScreen },
+      {
+        modeId: 1,
+        outcome: 'draw',
+        opponentId: 'opp-1',
+        secret: '1234',
+        guessCount: 8,
+        reward: 60,
+        xpGain: 15,
+      },
+    );
+    expect(utils.queryByLabelText('Reward earned: +60 tokens')).toBeTruthy();
+  });
+
+  it('defeat path: does NOT render the floater (zero reward)', () => {
+    const utils = renderWithNavigation(
+      'MatchResult',
+      { MatchResult: MatchResultScreen, Matchmaking: RouteStubScreen, Home: RouteStubScreen },
+      {
+        modeId: 1,
+        outcome: 'defeat',
+        opponentId: 'opp-1',
+        secret: '1234',
+        guessCount: 6,
+        reward: 0,
+        xpGain: 5,
+      },
+    );
+    expect(utils.queryByLabelText(/Reward earned/)).toBeNull();
   });
 });
 
