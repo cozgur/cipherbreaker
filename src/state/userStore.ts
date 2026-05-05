@@ -22,6 +22,8 @@ import type { DailyChallengeState, DailyResultSummary } from '@game/daily/types'
 import { computeEarnedHints } from '@game/daily/hint';
 import { computeNextDailyStreakState } from '@game/daily/streak';
 import { calendarDayIndex, effectiveDigitTier, TIER_4_PERIOD, TIER_5_PERIOD } from '@game/daily/dailyConfig';
+import { applyAdWatched, canWatchAd } from '@game/economy/adCap';
+import { AD_REWARD_TOKENS } from '@game/economy/constants';
 import type { MatchResultOutcome } from '@navigation/routes';
 
 export interface UserStats {
@@ -63,6 +65,34 @@ export interface UserStoreState {
    * Schema landed in v3 migration. See `@game/daily/types`.
    */
   readonly dailyChallenge: DailyChallengeState;
+  /**
+   * Phase 7A.5 CP1 — ad-watch counter, used for the daily cap
+   * (`AD_CAP_PER_DAY` from `@game/economy/constants`). Cross-midnight
+   * reset is implicit: the cap module compares `adsWatchedLastDate`
+   * against today's local-calendar string and treats a stale date
+   * as a fresh quota. `null` = first-ever interaction (player has
+   * not watched any ad yet on this device).
+   */
+  readonly adsWatchedToday: number;
+  readonly adsWatchedLastDate: string | null;
+  /**
+   * Phase 7A.5 CP1 — counter for the periodic interstitial
+   * (`INTERSTITIAL_MATCH_THRESHOLD` from `@game/economy/constants`).
+   * Increments on every Mode 1–7 match completion (CP3 wires the
+   * call site); resets to 0 when the interstitial fires. Daily
+   * Challenge does NOT touch this counter — pinned by invariant
+   * test.
+   */
+  readonly matchesSinceLastInterstitial: number;
+  /**
+   * Phase 7A.5 CP1 — Remove Ads IAP flag. `true` iff the player
+   * has purchased the non-consumable `IAP_REMOVE_ADS_PRODUCT_ID`.
+   * Removes only the forced interstitial layer (CP3); rewarded
+   * paths (need-driven AdWatchScreen + double-token CTA) stay
+   * available. Wired by RevenueCat in production; toggled via a
+   * `__DEV__` Settings switch in dev/staging.
+   */
+  readonly adsRemoved: boolean;
 }
 
 export interface RecordMatchResultInput {
@@ -130,6 +160,43 @@ export interface UserStoreActions {
    * ProfileScreen behind `__DEV__`.
    */
   resetPlayStats(): void;
+  /**
+   * Phase 7A.5 CP1 — gated ad-watch reward. Pre-flight guard via
+   * `canWatchAd(state, today)`: cap-reached returns
+   * `{ success: false, reward: 0 }` without mutating state.
+   * Otherwise applies the watch (counter increment + date stamp)
+   * via `applyAdWatched`, credits `AD_REWARD_TOKENS`, and returns
+   * `{ success: true, reward: AD_REWARD_TOKENS }` so the caller
+   * can surface the credit UI without re-reading the store.
+   *
+   * `today` is a 'YYYY-MM-DD' local-calendar string the call site
+   * derives via `formatDailyDate(new Date())` — passed in rather
+   * than computed here so tests can pin the day deterministically
+   * (mirrors the `dailyChallengeStore.startToday(today, …)`
+   * pattern).
+   */
+  watchAdAction(today: string): { readonly success: boolean; readonly reward: number };
+  /**
+   * Phase 7A.5 CP1 — bump the periodic-interstitial counter. Wired
+   * by CP3 from the Mode 1–7 match-completion seam
+   * (`MatchResultScreen`). Daily Challenge does NOT call this —
+   * Daily ad-free invariant pinned by test.
+   */
+  incrementMatchCounter(): void;
+  /**
+   * Phase 7A.5 CP1 — reset the counter after the interstitial
+   * fires. Called from CP3's `InterstitialAdScreen` completion
+   * path so the next 3-match window starts cleanly.
+   */
+  resetMatchCounter(): void;
+  /**
+   * Phase 7A.5 CP1 — flip the Remove Ads IAP flag. Production
+   * caller is the RevenueCat verified-purchase callback; dev /
+   * staging caller is the `__DEV__`-gated Settings toggle.
+   * Boolean-only — no token-grant side effect (Q12: ad-removal
+   * is the value prop, no bonus).
+   */
+  setAdsRemoved(value: boolean): void;
 }
 
 export const DAILY_CHALLENGE_DEFAULTS: DailyChallengeState = {
@@ -169,9 +236,13 @@ export const USER_STORE_DEFAULTS: UserStoreState = {
     7: { winRate: 52 },
   },
   dailyChallenge: DAILY_CHALLENGE_DEFAULTS,
+  adsWatchedToday: 0,
+  adsWatchedLastDate: null,
+  matchesSinceLastInterstitial: 0,
+  adsRemoved: false,
 };
 
-const STORE_VERSION = 3;
+const STORE_VERSION = 4;
 
 /**
  * Migrate persisted state across `STORE_VERSION` bumps. The persist
@@ -191,18 +262,30 @@ const STORE_VERSION = 3;
  *   v2 → v3 (Phase 7A.4): seed `dailyChallenge` defaults; preserve
  *     every v2 field byte-for-byte (no economy / streak / stats
  *     touched).
+ *   v3 → v4 (Phase 7A.5 CP1): seed four new fields atomically —
+ *     `adsWatchedToday: 0`, `adsWatchedLastDate: null` (ad cap
+ *     state, "first-ever" for pre-7A.5 players),
+ *     `matchesSinceLastInterstitial: 0` (CP3 frequency-cap
+ *     counter), `adsRemoved: false` (Remove Ads IAP flag). Single
+ *     migration step covers all four — keeps the upgrade atomic
+ *     and avoids per-field sub-versions for what is conceptually
+ *     one "Phase 7A.5 economy schema bump."
  */
 
 // Loose v1 shape — only the fields the v1→v2 mapper inspects.
 type V1Stats = Omit<UserStats, 'totalTokensEarned' | 'recentMatches'> & {
   readonly tokensEarned?: number;
 };
-type V1State = Omit<UserStoreState, 'stats' | 'dailyChallenge'> & {
+type V7A5Fields = 'adsWatchedToday' | 'adsWatchedLastDate' | 'matchesSinceLastInterstitial' | 'adsRemoved';
+type V1State = Omit<UserStoreState, 'stats' | 'dailyChallenge' | V7A5Fields> & {
   readonly stats?: V1Stats;
 };
 
-// v2 shape — same as today's UserStoreState minus `dailyChallenge`.
-type V2State = Omit<UserStoreState, 'dailyChallenge'>;
+// v2 shape — UserStoreState minus dailyChallenge + every Phase 7A.5 field.
+type V2State = Omit<UserStoreState, 'dailyChallenge' | V7A5Fields>;
+
+// v3 shape — UserStoreState minus the four Phase 7A.5 fields.
+type V3State = Omit<UserStoreState, V7A5Fields>;
 
 function migrateV1ToV2(persisted: unknown): V2State {
   const v1 = (persisted ?? {}) as V1State;
@@ -222,11 +305,22 @@ function migrateV1ToV2(persisted: unknown): V2State {
   };
 }
 
-function migrateV2ToV3(persisted: unknown): UserStoreState {
+function migrateV2ToV3(persisted: unknown): V3State {
   const v2 = (persisted ?? {}) as V2State;
   return {
     ...v2,
     dailyChallenge: DAILY_CHALLENGE_DEFAULTS,
+  };
+}
+
+function migrateV3ToV4(persisted: unknown): UserStoreState {
+  const v3 = (persisted ?? {}) as V3State;
+  return {
+    ...v3,
+    adsWatchedToday: 0,
+    adsWatchedLastDate: null,
+    matchesSinceLastInterstitial: 0,
+    adsRemoved: false,
   };
 }
 
@@ -251,6 +345,9 @@ function migrateUserStore(persisted: unknown, version: number): UserStoreState {
     } else if (v === 2) {
       current = migrateV2ToV3(current);
       v = 3;
+    } else if (v === 3) {
+      current = migrateV3ToV4(current);
+      v = 4;
     } else {
       // Defensive — the bounds check above should prevent reaching
       // this branch, but it keeps the loop total in case the bound
@@ -447,6 +544,42 @@ export const useUserStore = create<UserStoreState & UserStoreActions>()(
             },
           };
         });
+      },
+
+      incrementMatchCounter: () => {
+        set((s) => ({
+          matchesSinceLastInterstitial: s.matchesSinceLastInterstitial + 1,
+        }));
+      },
+
+      resetMatchCounter: () => {
+        set({ matchesSinceLastInterstitial: 0 });
+      },
+
+      setAdsRemoved: (value) => {
+        set({ adsRemoved: value });
+      },
+
+      watchAdAction: (today) => {
+        // Two-stage gate: read snapshot first to evaluate the cap
+        // (cap-reached must NOT mutate state — it's a refusal,
+        // not a watch). Action ordering matches `useHint`: pure
+        // gate, then state update, then return shape.
+        const snapshot = useUserStore.getState();
+        const capState = {
+          adsWatchedToday: snapshot.adsWatchedToday,
+          adsWatchedLastDate: snapshot.adsWatchedLastDate,
+        };
+        if (!canWatchAd(capState, today)) {
+          return { success: false, reward: 0 };
+        }
+        const next = applyAdWatched(capState, today);
+        set((s) => ({
+          adsWatchedToday: next.adsWatchedToday,
+          adsWatchedLastDate: next.adsWatchedLastDate,
+          tokens: s.tokens + AD_REWARD_TOKENS,
+        }));
+        return { success: true, reward: AD_REWARD_TOKENS };
       },
     }),
     {

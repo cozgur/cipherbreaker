@@ -340,11 +340,12 @@ describe('useUserStore', () => {
     });
   });
 
-  describe('migration — chained v1 → v2 → v3', () => {
-    // Phase 7A.4 CP3: chained migration pattern. A v1 blob hydrates
-    // through both upgrade steps to land at v3; a v2 blob takes the
-    // v2 → v3 step alone; v3 is identity. Each step preserves prior
-    // fields and seeds the new fields with documented defaults.
+  describe('migration — chained v1 → v2 → v3 → v4', () => {
+    // Phase 7A.4 CP3 + Phase 7A.5 CP1: chained migration pattern.
+    // A v1 blob hydrates through every upgrade step to land at v4;
+    // a v3 blob takes the v3 → v4 step alone; v4 is identity. Each
+    // step preserves prior fields and seeds the new fields with
+    // documented defaults.
 
     it('v1 → v3: renames tokensEarned, seeds recentMatches, AND seeds dailyChallenge defaults', () => {
       const v1State = {
@@ -441,9 +442,96 @@ describe('useUserStore', () => {
       expect(next.dailyChallenge.lastResult).toBeNull();
     });
 
-    it('v3 is idempotent — current-version state passes through unchanged', () => {
-      const next = __migrateUserStoreForTests(USER_STORE_DEFAULTS, 3);
+    it('v4 is idempotent — current-version state passes through unchanged', () => {
+      const next = __migrateUserStoreForTests(USER_STORE_DEFAULTS, 4);
       expect(next).toBe(USER_STORE_DEFAULTS);
+    });
+
+    it('v3 → v4: preserves every v3 field and seeds the four Phase 7A.5 economy fields', () => {
+      // Realistic v3 blob — a player who hydrated through Phase
+      // 7A.4 fully (active streak, hint pool earned, recentMatches
+      // populated). The v3 → v4 step must NOT touch any of these.
+      const v3State = {
+        username: 'streak_seven',
+        tokens: 500,
+        level: 12,
+        currentXP: 2340,
+        targetXP: 3200,
+        hasOnboarded: true,
+        stats: {
+          gamesPlayed: 247,
+          winRate: 68,
+          currentStreak: 4,
+          bestStreak: 11,
+          avgTurns: 5.3,
+          totalTokensEarned: 12_400,
+          recentMatches: ['victory', 'victory', 'defeat'],
+        },
+        perMode: { 1: { winRate: 72 }, 7: { winRate: 52 } },
+        dailyChallenge: {
+          lastPlayedDate: '2026-05-04',
+          currentStreak: 7,
+          longestStreak: 7,
+          effectiveDayOffset: 0,
+          lastResult: null,
+          history: [],
+          earnedHints: 1,
+          lastHintEarnedAtStreak: 7,
+        },
+      };
+      const next = __migrateUserStoreForTests(v3State, 3);
+      // Every v3 field survives byte-for-byte.
+      expect(next.username).toBe('streak_seven');
+      expect(next.tokens).toBe(500);
+      expect(next.stats.totalTokensEarned).toBe(12_400);
+      expect(next.stats.recentMatches).toEqual(['victory', 'victory', 'defeat']);
+      expect(next.dailyChallenge.currentStreak).toBe(7);
+      expect(next.dailyChallenge.earnedHints).toBe(1);
+      expect(next.dailyChallenge.lastHintEarnedAtStreak).toBe(7);
+      // Four Phase 7A.5 fields seeded — pre-7A.5 player gets fresh
+      // ad-cap, fresh interstitial counter, no IAP purchase.
+      expect(next.adsWatchedToday).toBe(0);
+      expect(next.adsWatchedLastDate).toBeNull();
+      expect(next.matchesSinceLastInterstitial).toBe(0);
+      expect(next.adsRemoved).toBe(false);
+    });
+
+    it('v1 → v4: full chain hydrates through every step', () => {
+      // Pre-Phase-7A.1 v1 blob with the original `tokensEarned`
+      // field name. Must land at v4 with all upgrade-step fields
+      // seeded, NOT fall through to defaults.
+      const v1State = {
+        username: 'ancient_user',
+        tokens: 800,
+        level: 10,
+        currentXP: 1000,
+        targetXP: 2000,
+        hasOnboarded: true,
+        stats: {
+          gamesPlayed: 100,
+          winRate: 55,
+          currentStreak: 2,
+          bestStreak: 9,
+          avgTurns: 5.8,
+          tokensEarned: 6_000,
+        },
+        perMode: { 1: { winRate: 60 } },
+      };
+      const next = __migrateUserStoreForTests(v1State, 1);
+      // v1 → v2 step.
+      expect(next.stats.totalTokensEarned).toBe(6_000);
+      expect(next.stats.recentMatches).toEqual([]);
+      // v2 → v3 step.
+      expect(next.dailyChallenge.lastPlayedDate).toBeNull();
+      expect(next.dailyChallenge.history).toEqual([]);
+      // v3 → v4 step (Phase 7A.5).
+      expect(next.adsWatchedToday).toBe(0);
+      expect(next.adsWatchedLastDate).toBeNull();
+      expect(next.matchesSinceLastInterstitial).toBe(0);
+      expect(next.adsRemoved).toBe(false);
+      // Identity preservation across all three steps.
+      expect(next.username).toBe('ancient_user');
+      expect(next.tokens).toBe(800);
     });
 
     it('falls back to defaults for an unknown (future) version stamp', () => {
@@ -451,7 +539,7 @@ describe('useUserStore', () => {
       expect(next).toEqual(USER_STORE_DEFAULTS);
     });
 
-    it('handles a v1 state with a missing `stats` key without throwing — chains to v3', () => {
+    it('handles a v1 state with a missing `stats` key without throwing — chains to v4', () => {
       const partial = { username: 'ghost', tokens: 100 };
       const next = __migrateUserStoreForTests(partial, 1);
       expect(next.username).toBe('ghost');
@@ -459,6 +547,8 @@ describe('useUserStore', () => {
       expect(next.stats.recentMatches).toEqual([]);
       expect(next.stats.totalTokensEarned).toBe(USER_STORE_DEFAULTS.stats.totalTokensEarned);
       expect(next.dailyChallenge.history).toEqual([]);
+      expect(next.adsWatchedToday).toBe(0);
+      expect(next.adsRemoved).toBe(false);
     });
 
     it('the v2 → v3 step alone never touches non-dailyChallenge fields', () => {
@@ -475,6 +565,131 @@ describe('useUserStore', () => {
       expect(next.username).toBe(USER_STORE_DEFAULTS.username);
       expect(next.stats).toEqual(USER_STORE_DEFAULTS.stats);
       expect(next.perMode).toEqual(USER_STORE_DEFAULTS.perMode);
+    });
+  });
+
+  describe('Phase 7A.5 CP1 — economy actions', () => {
+    it('incrementMatchCounter bumps the counter by 1 each call', () => {
+      expect(useUserStore.getState().matchesSinceLastInterstitial).toBe(0);
+      useUserStore.getState().incrementMatchCounter();
+      expect(useUserStore.getState().matchesSinceLastInterstitial).toBe(1);
+      useUserStore.getState().incrementMatchCounter();
+      expect(useUserStore.getState().matchesSinceLastInterstitial).toBe(2);
+      useUserStore.getState().incrementMatchCounter();
+      expect(useUserStore.getState().matchesSinceLastInterstitial).toBe(3);
+    });
+
+    it('resetMatchCounter zeroes the counter regardless of prior value', () => {
+      useUserStore.setState({ matchesSinceLastInterstitial: 7 });
+      useUserStore.getState().resetMatchCounter();
+      expect(useUserStore.getState().matchesSinceLastInterstitial).toBe(0);
+    });
+
+    it('setAdsRemoved flips the IAP flag both ways', () => {
+      expect(useUserStore.getState().adsRemoved).toBe(false);
+      useUserStore.getState().setAdsRemoved(true);
+      expect(useUserStore.getState().adsRemoved).toBe(true);
+      useUserStore.getState().setAdsRemoved(false);
+      expect(useUserStore.getState().adsRemoved).toBe(false);
+    });
+
+    it('setAdsRemoved does NOT credit a token bonus (Q12 — value prop is the ad-free experience)', () => {
+      const tokensBefore = useUserStore.getState().tokens;
+      useUserStore.getState().setAdsRemoved(true);
+      expect(useUserStore.getState().tokens).toBe(tokensBefore);
+    });
+
+    describe('watchAdAction', () => {
+      it('first-ever watch: success, +50 tokens, counter bumps to 1', () => {
+        const tokensBefore = useUserStore.getState().tokens;
+        const result = useUserStore.getState().watchAdAction('2026-05-05');
+        expect(result).toEqual({ success: true, reward: 50 });
+        expect(useUserStore.getState().tokens).toBe(tokensBefore + 50);
+        expect(useUserStore.getState().adsWatchedToday).toBe(1);
+        expect(useUserStore.getState().adsWatchedLastDate).toBe('2026-05-05');
+      });
+
+      it('cap reached: refusal, no token credit, no state mutation', () => {
+        useUserStore.setState({
+          adsWatchedToday: 10,
+          adsWatchedLastDate: '2026-05-05',
+        });
+        const tokensBefore = useUserStore.getState().tokens;
+        const result = useUserStore.getState().watchAdAction('2026-05-05');
+        expect(result).toEqual({ success: false, reward: 0 });
+        expect(useUserStore.getState().tokens).toBe(tokensBefore);
+        expect(useUserStore.getState().adsWatchedToday).toBe(10);
+      });
+
+      it('cross-midnight: stale day at cap → fresh quota, success', () => {
+        useUserStore.setState({
+          adsWatchedToday: 10,
+          adsWatchedLastDate: '2026-05-04',
+        });
+        const result = useUserStore.getState().watchAdAction('2026-05-05');
+        expect(result).toEqual({ success: true, reward: 50 });
+        expect(useUserStore.getState().adsWatchedToday).toBe(1);
+        expect(useUserStore.getState().adsWatchedLastDate).toBe('2026-05-05');
+      });
+    });
+  });
+
+  describe('Phase 7A.5 CP1 — Daily-Challenge ad-free invariant', () => {
+    // Daily Challenge must never increment `matchesSinceLastInterstitial`.
+    // The Mode 1–7 match-completion seam is the *only* call site
+    // that bumps this counter (CP3 wires it). If a future PR
+    // accidentally folds an increment into `recordDailyResult` /
+    // `recordMissedDay`, this test fails — surfacing the invariant
+    // break before review.
+
+    it('recordDailyResult does NOT bump matchesSinceLastInterstitial', () => {
+      useUserStore.setState({ matchesSinceLastInterstitial: 0 });
+      useUserStore.getState().recordDailyResult({
+        date: '2026-05-05',
+        digits: 4,
+        turnLimit: 10,
+        turnsUsed: 3,
+        success: true,
+        secret: '1234',
+        feedbackTrail: [],
+        hintsUsed: 0,
+      });
+      expect(useUserStore.getState().matchesSinceLastInterstitial).toBe(0);
+    });
+
+    it('recordMissedDay does NOT bump matchesSinceLastInterstitial', () => {
+      useUserStore.setState({
+        matchesSinceLastInterstitial: 0,
+        dailyChallenge: {
+          ...USER_STORE_DEFAULTS.dailyChallenge,
+          lastPlayedDate: '2026-05-03',
+          currentStreak: 4,
+        },
+      });
+      useUserStore.getState().recordMissedDay('2026-05-05');
+      expect(useUserStore.getState().matchesSinceLastInterstitial).toBe(0);
+    });
+
+    it('recordMatchResult is the only bump site — Mode 1-7 match flows through it (CP3 wires the increment)', () => {
+      // Today CP1 ships only the primitives — `recordMatchResult`
+      // does not yet auto-increment (CP3 makes that decision). The
+      // assertion here pins the current contract: until CP3, the
+      // counter is bumped exclusively via the `incrementMatchCounter`
+      // action. Future CP3 may either (a) call it explicitly from
+      // `MatchResultScreen`, or (b) fold the increment into
+      // `recordMatchResult`. Either path keeps Daily isolated since
+      // Daily never calls `recordMatchResult`.
+      useUserStore.setState({ matchesSinceLastInterstitial: 0 });
+      useUserStore.getState().recordMatchResult({
+        modeId: 1,
+        outcome: 'victory',
+        turns: 3,
+        tokensEarnedThisMatch: 100,
+      });
+      // CP1 contract: recordMatchResult does NOT auto-increment.
+      // (If CP3 later folds the increment into recordMatchResult,
+      // this assertion flips and the test name updates accordingly.)
+      expect(useUserStore.getState().matchesSinceLastInterstitial).toBe(0);
     });
   });
 });

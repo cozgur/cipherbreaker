@@ -419,12 +419,48 @@ function SettingsPanel({
             <SettingsRow
               label="Reset Play Stats"
               onPress={onResetPlayStats}
-              isLast
+              isLast={false}
             />
+            <DevAdsRemovedToggleRow />
           </View>
         </View>
       ) : null}
     </View>
+  );
+}
+
+/**
+ * Phase 7A.5 CP1 — `__DEV__`-only toggle for the Remove Ads IAP
+ * flag. Production wires `setAdsRemoved` from the RevenueCat
+ * verified-purchase callback; this row is a QA seam so we can
+ * exercise the ad-free interstitial gate (CP3) without round-
+ * tripping through the App Store sandbox.
+ *
+ * Subscribes via `useUserStore((s) => s.adsRemoved)` so the row
+ * label updates the moment the flag flips. Production builds
+ * never render this row (parent gates on `__DEV__`).
+ */
+function DevAdsRemovedToggleRow(): React.JSX.Element {
+  const adsRemoved = useUserStore((s) => s.adsRemoved);
+  const onToggle = useCallback(() => {
+    useUserStore.getState().setAdsRemoved(!adsRemoved);
+  }, [adsRemoved]);
+  return (
+    <Pressable
+      accessibilityRole="switch"
+      accessibilityLabel="Toggle Remove Ads (dev)"
+      accessibilityState={{ checked: adsRemoved }}
+      onPress={onToggle}
+      style={({ pressed }) => [
+        styles.settingsRow,
+        pressed && styles.settingsRowPressed,
+      ]}
+    >
+      <Text style={styles.settingsLabel}>Remove Ads (dev)</Text>
+      <Text style={[styles.settingsValue, { color: adsRemoved ? colors.success : colors.textDim }]}>
+        {adsRemoved ? 'On' : 'Off'}
+      </Text>
+    </Pressable>
   );
 }
 
