@@ -50,7 +50,11 @@ describe('CP2 flows', () => {
   });
 
   // 2
-  it('InsufficientTokens → Watch ad → countdown 0 → popToTop to Home with +50 tokens', () => {
+  // Phase 7A.5 CP5 reshape — AdWatchScreen now `goBack`s on
+  // completion (was `popToTop`) so the InsufficientTokensModal
+  // re-evaluates the now-credited balance against the stake. The
+  // user can either play (now affordable) or Cancel out to Home.
+  it('InsufficientTokens → Watch ad → countdown 0 → returns to modal with +50 tokens', () => {
     mockUser.tokens = 0;
     jest.useFakeTimers();
 
@@ -66,13 +70,19 @@ describe('CP2 flows', () => {
     });
     expect(utils.navRef.current?.getCurrentRoute()?.name).toBe('AdWatch');
 
-    // 5-second auto-complete fires popToTop.
+    // 5-second auto-complete now fires `goBack`, returning to the
+    // underlying modal. The wallet credit goes through
+    // `watchAdAction(today)` (CP5 rewire), which also stamps the
+    // ad-cap counters atomically.
     act(() => {
       jest.advanceTimersByTime(5000);
     });
 
     expect(mockUser.tokens).toBe(50);
-    expect(utils.navRef.current?.getCurrentRoute()?.name).toBe('Home');
+    expect(utils.navRef.current?.getCurrentRoute()?.name).toBe('InsufficientTokens');
+    // Modal re-evaluates: wallet now exactly matches the 50-token
+    // Mode 1 stake, so the body text reflects the new balance.
+    expect(utils.queryByText(/You have 50 tokens\. This match costs 50\./)).toBeTruthy();
   });
 
   // 3

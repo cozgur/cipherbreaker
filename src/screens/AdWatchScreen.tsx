@@ -1,11 +1,24 @@
 /**
  * Reward-ad placeholder. Five-second countdown with a Skip button
  * that arms once two seconds remain (industry-standard min-watch
- * window). On completion the player gets +50 tokens, a console
- * analytics line is logged (replaced by a real provider in Phase 7B),
- * and the stack is popped to the top — this clears both AdWatch and
- * the underlying InsufficientTokens modal so the player lands back
- * on Home with the new balance visible.
+ * window). On completion the player's wallet credit + the daily-
+ * cap state both update atomically through `userStore.watchAdAction(today)`
+ * — Phase 7A.5 CP5 rewire that replaced the legacy `grantTokens`
+ * direct call. The action is gated by `canWatchAd` from CP1, so a
+ * cap-reached state never double-credits even if the screen
+ * somehow mounted past the gate (defensive — the
+ * InsufficientTokensModal already disables its Watch Ad CTA when
+ * the cap is hit; CP5 also surfaces a LowBalanceToast on Home
+ * which routes here).
+ *
+ * On finish we `goBack()` rather than `popToTop()`. The two
+ * production entry points to AdWatch are:
+ *   - InsufficientTokensModal "Watch ad · +50" — goBack returns
+ *     to the modal so it can re-evaluate the (now potentially
+ *     sufficient) balance against the stake.
+ *   - HomeScreen LowBalanceToast — goBack returns to Home with
+ *     the new balance reflected in the top-bar TokenBadge and the
+ *     toast re-evaluated against `LOW_BALANCE_THRESHOLD`.
  *
  * `fullScreenModal` + `gestureEnabled: false` (set in RootNavigator)
  * mean a player cannot dismiss the ad until Skip arms or it
@@ -20,15 +33,16 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { Screen } from '@components/Screen';
 import { TokenCoin } from '@components/TokenCoin';
-import { grantTokens } from '@data/mockUser';
+import { formatDailyDate } from '@game/daily/dailyDate';
+import { AD_REWARD_TOKENS } from '@game/economy/constants';
 import type { RootStackParamList } from '@navigation/routes';
+import { useUserStore } from '@state/userStore';
 import { colors, fonts, withAlpha } from '@theme/tokens';
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'AdWatch'>;
 
 const COUNTDOWN_SECONDS = 5;
 const SKIP_AVAILABLE_AT = 2;
-const REWARD = 50;
 
 export function AdWatchScreen(): React.JSX.Element {
   const navigation = useNavigation<Nav>();
@@ -47,10 +61,21 @@ export function AdWatchScreen(): React.JSX.Element {
     (reason: 'skipped' | 'completed'): void => {
       if (completedRef.current) return;
       completedRef.current = true;
-      grantTokens(REWARD);
+      // CP5 — gated reward via watchAdAction. The action runs the
+      // canWatchAd cap check; a cap-reached state returns
+      // {success:false, reward:0} without crediting tokens. In
+      // production the calling surfaces (modal + toast) prevent the
+      // tap from launching this screen at all when the cap is hit,
+      // so the false branch is purely defensive.
+      const today = formatDailyDate(new Date());
+      const result = useUserStore.getState().watchAdAction(today);
       // Phase 7B replaces this with a real analytics provider.
-      console.log('[analytics] ad_watch_completed', { tokens: REWARD, reason });
-      navigation.popToTop();
+      console.log('[analytics] ad_watch_completed', {
+        tokens: result.reward,
+        reason,
+        success: result.success,
+      });
+      navigation.goBack();
     },
     [navigation],
   );
@@ -106,14 +131,14 @@ export function AdWatchScreen(): React.JSX.Element {
           <Text style={styles.adKicker}>Advertisement Area</Text>
           <View style={styles.adArt} />
           <Text style={styles.adTitle}>Sponsored Content</Text>
-          <Text style={styles.adSub}>Watch to earn {REWARD} tokens</Text>
+          <Text style={styles.adSub}>Watch to earn {AD_REWARD_TOKENS} tokens</Text>
         </View>
       </View>
 
       <View style={[styles.rewardWrap, { bottom: insets.bottom + 64 }]}>
         <View style={styles.rewardPill}>
           <TokenCoin size={16} />
-          <Text style={styles.rewardAmount}>+{REWARD}</Text>
+          <Text style={styles.rewardAmount}>+{AD_REWARD_TOKENS}</Text>
           <Text style={styles.rewardLabel}>on finish</Text>
         </View>
       </View>
