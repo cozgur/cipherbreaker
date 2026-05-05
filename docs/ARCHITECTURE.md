@@ -1058,6 +1058,8 @@ Items intentionally pushed past launch (incorporating Codex roadmap suggestions 
 - **Profile per-mode trend caret threshold (±5 → ±8?)** — observed during Phase 7A.3 iOS walkthrough: with the launch fixture (lifetime win rate 68%) most modes trip the ▼ caret because their per-mode rates sit 13–19 points below lifetime. The arithmetic is correct but the visual pattern is demoralising — every mode tile looks like a regression. Decision deferred to post-launch: if real user distributions reproduce the pattern (most users dominating one or two modes and "below average" everywhere else), widen the trend dead-band from ±5 to ±8. If distributions are tighter, keep ±5. Pure tuning change inside `trendDirection` in `ProfileScreen.tsx` — no schema cost.
 - **Friends mode** — room codes for two-player matches on Supabase. First feature requiring a real backend. (Codex #8.)
 - **Leaderboard** — async-first (daily best leaderboard); real-time only if engagement justifies it.
+- **Hint system on Modes 1–7** — Phase 7A.4 CP6 shipped the Hint A (reveal) + Hint B (probe) pair on Daily Challenge only. Whether the same mechanic transplants to the seven competitive modes is a Phase 9 design decision: it changes match economy (paid hint vs paid stake) and affects DDA telemetry (a hinted win is not a clean signal). No code work today; the design seam — `analyzeHintCandidates` taking `(secret, guesses, revealedPositions, revealedDigits)` — is already general enough to feed any mode's solver state.
+- **Android FCM push** — counterpart to the iOS notification path Phase 7A.6 wires up. Push infra cost is symmetric (one provider per platform); deferred until iOS retention validates the daily-reminder hook is worth the integration effort on the second platform.
 
 Rationale for the Phase 9 push: launch needs the Daily anchor + the seven competitive modes + a complete onboarding. Bot variety, live ops, leaderboard are amplifiers, not foundations; they only earn dev time once retention proves the concept. Backend cost (Supabase, push volume, leaderboard infra) only makes sense once we have users to amortise it across.
 
@@ -1159,3 +1161,108 @@ Engagement after daily complete is the primary KPI for retention week 2+.
 | 5  | Push notification (09:00 local, iOS opt-in) | 1 |
 | 6  | Tests + iOS device walkthrough | 2 |
 | 7  | ARCHITECTURE update + commit | 0.5 |
+
+---
+
+## Phase 7A.4 — Daily Challenge (delta)
+
+Phase 7A.4 shipped the launch anchor feature across **8 CPs + 1 admin + 2 fix commits = 11 commits total** between 2026-05-01 and 2026-05-05, growing the test suite from **754 → 1076** (+322 net) and the suite count from **89 → 103** (+14). The fourteen brainstorming-pass decisions all landed; two scope additions surfaced during implementation (CP6 hint system + CP7 multi-day simulation harness) and one decision (the 6/7/8 → 10/12/14 turn budget) was reversed mid-phase after iOS playthrough. CP5 was also reassigned mid-phase: the planned scope was push notification (09:00 local + iOS opt-in), but onboarding (Phase 7A.6) owns the iOS permission prompt anyway, so the CP5 slot moved to HomeScreen banner + 3-state navigation guard + countdown — the surface the resume-vs-cracked-vs-failed routing depends on. Push lands in 7A.6 with the rest of the permission UX.
+
+The phase exceeded the planned 12–13h estimate, landing in the ~13–15h band over five calendar days. The overrun is traceable to two known causes: the hint system was a Phase 7A.4 brainstorm-time addition not in the original 14 decisions (CP6 ≈ 3h), and the iOS-test feedback loop fired twice (CP5 turn-limit playthrough → 6→10 revision; post-CP7 layout + Share cache → c907146 fix). Both feedback cycles caught real player-experience issues that synthetic tests would have missed.
+
+### CP timeline + commits
+
+| CP   | Commit     | Scope |
+|------|------------|-------|
+| CP1  | `20e6db3`             | Variable digit count infrastructure audit + length-sweep tests |
+| CP2  | `cd5ea32`             | Daily evaluator + validator + domain types (multiset `+N/−M`, length-agnostic) |
+| CP3  | `e926390`             | Daily logic + seed + schema migration v2 → v3 |
+| CP4  | `def0243`             | `dailyChallengeStore` (separate persist) + `DailyMatchScreen` + `DailyResultScreen` + schema cleanup |
+| CP5  | `4af2c42`             | HomeScreen daily banner + 3-state navigation guard + countdown (reassigned from push notification — deferred to 7A.6) |
+| —    | `f33fd14`             | Admin reset-play-stats panel (DEV-only) + matchStore resume-identity timestamp flake fix |
+| —    | `ce21d5f`             | **Fix**: daily turn limits 10/12/14 (Mastermind paradigm correction) |
+| CP6  | `eff3251` + `f612cfe` | Hint A (reveal: green/yellow/warning priority) + Hint B (probe) + earned-hint pool. Backend commit + UI commit (HINT/PROBE buttons, draft auto-fill, keypad indicators, PURE SKILL badge, share format) shipped paired. |
+| CP7  | `7e1b770`             | E2E flow + 7-day simulation + streak break + DST smoke + Share API native hookup |
+| —    | `c907146`             | **Fix**: scrollable history in DailyMatchScreen + Share API hookup verified (post-CP7 iOS feedback) |
+| CP8  | (this commit)         | Retrospective + Phase 9 backlog + Phase 7A.4 sealed |
+
+### Schema migration — userStore v2 → v3 + dailyChallengeStore stand-alone v1
+
+Two stores got durable persistence in Phase 7A.4, not one. The v2 → v3 step on `userStore` added the `dailyChallenge: DailyChallengeState` slice (streak, longestStreak, effectiveDayOffset, history, lastResult, earnedHints, lastHintEarnedAtStreak); the chained-migration mapper introduced in CP3 (`migrateV1ToV2` → `migrateV2ToV3`) walks any persisted blob from its on-disk version up to v3 step-by-step rather than collapsing into a single inline branch — so a v4/v5 future bump adds one mapper, not a multi-line case rewrite. Out-of-bounds versions (corrupt or future) fall through to defaults (the documented "lose persisted progress on an unrecognised version" behaviour).
+
+`dailyChallengeStore` is **not** a slice on `userStore` — it is a brand-new persisted store keyed under `cipherbreaker.daily.v1` with its own `STORE_VERSION = 1`. The split is deliberate: per-attempt state (the in-flight `DailyInProgress` board, mid-puzzle, resumable across cold-start) has different lifecycle semantics from the per-user durable state (streaks, history, lastResult). Folding both into `userStore` would have either (a) bloated v3's slice with attempt-scoped fields the user-stats consumers don't care about, or (b) forced cross-store updates inside the same setState. The two-store split mirrors how `matchStore` (per-match) and `userStore` (per-user) already partition Mode 1–7 state, so Phase 7A.4 reuses an established pattern instead of inventing one.
+
+The user wrote "v2 → v3 → v4 chain" in the CP8 brief. There is no v4 — `userStore` chains v1 → v2 → v3, and the daily challenge store is a separate v1 from day one. Recording this here so a future reader doesn't grep for a non-existent v4 mapper.
+
+### Cross-store sequencing — matchStore-pattern, no shared helper
+
+Every action that touches both stores updates `dailyChallengeStore` first, then `userStore` — the same deterministic ordering `matchStore.createMatch` already uses for stake debits (Phase 5 pattern). JS is single-threaded so no race window exists, but the order is recorded as an invariant in `dailyChallengeStore.ts`'s file header so a future "let me reorder these for atomicity" refactor knows what the current contract is. Selectors that read both stores are consistent: there is never a window where `dailyChallengeStore.currentAttempt` and `userStore.dailyChallenge.lastResult` both name the same date.
+
+Advisor flag during CP4: "should there be a shared `useCrossStore` helper?" — rejected. The two call sites (`submitGuess` win/exhaust path; `startToday` stale-drop path) have different argument shapes (full result summary vs missed-day stamp), and a shared helper would force an awkward union type. Inline calls + the deterministic-ordering note are cheaper than the abstraction. If a third call site appears, revisit.
+
+### Reading A + `effectiveDayOffset` regression model
+
+A streak break drops the player one digit-tier; calendar advance promotes them back at the original tempo. The encoding: `effectiveDay = calendarDay - effectiveDayOffset`, and the tier formula reads `effectiveDay`. A tier-5 break increments `effectiveDayOffset` by `TIER_4_PERIOD = 7` (so the player re-enters the tier-4 band for 7 days), tier-6 by `TIER_5_PERIOD = 10`, tier-4 stays at the floor (offset unchanged — cannot regress further). Multiple regressions accumulate into the same `effectiveDayOffset` cumulator; the streak tests (`streak.test.ts`) and simulation tests (`dailyChallengeSimulation.test.ts`) cover the chain across single + double regression scenarios.
+
+Reading B (the rejected alternative) was "cap the tier directly at the post-break value, no calendar-tempo regrowth." Rejected because it punishes returning players forever — once you broke at tier-5, you'd be locked out of tier-6 unless the cap mechanism timed out separately. Reading A keeps the punishment proportional to the break (you lose the calendar progress you had earned) without adding a second timer.
+
+### Cross-midnight stale-drop — silent, Wordle-faithful
+
+`dailyChallengeStore.startToday(today, config)` checks `currentAttempt.date !== today`: silent drop + `userStore.recordMissedDay(today)`. No toast, no "you missed yesterday" banner. The puzzle the player abandoned is gone (the seed is date-deterministic and global; tomorrow is a different code), and surfacing the loss as UX would re-anchor on the negative when the actual goal is to bring the player back to today's puzzle. Wordle's pattern: the missed grid is just gone.
+
+The streak break + regression delta still fire — they're durable side effects on `userStore.dailyChallenge`, not UI events. The banner re-renders into the fresh-state copy (`Today's puzzle 🔓` + Day #N) on the next mount.
+
+### Hint system (CP6) — Hint A reveal + Hint B probe + earned-hint pool
+
+Two product-level hints sharing one earned-hint pool:
+
+- **Hint A — Reveal** (cost: 100 tokens / 1 earned). `analyzeHintCandidates(secret, guesses, revealedPositions, revealedDigits)` runs a strict priority chain: **green** (positional certainty available — there is at least one guess with `plus ≥ 1`, and a position the player has not yet been shown to be correct) > **yellow** (digit existence available — at least one guess returned `minus ≥ 1`, the digit is in the secret somewhere but not pinned) > **warning** (no signal — no `plus`, no `minus`). The warning path resolves without charging or counting as a hint use; "a hint with no information is no hint" is the design rule, and the test surface (`useHint() === { kind: 'warning' }`) pins it.
+- **Hint B — Probe** (cost: 50 tokens / 1 earned). Player picks a digit, system answers `exists` / `not exists`. Cheaper than Reveal because the information content is bounded (one yes/no), and the player chooses which question to spend on — autonomy premium offsets the lower cost.
+
+Earned-hint pool: streak crossings at 7 / 14 / 21 each grant +1 (cap 3); a streak break wipes both the pool and the `lastHintEarnedAtStreak` cursor. The cursor is the idempotency guard — a streak holding at 8, 9, 10 doesn't re-grant the 7-cross +1 the player already collected. Pool is shared between Hint A and Hint B; spend on either, the next streak threshold tops it back up.
+
+The `'earned' | 'tokens'` discriminator on the hint result is consumed by the UI to surface "Free (N left)" vs "100 tokens" sublabels and by the cross-store debit (`applyHintCharge`) to route to either the pool decrement or `subtractTokens`. The pre-charge gate (`hintCostForState`) is the back-end refusal point; the UI button-disabled state is the front-end refusal — both share the same `hintCostForState` function so the gate logic has one home.
+
+### Turn limits — 6/7/8 → 10/12/14 Mastermind paradigm correction
+
+The original 14-decision plan inherited Wordle's 6-tries baseline (4-digit / 6 turns, 5-digit / 7 turns, 6-digit / 8 turns). CP5 iOS playthrough surfaced the regression: Mastermind's `+N/−M` paradigm carries less per-row information than Wordle's letter-color grid AND the multiset rule adds confusion. Six turns at 4 digits is mathematically solvable but feels like grinding for a non-Mastermind-trained player.
+
+External Mastermind-benchmark consultation (ChatGPT) during the iOS-test feedback loop validated the casual-friendly band for 4 digits: ~5 optimal solve / ~7–8 careful-human / ~9–10 for an ~85% retention-friendly win rate. The 10/12/14 ladder lands the casual win band; the hardcore-skill ceiling stays intact (5-turn solves are still the share-text flex). Trade-off acknowledged: tighter `Day 1 cracked in 4/10` on the share text vs more reach on retention. Production change was one constant block in `dailyConfig.ts`; test-fixture spread was the larger surface (six test files updated to pull `turnLimit` from the new ladder, HomeScreen snapshot regenerated). Test count held at 983 (same count, fixture values updated).
+
+### iOS test feedback — layout overlap (real fix) + Share cache (stale bundle)
+
+Two bugs surfaced during the post-CP7 iOS validation pass; one was a real layout bug, one was a build-artifact ghost.
+
+**BUG 1 — DailyMatchScreen layout overlap at 5+ guesses.** Root cause: the history `View` used `flexShrink: 1` with React Native's default `overflow: 'visible'`, so accumulated rows rendered through the sibling draft row below it. Fix: wrap guesses in `<ScrollView>` with `flex: 1` + auto-`scrollToEnd` ref, mirroring the chat-app convention `MatchScreen.tsx:269-277` already uses on the seven competitive modes. Header / draft / hints / keypad / SUBMIT remain anchored as static siblings. Four new layout-render tests pin the contract.
+
+**BUG 2 — Share API surfacing an Alert instead of the native sheet on iOS.** The source on disk after CP7 (`7e1b770`) was already calling `Share.share({message})`; no `Alert.alert` path existed in `DailyResultScreen.tsx`. The iOS device was running a stale Metro bundle from before the migration. Confirmed by clearing Metro cache (`expo start --ios --clear`) — the native iOS share sheet (slide-up, with AirDrop / Messages / Mail / Copy / Save) appeared on the next reload. Defensive rewrite (sync → `async/await`, intentionally silent catch) plus a regression test asserting `Alert.alert` is never called even when `Share.share` rejects. RN provides no clean cancel-vs-error discriminator on iOS, so an Alert fallback in the catch would fire on every cancel and re-create the exact reported bug; the silent catch is correct, even though the user's CP8 brief described a "real error → Alert" tier — that tier doesn't exist as a clean seam.
+
+Operational lesson: a "clear Metro cache + reinstall the dev build" diagnostic step belongs in the iOS-validation runbook before re-testing any RN-source-only change. (Phase 7B dev-tools backlog item: in-app dev menu shortcut to clear Metro cache + force-reload, scoped behind `__DEV__`.)
+
+### Test surface — 754 → 1076 (+322 net)
+
+| Surface | Tests added | Notes |
+|---------|-------------|-------|
+| `src/game/daily/__tests__/*.test.ts` | 185 | Nine pure-module suites: `dailyDate`, `dailyConfig`, `dailySeed`, `evaluate`, `validation`, `streak`, `share`, `hint`, `banner`. DST-immunity suite is the load-bearing one — it pins the `parseDailyDate` + `dayDifferenceLocal` contract. |
+| `src/state/__tests__/dailyChallengeStore.test.ts` | 28 | Cross-store contract: `startToday` resume/stale-drop, `submitGuess` win/exhaust/validation, `useHint`/`useProbe` cost paths, `recordMissedDay` tier regression, `recordDailyResult` history cap + earnedHints integration. |
+| `src/screens/__tests__/{DailyMatchScreen,DailyResultScreen,HomeScreen}.test.tsx` | ~50 daily-specific | Banner state machine, hint/probe button states, history layout (post-CP7 fix), Share API + cancel/error/empty surface assertions. (HomeScreen totals include pre-7A.4 mode-card tests.) |
+| `src/__tests__/dailyChallengeSimulation.test.ts` | 23 | CP7 multi-day simulation: 7-day continuous streak, 14- and 21-day hint pool crossings, tier-4/5/6 regression accumulation, cross-midnight stale-drop variants, DST-boundary smoke (EU spring-forward + US fall-back). |
+| `src/__tests__/dailyChallengeE2E.test.tsx` | 2 | One full user journey (banner → match → win → SHARE → home → cracked banner) + one no-replay assertion (post-win banner tap routes to DailyResult). |
+
+The simulation file is the most valuable per-line addition: it walks the cross-store contract across Day 1 → Day 21 by calling `startToday(date, config)` directly with date strings — no `Date` mocking, no remount churn, deterministic and fast (sub-second). Same pattern `streak.test.ts`'s 30-day continuous loop established in CP3, lifted to the cross-store layer so the earnedHints pool, history cap, and missed-day side effects all verify together.
+
+### Phase 7A.4 sealed — Phase 7A.5 (Economy polish) setup
+
+Daily Challenge is production-grade as of `c907146`: no known bugs, hint system green, scrollable history, native iOS share sheet, full E2E coverage including DST, 7-day simulation, and cross-midnight stale-drop. The sealed surface includes the share format (numerical `+N/−M` trail), the PURE SKILL / `Used N hints` badge dichotomy, and the three-state HomeScreen banner (fresh / cracked / failed) with countdown.
+
+Phase 7A.5 (Economy polish) inherits the seam Phase 7A.4 left it: Daily's reward gradient is committed (digit-base 25/50/75 + streak bonus +10/7-day, cap +50, max daily 125 tokens, all below the lowest competitive stake). Phase 7A.5 owns the alignment work — ad cap timing relative to the 09:00 daily reset, low-balance UX with Daily as the free-tap recovery path, reward pacing across the full economy. None of those depend on Daily Challenge schema changes; they live at `userStore` action seams Daily already exercises.
+
+Two Phase 7A.4 polish items deferred explicitly to later CPs:
+
+- **SUBMIT button disabled-when-empty styling** — Phase 7A.7 (UX details). Currently the disabled state resolves correctly via the `disabled={...}` prop, but the styling pass that lands on every button across the seven modes is consolidated in 7A.7.
+- **PURE SKILL vs `Used N hints` pill colour differentiation** — Phase 7A.7. Both currently render in the same gold-on-violet palette; visually distinguishing the two states (gold for pure skill, neutral/grey for hint-assisted) sharpens the share-side prestige signal.
+
+Two Phase 7A.5 polish items folded into Economy:
+
+- **Share text emoji prefix (🎯)** — small marketing tweak, organic placement in front of the Day #N headline. Lands with the Phase 7A.5 share-loop polish that retests share-text variants against organic-growth data.
+- **Countdown format options** — current copy is `"tomorrow"` on DailyResultScreen + `Resets in Xh Ym` on the HomeScreen banner. Aligning to a single format (or surfacing both in the right contexts) is a Phase 7A.5 micro-decision once the economy reset semantics are nailed down.
