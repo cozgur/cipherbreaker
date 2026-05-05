@@ -25,7 +25,10 @@ import { calendarDayIndex, effectiveDigitTier, TIER_4_PERIOD, TIER_5_PERIOD } fr
 import { formatDailyDate } from '@game/daily/dailyDate';
 import { applyAdWatched, canWatchAd } from '@game/economy/adCap';
 import { AD_REWARD_TOKENS } from '@game/economy/constants';
+import { rewardForCompletedMatch } from '@game/economy/matchReward';
+import { modeRegistry } from '@game/modeRegistry';
 import type { MatchResultOutcome } from '@navigation/routes';
+import { useMatchStore } from './matchStore';
 
 export interface UserStats {
   readonly gamesPlayed: number;
@@ -178,27 +181,41 @@ export interface UserStoreActions {
    */
   watchAdAction(today: string): { readonly success: boolean; readonly reward: number };
   /**
-   * Phase 7A.5 CP6 — rewarded "Double" path. Credits an *extra*
-   * `extraReward` tokens on top of the original match reward,
-   * stamps an ad-cap watch (the double consumes one of the daily
-   * 10), and resets `matchesSinceLastInterstitial` (Q9 priority —
-   * Double > Interstitial; the rewarded watch counts as the
-   * frequency-cap impression for this cadence slot, so the
-   * forced interstitial does not also fire).
+   * Phase 7A.5 CP6 + Codex finding 1 (HIGH) fix — rewarded
+   * "Double" path. Identifies the match by `matchId`, validates
+   * the active matchState matches, and computes the doubled
+   * amount internally from the catalog + DDA stamp. The user
+   * cannot supply or influence the credit amount — that was the
+   * pre-fix exploit (a manipulated route param could mint
+   * arbitrary tokens).
    *
-   * Returns `{success:false, reward:0}` without mutating state if
-   * the daily ad cap is reached or `extraReward <= 0`. Idempotency
-   * (already-doubled state) is enforced at the call site by the
-   * MatchResultScreen Double UI, which hides itself off
-   * `matchState.doubledReward`. Defensive double-call here would
-   * still credit a second time — the gate is "have they already
-   * tapped Double?" not "has applyRewardedDouble run?". The
-   * production flow ensures this through the UI; tests cover the
-   * defensive path.
+   * Validation chain (each step short-circuits with a typed error):
+   *   - `no_match` — matchStore.matchState is null.
+   *   - `wrong_id` — matchState.id does not equal the supplied matchId.
+   *   - `not_completed` — matchState.phase is not 'completed'.
+   *   - `wrong_outcome` — outcome is not 'player_won' or 'draw'.
+   *   - `already_doubled` — matchState.doubledReward is true (idempotency).
+   *   - `cap_reached` — adsWatchedToday >= AD_CAP_PER_DAY for today.
+   *
+   * On success: credits the doubled amount (computed via
+   * `rewardForCompletedMatch`), stamps an ad-cap watch (cross-
+   * midnight reset via applyAdWatched), resets
+   * `matchesSinceLastInterstitial` (Q9 priority — Double consumes
+   * the cadence slot; the forced interstitial does not also fire).
+   *
+   * Tests pin every reject path so a future PR cannot loosen the
+   * gate by accident.
    */
-  applyRewardedDouble(extraReward: number): {
+  applyRewardedDouble(matchId: string): {
     readonly success: boolean;
-    readonly reward: number;
+    readonly doubledAmount?: number;
+    readonly error?:
+      | 'no_match'
+      | 'wrong_id'
+      | 'not_completed'
+      | 'wrong_outcome'
+      | 'already_doubled'
+      | 'cap_reached';
   };
   /**
    * Phase 7A.5 CP1 — bump the periodic-interstitial counter. Wired
@@ -584,31 +601,69 @@ export const useUserStore = create<UserStoreState & UserStoreActions>()(
         set({ adsRemoved: value });
       },
 
-      applyRewardedDouble: (extraReward) => {
-        if (extraReward <= 0) return { success: false, reward: 0 };
+      applyRewardedDouble: (matchId) => {
+        // Validation chain — each step has a typed error so the
+        // caller (and analytics) can distinguish the reject reason.
+        // The user cannot supply or influence the credited amount
+        // (Codex finding 1 fix); the action computes it from the
+        // active matchState authoritatively.
+        const matchSnap = useMatchStore.getState().matchState;
+        if (matchSnap === null) {
+          return { success: false, error: 'no_match' };
+        }
+        if (matchSnap.id !== matchId) {
+          return { success: false, error: 'wrong_id' };
+        }
+        if (matchSnap.phase !== 'completed' || matchSnap.result === null) {
+          return { success: false, error: 'not_completed' };
+        }
+        const outcome = matchSnap.result.outcome;
+        if (outcome !== 'player_won' && outcome !== 'draw') {
+          return { success: false, error: 'wrong_outcome' };
+        }
+        if (matchSnap.doubledReward === true) {
+          return { success: false, error: 'already_doubled' };
+        }
         const today = formatDailyDate(new Date());
-        const snapshot = useUserStore.getState();
+        const userSnap = useUserStore.getState();
         const capState = {
-          adsWatchedToday: snapshot.adsWatchedToday,
-          adsWatchedLastDate: snapshot.adsWatchedLastDate,
+          adsWatchedToday: userSnap.adsWatchedToday,
+          adsWatchedLastDate: userSnap.adsWatchedLastDate,
         };
         if (!canWatchAd(capState, today)) {
-          return { success: false, reward: 0 };
+          return { success: false, error: 'cap_reached' };
         }
+
+        // All validations passed. Compute the doubled amount from
+        // the catalog + DDA stamp — same source of truth
+        // MatchScreen.tsx uses for the original credit.
+        const mode = modeRegistry.get(matchSnap.modeId);
+        const doubledAmount = rewardForCompletedMatch(
+          matchSnap.result,
+          mode,
+          matchSnap.botDifficulty ?? 'normal',
+        );
+        if (doubledAmount <= 0) {
+          // Defensive — `wrong_outcome` should already cover this,
+          // but a 0-reward outcome (e.g. catalog drift) shouldn't
+          // consume an ad-cap slot for nothing.
+          return { success: false, error: 'wrong_outcome' };
+        }
+
         const next = applyAdWatched(capState, today);
         // Single setState mutates four fields atomically: ad-cap
         // counter + lastDate (one watch consumed), wallet credit
-        // (extra reward layered on top of the original), and the
+        // (doubled amount layered on top of the original), and the
         // interstitial counter reset (Q9 priority — the double ad
         // satisfies this cadence slot; the forced interstitial
         // does not also fire).
         set((s) => ({
           adsWatchedToday: next.adsWatchedToday,
           adsWatchedLastDate: next.adsWatchedLastDate,
-          tokens: s.tokens + extraReward,
+          tokens: s.tokens + doubledAmount,
           matchesSinceLastInterstitial: 0,
         }));
-        return { success: true, reward: extraReward };
+        return { success: true, doubledAmount };
       },
 
       watchAdAction: (today) => {

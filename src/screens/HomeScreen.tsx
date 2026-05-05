@@ -7,7 +7,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { AppState, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Path } from 'react-native-svg';
 import { useNavigation } from '@react-navigation/native';
@@ -44,10 +44,15 @@ export function HomeScreen(): React.JSX.Element {
   const insets = useSafeAreaInsets();
   const dailyState = useUserStore((s) => s.dailyChallenge);
 
-  // `today` is captured once on mount. The countdown ticker below
-  // watches the wall clock; the day string only matters for state
-  // determination, which is recomputed each render off this value.
-  const [today] = useState(() => formatDailyDate(new Date()));
+  // Phase 7A.5 Codex finding 3 fix — `today` is now mutable. The
+  // pre-fix code captured the date once at mount, so a player who
+  // left the app open across midnight (or backgrounded it past
+  // midnight) saw a stale banner against yesterday's calendar
+  // day. The 60s countdown ticker below now also re-evaluates
+  // `today` and updates state when the calendar string changes;
+  // an AppState listener catches the foreground-return case for
+  // backgrounded apps that miss the in-app tick entirely.
+  const [today, setToday] = useState(() => formatDailyDate(new Date()));
   const dayNumber = useMemo(() => calendarDayIndex(today), [today]);
   const dailyConfig = useMemo(() => getDailyConfig(today, dailyState), [today, dailyState]);
   const bannerState: DailyBannerState = getDailyBannerState(today, dailyState.lastResult);
@@ -55,11 +60,38 @@ export function HomeScreen(): React.JSX.Element {
   const [countdown, setCountdown] = useState(() => timeUntilNextDaily(new Date()));
   useEffect(() => {
     // 60s tick — minute granularity is enough for the "Resets in
-    // 14h 32m" surface. Cleanup on unmount.
+    // 14h 32m" surface. Bundles two state refreshes:
+    //   1. Countdown re-format (every minute).
+    //   2. Cross-midnight `today` re-evaluation. When the calendar
+    //      string flips, banner state recomputes via the existing
+    //      memos; HomeScreen is back to the fresh-day branch.
     const interval = setInterval(() => {
-      setCountdown(timeUntilNextDaily(new Date()));
+      const now = new Date();
+      setCountdown(timeUntilNextDaily(now));
+      setToday((prev) => {
+        const next = formatDailyDate(now);
+        return next === prev ? prev : next;
+      });
     }, 60_000);
     return () => clearInterval(interval);
+  }, []);
+
+  // Phase 7A.5 Codex finding 3 fix — AppState listener for the
+  // backgrounded-past-midnight case. The 60s in-app tick won't
+  // fire while suspended; on `'active'` we re-pull today's
+  // calendar string and the countdown so the banner reflects the
+  // current day even if the user was away for hours.
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state !== 'active') return;
+      const now = new Date();
+      setCountdown(timeUntilNextDaily(now));
+      setToday((prev) => {
+        const next = formatDailyDate(now);
+        return next === prev ? prev : next;
+      });
+    });
+    return () => sub.remove();
   }, []);
 
   const bannerCopy = useMemo(

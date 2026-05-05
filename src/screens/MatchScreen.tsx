@@ -53,13 +53,11 @@ import { matchOutcomeToRoute } from '@game/adapters/matchOutcomeToRoute';
 import { subscribeBlitzLifecycle } from '@/lib/appLifecycle';
 import { modeRegistry } from '@game/modeRegistry';
 import { getRowRenderer } from '@game/renderers';
-import { computeReward } from '@game/economy/rewardPacing';
+import { rewardForCompletedMatch } from '@game/economy/matchReward';
 import type {
   BotContext,
-  BotDifficulty,
   GuessEntry,
   GuessRowAdaptorContext,
-  MatchResult as EngineMatchResult,
   ModeCatalogEntry,
 } from '@game/types';
 import { createRNG } from '@/lib/random';
@@ -484,7 +482,7 @@ export function MatchScreen(): React.JSX.Element {
       opponentId,
       secret: matchState.opponentSecret,
       guessCount: matchState.result.turns,
-      reward: rewardForOutcome(matchState.result, mode, matchState.botDifficulty ?? 'normal'),
+      reward: rewardForCompletedMatch(matchState.result, mode, matchState.botDifficulty ?? 'normal'),
       xpGain: XP_BY_OUTCOME[outcome],
     });
   }, [isEngineMode, matchState, modeId, mode, navigation, opponentId]);
@@ -1009,29 +1007,13 @@ const XP_BY_OUTCOME: Readonly<Record<MatchResultOutcome, number>> = {
   stalemate: 0,
 };
 
-function rewardForOutcome(
-  result: EngineMatchResult,
-  mode: ModeCatalogEntry,
-  difficulty: BotDifficulty,
-): number {
-  // Phase 7A.5 CP2 — DDA-aware reward multiplier applied on the
-  // earned-credit paths (player_won, draw). Stalemate refunds the
-  // raw stake (it's the original transaction unwinding, not new
-  // tokens earned). Defeat stays at 0; multiplying zero is still
-  // zero, but the explicit branch keeps the policy decision
-  // documented for the case where a future "consolation reward"
-  // variant lands.
-  switch (result.outcome) {
-    case 'player_won':
-      return computeReward(mode.meta.rewardWin, difficulty);
-    case 'draw':
-      return computeReward(mode.meta.rewardDraw, difficulty);
-    case 'stalemate':
-      return mode.meta.stake;
-    case 'opponent_won':
-      return 0;
-  }
-}
+// Phase 7A.5 fix — `rewardForOutcome` was lifted into
+// `@game/economy/matchReward.rewardForCompletedMatch` so the
+// route-param reward AND the rewarded-double action's internal
+// computation share one authoritative source. Without this, the
+// CP6 `applyRewardedDouble(extraReward)` signature accepted a
+// caller-supplied amount that Codex review (high severity)
+// flagged as a token-mint surface.
 
 const styles = StyleSheet.create({
   header: {

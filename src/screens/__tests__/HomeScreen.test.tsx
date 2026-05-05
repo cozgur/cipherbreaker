@@ -225,6 +225,76 @@ describe('HomeScreen', () => {
     });
   });
 
+  describe('Cross-midnight refresh — Phase 7A.5 Codex finding 3 fix', () => {
+    // Pre-fix `today` was captured once at mount via useState
+    // initializer, so a player who left the app open across
+    // midnight (or backgrounded past midnight) saw stale banner
+    // state. The fix re-evaluates `today` on the 60s tick AND on
+    // AppState 'active'.
+
+    function applyMockDate(year: number, month: number, day: number, hour = 12, minute = 0): typeof Date {
+      const original = global.Date;
+      const fixedTime = new original(year, month, day, hour, minute, 0).getTime();
+      function MockDate(this: Date, ...args: unknown[]) {
+        if (!new.target) return new (original as DateConstructor)().toString();
+        if (args.length === 0) return new (original as DateConstructor)(fixedTime);
+        // @ts-expect-error pass-through
+        return new (original as DateConstructor)(...args);
+      }
+      MockDate.prototype = original.prototype;
+      MockDate.now = () => fixedTime;
+      MockDate.parse = original.parse.bind(original);
+      MockDate.UTC = original.UTC.bind(original);
+      // @ts-expect-error mock substitution
+      global.Date = MockDate;
+      return original;
+    }
+
+    it('60s tick re-evaluates today; banner state recomputes when calendar string flips', () => {
+      jest.useFakeTimers();
+      // Mount on May 1 — banner shows Day #1.
+      const original = applyMockDate(2026, 4, 1, 23, 59);
+      try {
+        const utils = renderWithNavigation('Home', { Home: HomeScreen });
+        expect(utils.queryByText(/Day #1/)).toBeTruthy();
+
+        // Advance to May 2 BEFORE the 60s tick fires — set the new
+        // mocked Date AND advance fake timers so the screen's
+        // setInterval callback runs on the new clock.
+        global.Date = original;
+        applyMockDate(2026, 4, 2, 0, 0);
+        act(() => {
+          jest.advanceTimersByTime(60_000);
+        });
+        // Banner should now reflect Day #2 (May 2 is calendar day 2
+        // relative to LAUNCH_EPOCH 2026-05-01).
+        expect(utils.queryByText(/Day #2/)).toBeTruthy();
+      } finally {
+        global.Date = original;
+        jest.useRealTimers();
+      }
+    });
+
+    it('today refresh is idempotent when calendar string has not flipped', () => {
+      jest.useFakeTimers();
+      const original = applyMockDate(2026, 4, 1, 12, 0);
+      try {
+        const utils = renderWithNavigation('Home', { Home: HomeScreen });
+        const headlineBefore = utils.queryByText(/Day #1/);
+        expect(headlineBefore).toBeTruthy();
+        // Advance one tick on the SAME calendar day.
+        act(() => {
+          jest.advanceTimersByTime(60_000);
+        });
+        // Still Day #1 — no spurious re-render flip.
+        expect(utils.queryByText(/Day #1/)).toBeTruthy();
+      } finally {
+        global.Date = original;
+        jest.useRealTimers();
+      }
+    });
+  });
+
   describe('Low Balance Toast — Phase 7A.5 CP4', () => {
     it('hidden when wallet balance is at or above LOW_BALANCE_THRESHOLD (default fixture 1840)', () => {
       const utils = renderWithNavigation('Home', { Home: HomeScreen });

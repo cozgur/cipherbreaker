@@ -2,6 +2,8 @@ import { act, fireEvent } from '@testing-library/react-native';
 
 import { __resetMockUserForTests, mockUser } from '@data/mockUser';
 import { AD_CAP_PER_DAY, AD_REWARD_TOKENS } from '@game/economy/constants';
+import { __resetRegistryForTests, modeRegistry } from '@game/modeRegistry';
+import { mode1ColorMatch } from '@game/modes/mode1ColorMatch';
 import type { RootStackParamList } from '@navigation/routes';
 import { useMatchStore } from '@state/matchStore';
 import { useUserStore } from '@state/userStore';
@@ -13,6 +15,8 @@ import { renderWithNavigation, stableTreeForSnapshot } from '@/test-utils/render
 describe('AdWatchScreen', () => {
   beforeEach(() => {
     __resetMockUserForTests();
+    __resetRegistryForTests();
+    modeRegistry.register(mode1ColorMatch);
     jest.useFakeTimers();
   });
 
@@ -220,24 +224,11 @@ describe('AdWatchScreen', () => {
     });
   });
 
-  describe('Phase 7A.5 CP6 — double mode (rewarded double)', () => {
-    it('renders the double-mode copy when route params include mode="double" + extraReward', () => {
-      const utils = renderWithNavigation(
-        'AdWatch',
-        { AdWatch: AdWatchScreen, Home: HomeScreen },
-        { mode: 'double', extraReward: 180 } as RootStackParamList['AdWatch'],
-      );
-      expect(utils.queryByText(/Watch to double — earn 180 extra tokens/)).toBeTruthy();
-      // The reward pill mirrors the extra amount (not the legacy +50).
-      expect(utils.queryByText('+180')).toBeTruthy();
-      expect(utils.queryByText('+50')).toBeNull();
-    });
-
-    it('completion calls applyRewardedDouble + setDoubledReward, NOT watchAdAction', () => {
-      const beforeTokens = useUserStore.getState().tokens;
-      // Need a matchState to set doubledReward against.
+  describe('Phase 7A.5 CP6 + Codex finding 1 fix — double mode (rewarded double)', () => {
+    function seedCompletedWinMatch(id = 'match-A'): void {
       useMatchStore.setState({
         matchState: {
+          id,
           modeId: 1,
           playerSecret: '1234',
           opponentSecret: '5678',
@@ -246,51 +237,58 @@ describe('AdWatchScreen', () => {
           rngState: { seed: 1, callCount: 0 },
           phase: 'completed',
           result: { outcome: 'player_won', reason: 'cracked', turns: 4 },
+          botDifficulty: 'normal',
         } as never,
       });
+    }
+
+    it('renders the double-mode copy when route params include mode="double" + matchId', () => {
+      const utils = renderWithNavigation(
+        'AdWatch',
+        { AdWatch: AdWatchScreen, Home: HomeScreen },
+        { mode: 'double', matchId: 'match-A' } as RootStackParamList['AdWatch'],
+      );
+      expect(utils.queryByText('Watch to double your match reward')).toBeTruthy();
+      // Reward pill shows ×2 indicator (not a hardcoded amount the
+      // user could have manipulated).
+      expect(utils.queryByText('×2')).toBeTruthy();
+      expect(utils.queryByText('+50')).toBeNull();
+    });
+
+    it('valid match: completion credits doubled amount via applyRewardedDouble + sets doubledReward', () => {
+      seedCompletedWinMatch('match-A');
+      const beforeTokens = useUserStore.getState().tokens;
       renderWithNavigation(
         'AdWatch',
         { AdWatch: AdWatchScreen, Home: HomeScreen },
-        { mode: 'double', extraReward: 200 } as RootStackParamList['AdWatch'],
+        { mode: 'double', matchId: 'match-A' } as RootStackParamList['AdWatch'],
       );
       act(() => {
         jest.advanceTimersByTime(5000);
       });
-      // Wallet credited the extra (NOT the legacy +50).
-      expect(useUserStore.getState().tokens).toBe(beforeTokens + 200);
-      // matchState marked as doubled.
+      // Mode 1 win × normal = 100 × 1.2 = 120, computed internally
+      // by the action (NOT supplied by the route). User cannot
+      // influence the credited amount.
+      expect(useUserStore.getState().tokens).toBe(beforeTokens + 120);
       expect(useMatchStore.getState().matchState!.doubledReward).toBe(true);
-      // Counter reset (Q9 — Double > Interstitial).
       expect(useUserStore.getState().matchesSinceLastInterstitial).toBe(0);
     });
 
-    it('analytics event is rewarded_double_taken (not ad_watch_completed)', () => {
+    it('analytics event is rewarded_double_taken on success (not ad_watch_completed)', () => {
       const logSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
-      useMatchStore.setState({
-        matchState: {
-          modeId: 1,
-          playerSecret: '1234',
-          opponentSecret: '5678',
-          playerGuesses: [],
-          opponentGuesses: [],
-          rngState: { seed: 1, callCount: 0 },
-          phase: 'completed',
-          result: { outcome: 'player_won', reason: 'cracked', turns: 4 },
-        } as never,
-      });
+      seedCompletedWinMatch('match-A');
       renderWithNavigation(
         'AdWatch',
         { AdWatch: AdWatchScreen, Home: HomeScreen },
-        { mode: 'double', extraReward: 180 } as RootStackParamList['AdWatch'],
+        { mode: 'double', matchId: 'match-A' } as RootStackParamList['AdWatch'],
       );
       act(() => {
         jest.advanceTimersByTime(5000);
       });
       expect(logSpy).toHaveBeenCalledWith(
         '[analytics] rewarded_double_taken',
-        expect.objectContaining({ reward: 180, success: true }),
+        expect.objectContaining({ reward: 120, success: true }),
       );
-      // Make sure the legacy event did NOT also fire.
       expect(logSpy).not.toHaveBeenCalledWith(
         '[analytics] ad_watch_completed',
         expect.anything(),
@@ -298,7 +296,28 @@ describe('AdWatchScreen', () => {
       logSpy.mockRestore();
     });
 
-    it('missing extraReward falls through to the regular reward path (defensive)', () => {
+    it('invalid attempt (wrong matchId): logs rewarded_double_invalid_attempt, no token credit, doubledReward not set', () => {
+      const logSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+      seedCompletedWinMatch('match-A');
+      const beforeTokens = useUserStore.getState().tokens;
+      renderWithNavigation(
+        'AdWatch',
+        { AdWatch: AdWatchScreen, Home: HomeScreen },
+        { mode: 'double', matchId: 'match-WRONG' } as RootStackParamList['AdWatch'],
+      );
+      act(() => {
+        jest.advanceTimersByTime(5000);
+      });
+      expect(useUserStore.getState().tokens).toBe(beforeTokens);
+      expect(useMatchStore.getState().matchState!.doubledReward).toBeUndefined();
+      expect(logSpy).toHaveBeenCalledWith(
+        '[analytics] rewarded_double_invalid_attempt',
+        expect.objectContaining({ error: 'wrong_id' }),
+      );
+      logSpy.mockRestore();
+    });
+
+    it('missing matchId falls through to the regular reward path (defensive)', () => {
       const beforeTokens = useUserStore.getState().tokens;
       renderWithNavigation(
         'AdWatch',
@@ -308,7 +327,8 @@ describe('AdWatchScreen', () => {
       act(() => {
         jest.advanceTimersByTime(5000);
       });
-      // Falls through to watchAdAction — credits +50.
+      // Falls through to watchAdAction — credits +50, NOT the
+      // doubled-amount path.
       expect(useUserStore.getState().tokens).toBe(beforeTokens + AD_REWARD_TOKENS);
     });
   });

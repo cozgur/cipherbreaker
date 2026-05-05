@@ -118,8 +118,16 @@ export const useMatchStore = create<MatchStoreState & MatchStoreActions>()(
         // value through. Freezing here (not at startMatch) means the
         // player can't game DDA by losing matches between commit and
         // start — there is no such window.
+        //
+        // Phase 7A.5 fix — opaque per-match id assigned here so
+        // applyRewardedDouble(matchId) can verify it's operating on
+        // the same match the AdWatch flow was launched from. Composed
+        // from `Date.now()` (millisecond) + the seed (uint32) so
+        // two near-simultaneous matches on the same device never
+        // collide on a shared id.
         const next = {
           ...created,
+          id: `${Date.now().toString(36)}-${rngState.seed.toString(36)}`,
           botDifficulty: pickDifficultyFromOutcomes(
             useUserStore.getState().stats.recentMatches,
           ),

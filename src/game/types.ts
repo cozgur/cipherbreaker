@@ -395,6 +395,21 @@ export interface RNGStateSnapshot {
  * Live-tick fields (clock display) live in `LiveClockState`.
  */
 export interface MatchState {
+  /**
+   * Phase 7A.5 fix — opaque per-match identifier assigned at
+   * `createMatch` time. Load-bearing for the Phase 7A.5 CP6
+   * rewarded-double validation: `applyRewardedDouble(matchId)`
+   * verifies that the AdWatch route's incoming `matchId` matches
+   * the active match's id before crediting tokens. Without this
+   * gate, a stale deep link or manipulated route param could mint
+   * tokens against a different (or already-completed) match.
+   *
+   * Optional for backwards compatibility — pre-fix persisted
+   * matches hydrate with `undefined`. The validation treats a
+   * missing id as a "no_match" reject so legacy state can't be
+   * exploited either.
+   */
+  readonly id?: string;
   readonly modeId: number;
   readonly playerSecret: string;
   readonly opponentSecret: string;

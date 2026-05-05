@@ -30,20 +30,26 @@ export type RootStackParamList = {
   };
   Shop: undefined;
   /**
-   * Phase 7A.5 CP6 — `mode` chooses between the legacy reward
-   * flow (default `'reward'` → `+50` tokens via `watchAdAction`)
-   * and the rewarded-double flow (`'double'` → grants `extraReward`
-   * extra tokens via `applyRewardedDouble`). Both modes share the
-   * same screen surface (5-second countdown + Skip arming), only
-   * the finish handler branches.
+   * Phase 7A.5 CP6 + Codex finding 1 (HIGH) fix — `mode` chooses
+   * between the legacy reward flow (default `'reward'` → `+50`
+   * tokens via `watchAdAction`) and the rewarded-double flow
+   * (`'double'` → credits the doubled reward via
+   * `applyRewardedDouble(matchId)`). Both modes share the same
+   * screen surface (5-second countdown + Skip arming), only the
+   * finish handler branches.
+   *
+   * The double-mode param is `matchId` (NOT a credit amount) —
+   * the action computes the doubled tokens internally from the
+   * matchState. This closes the pre-fix exploit where a
+   * manipulated `extraReward` could mint arbitrary tokens.
    *
    * Both params are optional so existing call sites
-   * (`navigation.navigate('AdWatch')`) keep their pre-CP6 behaviour.
-   * `extraReward` is required when `mode === 'double'`; the screen
-   * defends against the missing-param edge by falling through to a
-   * no-credit completion.
+   * (`navigation.navigate('AdWatch')`) keep their pre-CP6
+   * behaviour. `matchId` is required when `mode === 'double'`;
+   * the screen defends against a missing param by falling through
+   * to a `no_match` reject + analytics event for invalid attempts.
    */
-  AdWatch: { mode?: 'reward' | 'double'; extraReward?: number } | undefined;
+  AdWatch: { mode?: 'reward' | 'double'; matchId?: string } | undefined;
   /**
    * Phase 7A.5 CP3 — periodic interstitial. Pushed from
    * `MatchResultScreen` after every Nth Mode 1-7 match

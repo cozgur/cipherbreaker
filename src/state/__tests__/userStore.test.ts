@@ -1,8 +1,17 @@
+import { __resetRegistryForTests, modeRegistry } from '@game/modeRegistry';
+import { mode1ColorMatch } from '@game/modes/mode1ColorMatch';
+import { useMatchStore } from '@state/matchStore';
 import { __migrateUserStoreForTests, USER_STORE_DEFAULTS, useUserStore } from '../userStore';
 
 describe('useUserStore', () => {
   beforeEach(() => {
     useUserStore.setState({ ...USER_STORE_DEFAULTS });
+    // Phase 7A.5 Codex finding 1 — applyRewardedDouble reads
+    // mode catalog via modeRegistry, so register Mode 1 for the
+    // double tests. Other tests don't depend on this and the
+    // registration is idempotent across the suite.
+    __resetRegistryForTests();
+    modeRegistry.register(mode1ColorMatch);
   });
 
   it('starts at the documented defaults', () => {
@@ -599,7 +608,7 @@ describe('useUserStore', () => {
       expect(useUserStore.getState().tokens).toBe(tokensBefore);
     });
 
-    describe('applyRewardedDouble — Phase 7A.5 CP6', () => {
+    describe('applyRewardedDouble — Phase 7A.5 CP6 + Codex finding 1 fix', () => {
       let originalDate: typeof Date;
 
       beforeEach(() => {
@@ -623,70 +632,173 @@ describe('useUserStore', () => {
 
       afterEach(() => {
         global.Date = originalDate;
+        useMatchStore.getState().clearMatch();
       });
 
-      it('credits the extra reward, increments ad cap, and resets the interstitial counter (Q9 priority)', () => {
+      function seedCompletedWinMatch(
+        matchId: string,
+        outcome: 'player_won' | 'draw' = 'player_won',
+        modeId = 1,
+      ): void {
+        useMatchStore.setState({
+          matchState: {
+            id: matchId,
+            modeId,
+            playerSecret: '1234',
+            opponentSecret: '5678',
+            playerGuesses: [],
+            opponentGuesses: [],
+            rngState: { seed: 1, callCount: 0 },
+            phase: 'completed',
+            result: { outcome, reason: 'cracked', turns: 4 },
+            botDifficulty: 'normal',
+          } as never,
+        });
+      }
+
+      // Mode 1 win × normal difficulty → computeReward(100, 'normal') = 120.
+      // Tests use `match-A` as the canonical id throughout.
+
+      it('valid match win: credits the doubled amount (computed internally), increments ad cap, resets counter', () => {
+        seedCompletedWinMatch('match-A', 'player_won', 1);
         useUserStore.setState({
           tokens: 100,
           adsWatchedToday: 0,
           adsWatchedLastDate: null,
           matchesSinceLastInterstitial: 2,
         });
-        const result = useUserStore.getState().applyRewardedDouble(180);
-        expect(result).toEqual({ success: true, reward: 180 });
+        const result = useUserStore.getState().applyRewardedDouble('match-A');
+        expect(result).toEqual({ success: true, doubledAmount: 120 });
         const state = useUserStore.getState();
-        expect(state.tokens).toBe(280); // 100 + 180
+        expect(state.tokens).toBe(220); // 100 + 120
         expect(state.adsWatchedToday).toBe(1);
         expect(state.adsWatchedLastDate).toBe('2026-05-05');
         // Q9 — Double consumes the cadence slot; counter resets.
         expect(state.matchesSinceLastInterstitial).toBe(0);
       });
 
-      it('cap-reached defensive: refuses, no token credit, no counter touch', () => {
-        useUserStore.setState({
-          tokens: 100,
-          adsWatchedToday: 10,
-          adsWatchedLastDate: '2026-05-05',
-          matchesSinceLastInterstitial: 3,
-        });
-        const result = useUserStore.getState().applyRewardedDouble(180);
-        expect(result).toEqual({ success: false, reward: 0 });
-        const state = useUserStore.getState();
-        expect(state.tokens).toBe(100);
-        expect(state.adsWatchedToday).toBe(10);
-        // Counter NOT reset — the rewarded slot wasn't redeemed,
-        // so the interstitial cadence is still pending.
-        expect(state.matchesSinceLastInterstitial).toBe(3);
+      it('rejects no_match when matchState is null (defensive)', () => {
+        useMatchStore.getState().clearMatch();
+        const result = useUserStore.getState().applyRewardedDouble('match-A');
+        expect(result).toEqual({ success: false, error: 'no_match' });
       });
 
-      it('cross-midnight stale lastDate: counter resets, double credits cleanly', () => {
+      it('rejects wrong_id when supplied id does not match active match (Codex finding 1 — exploit closure)', () => {
+        seedCompletedWinMatch('match-A');
+        const result = useUserStore.getState().applyRewardedDouble('match-WRONG');
+        expect(result).toEqual({ success: false, error: 'wrong_id' });
+        // No state mutation on reject.
+        expect(useUserStore.getState().adsWatchedToday).toBe(0);
+      });
+
+      it('rejects not_completed when matchState.phase is not completed', () => {
+        useMatchStore.setState({
+          matchState: {
+            id: 'match-A',
+            modeId: 1,
+            playerSecret: '1234',
+            opponentSecret: '5678',
+            playerGuesses: [],
+            opponentGuesses: [],
+            rngState: { seed: 1, callCount: 0 },
+            phase: 'active_turn_player',
+            result: null,
+            botDifficulty: 'normal',
+          } as never,
+        });
+        const result = useUserStore.getState().applyRewardedDouble('match-A');
+        expect(result).toEqual({ success: false, error: 'not_completed' });
+      });
+
+      it('rejects wrong_outcome on a defeat (no reward to double)', () => {
+        useMatchStore.setState({
+          matchState: {
+            id: 'match-A',
+            modeId: 1,
+            playerSecret: '1234',
+            opponentSecret: '5678',
+            playerGuesses: [],
+            opponentGuesses: [],
+            rngState: { seed: 1, callCount: 0 },
+            phase: 'completed',
+            result: { outcome: 'opponent_won', reason: 'cracked', turns: 6 },
+            botDifficulty: 'normal',
+          } as never,
+        });
+        const result = useUserStore.getState().applyRewardedDouble('match-A');
+        expect(result).toEqual({ success: false, error: 'wrong_outcome' });
+      });
+
+      it('rejects wrong_outcome on a stalemate (refund is the original transaction, not earned)', () => {
+        useMatchStore.setState({
+          matchState: {
+            id: 'match-A',
+            modeId: 1,
+            playerSecret: '1234',
+            opponentSecret: '5678',
+            playerGuesses: [],
+            opponentGuesses: [],
+            rngState: { seed: 1, callCount: 0 },
+            phase: 'completed',
+            result: { outcome: 'stalemate', reason: 'both_exhausted', turns: 8 },
+            botDifficulty: 'normal',
+          } as never,
+        });
+        const result = useUserStore.getState().applyRewardedDouble('match-A');
+        expect(result).toEqual({ success: false, error: 'wrong_outcome' });
+      });
+
+      it('rejects already_doubled (idempotency — second call on the same match)', () => {
+        seedCompletedWinMatch('match-A');
+        // First call succeeds. Action does NOT auto-set doubledReward
+        // (the AdWatchScreen calls setDoubledReward post-success), so
+        // simulate that here for the second-call test.
+        const first = useUserStore.getState().applyRewardedDouble('match-A');
+        expect(first.success).toBe(true);
+        useMatchStore.getState().setDoubledReward(true);
+        // Second call should reject.
+        const second = useUserStore.getState().applyRewardedDouble('match-A');
+        expect(second).toEqual({ success: false, error: 'already_doubled' });
+      });
+
+      it('rejects cap_reached when ad cap is at 10/10 for today', () => {
+        seedCompletedWinMatch('match-A');
         useUserStore.setState({
-          tokens: 100,
+          adsWatchedToday: 10,
+          adsWatchedLastDate: '2026-05-05',
+        });
+        const result = useUserStore.getState().applyRewardedDouble('match-A');
+        expect(result).toEqual({ success: false, error: 'cap_reached' });
+      });
+
+      it('cross-midnight stale lastDate: cap resets, double credits cleanly', () => {
+        seedCompletedWinMatch('match-A');
+        useUserStore.setState({
+          tokens: 50,
           adsWatchedToday: 10,
           adsWatchedLastDate: '2026-05-04', // yesterday — stale
           matchesSinceLastInterstitial: 3,
         });
-        const result = useUserStore.getState().applyRewardedDouble(150);
-        expect(result).toEqual({ success: true, reward: 150 });
+        const result = useUserStore.getState().applyRewardedDouble('match-A');
+        expect(result).toEqual({ success: true, doubledAmount: 120 });
         const state = useUserStore.getState();
-        expect(state.tokens).toBe(250);
-        // Stale day collapse: counter back to 1, today's date stamped.
+        expect(state.tokens).toBe(170); // 50 + 120
         expect(state.adsWatchedToday).toBe(1);
         expect(state.adsWatchedLastDate).toBe('2026-05-05');
       });
 
-      it('zero or negative extraReward refuses without state mutation', () => {
-        const before = useUserStore.getState();
-        expect(useUserStore.getState().applyRewardedDouble(0)).toEqual({
-          success: false,
-          reward: 0,
-        });
-        expect(useUserStore.getState().applyRewardedDouble(-50)).toEqual({
-          success: false,
-          reward: 0,
-        });
-        expect(useUserStore.getState().tokens).toBe(before.tokens);
-        expect(useUserStore.getState().adsWatchedToday).toBe(before.adsWatchedToday);
+      it('cannot be exploited via injected reward (signature change enforces validation)', () => {
+        // The pre-fix signature accepted a caller-supplied amount.
+        // The new signature only accepts matchId; the action reads
+        // matchState authoritatively. A draw on Mode 1 yields the
+        // catalog draw reward × DDA = 50 × 1.2 = 60, NOT some
+        // arbitrary number a caller could have specified.
+        seedCompletedWinMatch('match-A', 'draw', 1);
+        useUserStore.setState({ tokens: 0 });
+        const result = useUserStore.getState().applyRewardedDouble('match-A');
+        expect(result.success).toBe(true);
+        expect(result.doubledAmount).toBe(60); // not, e.g., 99999
+        expect(useUserStore.getState().tokens).toBe(60);
       });
     });
 

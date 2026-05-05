@@ -53,13 +53,14 @@ export function AdWatchScreen(): React.JSX.Element {
   const [secondsLeft, setSecondsLeft] = useState<number>(COUNTDOWN_SECONDS);
   const completedRef = useRef<boolean>(false);
 
-  // Phase 7A.5 CP6 — route params are optional + nullable for the
-  // legacy `navigation.navigate('AdWatch')` callers (no params at
-  // all). The double-mode branch requires both `mode === 'double'`
-  // AND a positive `extraReward`; missing either falls through to
-  // the regular reward flow defensively.
+  // Phase 7A.5 CP6 + Codex finding 1 fix — route params are
+  // optional + nullable for the legacy `navigation.navigate('AdWatch')`
+  // callers (no params at all). The double-mode branch requires
+  // both `mode === 'double'` AND a `matchId`; missing matchId
+  // falls through to the regular reward flow defensively (no
+  // double-credit possible without a valid matchState id match).
   const mode = route.params?.mode ?? 'reward';
-  const extraReward = route.params?.extraReward;
+  const matchId = route.params?.matchId;
 
   useEffect(() => {
     const tick = setInterval(() => {
@@ -72,17 +73,33 @@ export function AdWatchScreen(): React.JSX.Element {
     (reason: 'skipped' | 'completed'): void => {
       if (completedRef.current) return;
       completedRef.current = true;
-      if (mode === 'double' && extraReward !== undefined && extraReward > 0) {
-        // CP6 — rewarded double path. Mark matchState first
-        // (own-state-first ordering, matchStore-pattern Phase 5+),
-        // then credit + cap-stamp + interstitial-reset on userStore.
-        useMatchStore.getState().setDoubledReward(true);
-        const result = useUserStore.getState().applyRewardedDouble(extraReward);
-        console.log('[analytics] rewarded_double_taken', {
-          reward: result.reward,
-          reason,
-          success: result.success,
-        });
+      if (mode === 'double' && typeof matchId === 'string' && matchId.length > 0) {
+        // CP6 — rewarded double path. The action validates the
+        // match (id, completion, outcome, idempotency, cap) and
+        // computes the doubled amount internally; the user
+        // cannot influence the credit. Codex finding 1 fix
+        // collapsed the previous extraReward-from-route exploit.
+        // Mark matchState first (own-state-first ordering,
+        // matchStore-pattern Phase 5+) iff the action will
+        // succeed — but the action itself is the gate, so we
+        // stamp doubledReward unconditionally for `success` and
+        // skip on a reject.
+        const result = useUserStore.getState().applyRewardedDouble(matchId);
+        if (result.success) {
+          useMatchStore.getState().setDoubledReward(true);
+          console.log('[analytics] rewarded_double_taken', {
+            reward: result.doubledAmount ?? 0,
+            reason,
+            success: true,
+          });
+        } else {
+          // Reject — analytics records the validation step that
+          // failed so a future provider can split the funnel.
+          console.log('[analytics] rewarded_double_invalid_attempt', {
+            reason,
+            error: result.error,
+          });
+        }
       } else {
         // CP5 — regular rewarded flow. The action runs the
         // canWatchAd cap check; a cap-reached state returns
@@ -100,7 +117,7 @@ export function AdWatchScreen(): React.JSX.Element {
       }
       navigation.goBack();
     },
-    [navigation, mode, extraReward],
+    [navigation, mode, matchId],
   );
 
   useEffect(() => {
@@ -155,8 +172,8 @@ export function AdWatchScreen(): React.JSX.Element {
           <View style={styles.adArt} />
           <Text style={styles.adTitle}>Sponsored Content</Text>
           <Text style={styles.adSub}>
-            {mode === 'double' && extraReward !== undefined
-              ? `Watch to double — earn ${extraReward} extra tokens`
+            {mode === 'double'
+              ? 'Watch to double your match reward'
               : `Watch to earn ${AD_REWARD_TOKENS} tokens`}
           </Text>
         </View>
@@ -166,7 +183,7 @@ export function AdWatchScreen(): React.JSX.Element {
         <View style={styles.rewardPill}>
           <TokenCoin size={16} />
           <Text style={styles.rewardAmount}>
-            +{mode === 'double' && extraReward !== undefined ? extraReward : AD_REWARD_TOKENS}
+            {mode === 'double' ? '×2' : `+${AD_REWARD_TOKENS}`}
           </Text>
           <Text style={styles.rewardLabel}>on finish</Text>
         </View>

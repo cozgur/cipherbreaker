@@ -5525,8 +5525,7 @@ exports[`AdWatchScreen snapshots the initial countdown frame 1`] = `
                                     },
                                     {
                                       "children": [
-                                        "+",
-                                        "50",
+                                        "+50",
                                       ],
                                       "props": {
                                         "style": {

@@ -237,27 +237,27 @@ export function MatchResultScreen(): React.JSX.Element {
   );
   const goHome = useCallback(() => navigation.popToTop(), [navigation]);
 
-  // Phase 7A.5 CP6 — rewarded "Double" eligibility + handlers.
-  // The Double UI shows when ALL of:
+  // Phase 7A.5 CP6 + Codex finding 2 fix — rewarded "Double"
+  // eligibility + handlers. The Double UI shows when ALL of:
   //   - outcome is win or draw (loss has no reward to double;
   //     stalemate refunds the raw stake — no multiplier path).
+  //   - reward > 0 (defensive — a 0-reward outcome shouldn't
+  //     surface a Double CTA).
+  //   - isEnginePath (mock dev-picker has no real reward to double).
   //   - matchState.doubledReward !== true (idempotency — once
   //     redeemed, the option vanishes for this match).
-  //   - adsRemoved === false (Remove Ads users opt out of forced
-  //     ad surfaces; the rewarded layer is gated for consistency
-  //     with CP3's interstitial gate, even though Double is user-
-  //     elective. Q11 reading — "sadece forced ads" was the
-  //     interstitial-only gate; CP6 design treats the Double CTA
-  //     as a peer ad surface to keep the ad-free experience clean
-  //     for paying users).
   //   - Daily ad cap has headroom for one more watch.
   //   - This match's interstitial has not already fired (Q9 —
   //     Çift ad ASLA yok; once interstitial covered the screen,
   //     the rewarded path is locked for this match).
   //   - The user has not tapped "Skip" for this match (local
   //     dismiss state — once skipped, the affordance hides).
+  //
+  // Note: Remove Ads (`adsRemoved` IAP) does NOT gate this surface
+  // anymore. Q11=B reading — Remove Ads only removes FORCED ad
+  // layers (CP3 interstitial); user-elective rewarded paths stay
+  // available so paying players keep the same earning ceiling.
   const matchState = useMatchStore((s) => s.matchState);
-  const adsRemoved = useUserStore((s) => s.adsRemoved);
   const adsWatchedToday = useUserStore((s) => s.adsWatchedToday);
   const adsWatchedLastDate = useUserStore((s) => s.adsWatchedLastDate);
   const [skipDoubleTapped, setSkipDoubleTapped] = useState(false);
@@ -269,12 +269,18 @@ export function MatchResultScreen(): React.JSX.Element {
     return canWatchAd({ adsWatchedToday, adsWatchedLastDate }, today);
   }, [adsWatchedToday, adsWatchedLastDate]);
 
+  // Phase 7A.5 Codex finding 2 fix — Q11=B contract: Remove Ads
+  // IAP gates only the FORCED interstitial layer. The rewarded
+  // double is user-elective, so paying users keep the option to
+  // double their match reward. Pre-fix the gate included
+  // `!adsRemoved` and silently disabled this surface for paying
+  // users — wrong reading of Q11. The interstitial gate (CP3)
+  // still respects adsRemoved correctly via canShowInterstitial.
   const doubleEligible =
     isEnginePath &&
     isWinOrDraw &&
     reward > 0 &&
     !alreadyDoubled &&
-    !adsRemoved &&
     adCapAvailable &&
     !interstitialFired &&
     !skipDoubleTapped;
@@ -300,8 +306,15 @@ export function MatchResultScreen(): React.JSX.Element {
       clearTimeout(interstitialTimerRef.current);
       interstitialTimerRef.current = null;
     }
-    navigation.navigate('AdWatch', { mode: 'double', extraReward: reward });
-  }, [navigation, reward]);
+    // Codex finding 1 fix — pass matchId, NOT a credit amount.
+    // The user-supplied amount path was a token-mint exploit; the
+    // action now reads the reward authoritatively from matchState.
+    // If matchState somehow has no id (legacy persisted match),
+    // skip — applyRewardedDouble would reject with `wrong_id`.
+    const id = matchState?.id;
+    if (id === undefined) return;
+    navigation.navigate('AdWatch', { mode: 'double', matchId: id });
+  }, [navigation, matchState?.id]);
 
   const onSkipDouble = useCallback(() => {
     console.log('[analytics] rewarded_double_skipped', { modeId, outcome });

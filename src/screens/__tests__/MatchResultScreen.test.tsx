@@ -430,10 +430,29 @@ describe('MatchResultScreen — Phase 7A.5 CP6 rewarded double UI', () => {
       adsWatchedToday: 0,
       adsWatchedLastDate: null,
     });
+    // Phase 7A.5 Codex finding 1 fix — Double tap reads
+    // matchState.id and skips if undefined. Seed a default
+    // completed match so the eligibility + tap-handler tests
+    // operate on a valid id.
+    useMatchStore.setState({
+      matchState: {
+        id: 'match-test',
+        modeId: 1,
+        playerSecret: '1234',
+        opponentSecret: '5678',
+        playerGuesses: [],
+        opponentGuesses: [],
+        rngState: { seed: 1, callCount: 0 },
+        phase: 'completed',
+        result: { outcome: 'player_won', reason: 'cracked', turns: 4 },
+        botDifficulty: 'normal',
+      } as never,
+    });
   });
 
   afterEach(() => {
     jest.useRealTimers();
+    useMatchStore.getState().clearMatch();
   });
 
   function renderWinForDouble(
@@ -479,10 +498,14 @@ describe('MatchResultScreen — Phase 7A.5 CP6 rewarded double UI', () => {
     expect(utils.queryByText('Double with ad?')).toBeNull();
   });
 
-  it('hides the Double UI when adsRemoved is true (Remove Ads IAP active)', () => {
+  it('Codex finding 2 fix: adsRemoved=true does NOT hide the Double UI (Q11=B — rewarded path stays available)', () => {
+    // Pre-fix the gate hid Double for paying users. Q11=B reading
+    // says Remove Ads removes only forced ad layers (interstitial);
+    // user-elective rewarded paths stay open so paying players
+    // keep the same earning ceiling.
     useUserStore.setState({ adsRemoved: true });
     const utils = renderWinForDouble();
-    expect(utils.queryByText('Double with ad?')).toBeNull();
+    expect(utils.queryByText('Double with ad?')).toBeTruthy();
   });
 
   it('hides the Double UI when ad cap is reached for today', () => {
@@ -545,14 +568,18 @@ describe('MatchResultScreen — Phase 7A.5 CP6 rewarded double UI', () => {
     expect(utils.queryByText('Double with ad?')).toBeNull();
   });
 
-  it('Double tap navigates to AdWatch with mode="double" + extraReward = match reward', () => {
+  it('Double tap navigates to AdWatch with mode="double" + matchId from matchState (Codex finding 1 fix)', () => {
     const utils = renderWinForDouble({ reward: 180 });
     act(() => {
       fireEvent.press(utils.getByText('Double with ad?'));
     });
     const route = utils.navRef.current?.getCurrentRoute();
     expect(route?.name).toBe('AdWatch');
-    expect(route?.params).toEqual({ mode: 'double', extraReward: 180 });
+    // Pre-fix this passed `extraReward: 180` (a credit amount the
+    // user could have manipulated). The fix passes only the
+    // matchId — the action computes the doubled tokens from
+    // matchState authoritatively.
+    expect(route?.params).toEqual({ mode: 'double', matchId: 'match-test' });
   });
 
   it('Skip tap hides the Double UI without firing the interstitial', () => {
