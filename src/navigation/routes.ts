@@ -30,6 +30,14 @@ export type RootStackParamList = {
   };
   Shop: undefined;
   AdWatch: undefined;
+  /**
+   * Phase 7A.5 CP3 — periodic interstitial. Pushed from
+   * `MatchResultScreen` after every Nth Mode 1-7 match
+   * (`INTERSTITIAL_MATCH_THRESHOLD`); routes back to MatchResult
+   * via `goBack` rather than `popToTop` so the player keeps the
+   * result screen + Play Again CTA on dismiss.
+   */
+  InterstitialAd: undefined;
   Profile: undefined;
   InsufficientTokens: { modeId: number };
   ChangeUsername: undefined;

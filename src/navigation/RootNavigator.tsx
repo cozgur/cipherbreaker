@@ -8,6 +8,7 @@ import { DailyMatchScreen } from '@screens/DailyMatchScreen';
 import { DailyResultScreen } from '@screens/DailyResultScreen';
 import { HomeScreen } from '@screens/HomeScreen';
 import { InsufficientTokensModal } from '@screens/InsufficientTokensModal';
+import { InterstitialAdScreen } from '@screens/InterstitialAdScreen';
 import { MatchmakingScreen } from '@screens/MatchmakingScreen';
 import { MatchResultScreen } from '@screens/MatchResultScreen';
 import { MatchScreen } from '@screens/MatchScreen';
@@ -66,6 +67,11 @@ export function RootNavigator(): React.JSX.Element {
         <Stack.Screen
           name="AdWatch"
           component={AdWatchScreen}
+          options={{ presentation: 'fullScreenModal', gestureEnabled: false }}
+        />
+        <Stack.Screen
+          name="InterstitialAd"
+          component={InterstitialAdScreen}
           options={{ presentation: 'fullScreenModal', gestureEnabled: false }}
         />
         <Stack.Screen name="Profile" component={ProfileScreen} />

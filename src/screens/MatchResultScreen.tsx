@@ -35,6 +35,9 @@ import { findMode } from '@data/modeCatalog';
 import { secretFor } from '@data/mockSecrets';
 import { findOpponent } from '@data/mockOpponents';
 import { grantTokens, useMockUser } from '@data/mockUser';
+import { formatDailyDate } from '@game/daily/dailyDate';
+import { canShowInterstitial } from '@game/economy/iap';
+import { shouldShowInterstitial } from '@game/economy/interstitial';
 import type { MatchResultOutcome, RootStackParamList } from '@navigation/routes';
 import { useUserStore } from '@state/userStore';
 import { colors, fonts, withAlpha } from '@theme/tokens';
@@ -132,27 +135,70 @@ export function MatchResultScreen(): React.JSX.Element {
   const turns = route.params.guessCount ?? 6;
   const isEnginePath = route.params.guessCount !== undefined;
 
-  // Idempotent post-match grants — single ref guards all three writes
+  // Idempotent post-match grants — single ref guards every write
   // so a re-mount under React Strict Mode (or any future Suspense
   // boundary) never double-pays, double-bumps, or double-records.
+  // Phase 7A.5 CP3 layered three new responsibilities into the same
+  // guarded block: increment the periodic-interstitial counter,
+  // check the canShowInterstitial gate, and (if true) navigate +
+  // reset the counter on a 1.5s delay so the player sees the
+  // result chip before the ad lands.
   const grantedRef = useRef<boolean>(false);
   useEffect(() => {
     if (grantedRef.current) return;
     grantedRef.current = true;
     if (reward > 0) grantTokens(reward);
-    // Stats + XP only fire on the engine path. The mock dev-picker
-    // path is a synthetic outcome — recording it would inflate
-    // gamesPlayed every time the developer opens the result screen.
-    if (isEnginePath) {
-      useUserStore.getState().recordMatchResult({
-        modeId,
-        outcome,
-        turns,
-        tokensEarnedThisMatch: reward,
-      });
-      if (xpGain > 0) useUserStore.getState().addXp(xpGain);
-    }
-  }, [reward, xpGain, isEnginePath, modeId, outcome, turns]);
+    // Stats + XP + interstitial counter only fire on the engine
+    // path. The mock dev-picker path is a synthetic outcome —
+    // recording it would inflate gamesPlayed every time the
+    // developer opens the result screen, AND would let the dev
+    // picker advance the interstitial counter.
+    if (!isEnginePath) return;
+
+    useUserStore.getState().recordMatchResult({
+      modeId,
+      outcome,
+      turns,
+      tokensEarnedThisMatch: reward,
+    });
+    if (xpGain > 0) useUserStore.getState().addXp(xpGain);
+
+    // Increment the Mode 1-7 match counter for the periodic
+    // interstitial. Daily Challenge does NOT reach this seam (Daily
+    // never uses MatchResultScreen — pinned by CP1's invariant
+    // tests), so the ad-free invariant holds at the call site, not
+    // just at the action boundary.
+    useUserStore.getState().incrementMatchCounter();
+
+    // Re-read state AFTER the increment so the gate sees the new
+    // counter value. canShowInterstitial composes adsRemoved + ad
+    // cap with the threshold — if the player has Remove Ads, the
+    // counter still increments (correct state if they ever lose
+    // the IAP via cancellation/refund) but no ad fires.
+    const snapshot = useUserStore.getState();
+    const today = formatDailyDate(new Date());
+    const gateOpen = canShowInterstitial(
+      {
+        adsWatchedToday: snapshot.adsWatchedToday,
+        adsWatchedLastDate: snapshot.adsWatchedLastDate,
+        adsRemoved: snapshot.adsRemoved,
+      },
+      today,
+    );
+    if (!gateOpen) return;
+    if (!shouldShowInterstitial(snapshot.matchesSinceLastInterstitial)) return;
+
+    // Delay the navigation so the result chip has a beat to land
+    // before the interstitial covers it. Reset the counter
+    // optimistically — if the player force-quits during the
+    // delay, they re-enter at 0 and accumulate again, which is
+    // the desired behaviour (no farming via interrupt).
+    const triggerId = setTimeout(() => {
+      navigation.navigate('InterstitialAd');
+      useUserStore.getState().resetMatchCounter();
+    }, 1500);
+    return () => clearTimeout(triggerId);
+  }, [reward, xpGain, isEnginePath, modeId, outcome, turns, navigation]);
 
   const playAgain = useCallback(
     () => navigation.replace('Matchmaking', { modeId }),

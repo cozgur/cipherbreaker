@@ -155,6 +155,42 @@ describe('Daily Challenge E2E — banner → match → win → share → home', 
     expect(utils.getByText(/Streak 1/)).toBeTruthy();
   });
 
+  it('Daily ad-free invariant — full Daily journey leaves matchesSinceLastInterstitial untouched', () => {
+    // Phase 7A.5 CP3 invariant pinned at the user-flow level. The
+    // store-level pin (CP1's userStore.test.ts) asserts that
+    // `recordDailyResult` and `recordMissedDay` don't bump the
+    // counter. CP3 layered the increment into MatchResultScreen's
+    // mount seam — a different surface. This E2E test runs a
+    // complete Daily flow (banner → match → win → DailyResult)
+    // and confirms the counter stays at 0; if a future PR
+    // accidentally folds the increment into Daily's flow, the
+    // invariant breaks here.
+    useUserStore.setState({ matchesSinceLastInterstitial: 0 });
+
+    const utils = renderWithNavigation('Home', {
+      Home: HomeScreen,
+      Daily: DailyMatchScreen,
+      DailyResult: DailyResultScreen,
+    });
+
+    act(() => {
+      fireEvent.press(utils.getByLabelText(/Daily challenge/));
+    });
+    const seeded = useDailyChallengeStore.getState().currentAttempt;
+    for (const ch of seeded!.secret) {
+      act(() => {
+        fireEvent.press(utils.getByLabelText(ch));
+      });
+    }
+    act(() => {
+      fireEvent.press(utils.getByLabelText('Submit guess'));
+    });
+
+    // Win recorded, DailyResult mounted. Counter must be untouched.
+    expect(useUserStore.getState().dailyChallenge.lastResult?.success).toBe(true);
+    expect(useUserStore.getState().matchesSinceLastInterstitial).toBe(0);
+  });
+
   it('post-win banner tap routes to DailyResult, not Daily (no replay)', () => {
     const utils = renderWithNavigation('Home', {
       Home: HomeScreen,

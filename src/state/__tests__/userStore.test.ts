@@ -670,15 +670,14 @@ describe('useUserStore', () => {
       expect(useUserStore.getState().matchesSinceLastInterstitial).toBe(0);
     });
 
-    it('recordMatchResult is the only bump site — Mode 1-7 match flows through it (CP3 wires the increment)', () => {
-      // Today CP1 ships only the primitives — `recordMatchResult`
-      // does not yet auto-increment (CP3 makes that decision). The
-      // assertion here pins the current contract: until CP3, the
-      // counter is bumped exclusively via the `incrementMatchCounter`
-      // action. Future CP3 may either (a) call it explicitly from
-      // `MatchResultScreen`, or (b) fold the increment into
-      // `recordMatchResult`. Either path keeps Daily isolated since
-      // Daily never calls `recordMatchResult`.
+    it('recordMatchResult does NOT auto-increment — CP3 wires the bump at MatchResultScreen mount, not in this action', () => {
+      // CP3 chose option (a) — explicit incrementMatchCounter()
+      // call from MatchResultScreen's mount effect, NOT folded
+      // into recordMatchResult. This test pins the action-level
+      // contract: a direct caller of recordMatchResult (e.g. a
+      // future test fixture or admin tool) does not advance the
+      // interstitial counter. The screen-level wiring is exercised
+      // in MatchResultScreen.test.tsx's Phase 7A.5 CP3 block.
       useUserStore.setState({ matchesSinceLastInterstitial: 0 });
       useUserStore.getState().recordMatchResult({
         modeId: 1,
@@ -686,9 +685,6 @@ describe('useUserStore', () => {
         turns: 3,
         tokensEarnedThisMatch: 100,
       });
-      // CP1 contract: recordMatchResult does NOT auto-increment.
-      // (If CP3 later folds the increment into recordMatchResult,
-      // this assertion flips and the test name updates accordingly.)
       expect(useUserStore.getState().matchesSinceLastInterstitial).toBe(0);
     });
   });

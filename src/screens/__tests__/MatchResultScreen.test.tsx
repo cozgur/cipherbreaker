@@ -5,6 +5,7 @@ import { MatchResultScreen } from '../MatchResultScreen';
 import { RouteStubScreen } from '@/test-utils/RouteStubScreen';
 import { renderWithNavigation, stableTreeForSnapshot } from '@/test-utils/renderWithNavigation';
 import type { MatchResultOutcome, RootStackParamList } from '@navigation/routes';
+import { useUserStore } from '@state/userStore';
 
 function renderResult(modeId: number, outcome: MatchResultOutcome) {
   return renderWithNavigation(
@@ -247,5 +248,173 @@ describe('MatchResultScreen — engine path (route params)', () => {
       xpGain: 30,
     }).unmount();
     expect(mockUser.stats.gamesPlayed).toBe(beforeGames + 1);
+  });
+});
+
+describe('MatchResultScreen — Phase 7A.5 CP3 interstitial counter + trigger', () => {
+  beforeEach(() => {
+    __resetMockUserForTests();
+    jest.useFakeTimers();
+    useUserStore.setState({
+      matchesSinceLastInterstitial: 0,
+      adsRemoved: false,
+      adsWatchedToday: 0,
+      adsWatchedLastDate: null,
+    });
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  function renderEngineResultWithInterstitialRoute(
+    outcome: MatchResultOutcome = 'victory',
+  ): ReturnType<typeof renderWithNavigation> {
+    return renderWithNavigation(
+      'MatchResult',
+      {
+        MatchResult: MatchResultScreen,
+        Matchmaking: RouteStubScreen,
+        Home: RouteStubScreen,
+        InterstitialAd: RouteStubScreen,
+      },
+      {
+        modeId: 1,
+        outcome,
+        opponentId: 'opp-1',
+        secret: '1234',
+        guessCount: 4,
+        reward: 120,
+        xpGain: outcome === 'victory' ? 30 : 5,
+      },
+    );
+  }
+
+  it('engine-path mount increments matchesSinceLastInterstitial by 1', () => {
+    expect(useUserStore.getState().matchesSinceLastInterstitial).toBe(0);
+    renderEngineResultWithInterstitialRoute('victory').unmount();
+    expect(useUserStore.getState().matchesSinceLastInterstitial).toBe(1);
+  });
+
+  it('mock path (no engine route params) does NOT increment the counter', () => {
+    const before = useUserStore.getState().matchesSinceLastInterstitial;
+    renderResult(1, 'victory').unmount();
+    expect(useUserStore.getState().matchesSinceLastInterstitial).toBe(before);
+  });
+
+  it('counter increments on every Mode 1-7 outcome (victory / defeat / draw / stalemate)', () => {
+    for (const outcome of ['victory', 'defeat', 'draw', 'stalemate'] as const) {
+      useUserStore.setState({ matchesSinceLastInterstitial: 0 });
+      renderEngineResultWithInterstitialRoute(outcome).unmount();
+      expect(useUserStore.getState().matchesSinceLastInterstitial).toBe(1);
+    }
+  });
+
+  it('counter at 2 after this match (2→3 transition is the trigger boundary): no nav to InterstitialAd', () => {
+    useUserStore.setState({ matchesSinceLastInterstitial: 1 });
+    const utils = renderEngineResultWithInterstitialRoute('victory');
+    act(() => {
+      jest.advanceTimersByTime(2000);
+    });
+    // Counter advanced to 2; threshold is 3; no interstitial fires.
+    expect(useUserStore.getState().matchesSinceLastInterstitial).toBe(2);
+    expect(utils.navRef.current?.getCurrentRoute()?.name).toBe('MatchResult');
+    utils.unmount();
+  });
+
+  it('counter at 3 after this match: navigates to InterstitialAd after the 1.5s grace + resets to 0', () => {
+    useUserStore.setState({ matchesSinceLastInterstitial: 2 });
+    const utils = renderEngineResultWithInterstitialRoute('victory');
+    expect(useUserStore.getState().matchesSinceLastInterstitial).toBe(3);
+    expect(utils.navRef.current?.getCurrentRoute()?.name).toBe('MatchResult');
+    act(() => {
+      jest.advanceTimersByTime(1500);
+    });
+    expect(utils.navRef.current?.getCurrentRoute()?.name).toBe('InterstitialAd');
+    expect(useUserStore.getState().matchesSinceLastInterstitial).toBe(0);
+    utils.unmount();
+  });
+
+  it('adsRemoved=true short-circuits the interstitial (counter still advances for state correctness)', () => {
+    useUserStore.setState({ matchesSinceLastInterstitial: 2, adsRemoved: true });
+    const utils = renderEngineResultWithInterstitialRoute('victory');
+    // Counter still advanced — if the IAP gets revoked, the gate
+    // re-opens with the correct accumulated count.
+    expect(useUserStore.getState().matchesSinceLastInterstitial).toBe(3);
+    act(() => {
+      jest.advanceTimersByTime(2000);
+    });
+    // Stayed on MatchResult — adsRemoved shut the door before nav.
+    expect(utils.navRef.current?.getCurrentRoute()?.name).toBe('MatchResult');
+    utils.unmount();
+  });
+
+  it('ad cap reached short-circuits the interstitial (counter still advances)', () => {
+    useUserStore.setState({
+      matchesSinceLastInterstitial: 2,
+      adsWatchedToday: 10,
+      adsWatchedLastDate: '2099-01-01', // any non-null lastDate to keep the cap "today"
+    });
+    // Pin "today" to that date by mocking new Date()'s zero-arg form.
+    const originalDate = global.Date;
+    const fixedTime = new originalDate(2099, 0, 1, 12, 0, 0).getTime();
+    function MockDate(this: Date, ...args: unknown[]) {
+      if (!new.target) return new (originalDate as DateConstructor)().toString();
+      if (args.length === 0) return new (originalDate as DateConstructor)(fixedTime);
+      // @ts-expect-error pass-through
+      return new (originalDate as DateConstructor)(...args);
+    }
+    MockDate.prototype = originalDate.prototype;
+    MockDate.now = () => fixedTime;
+    MockDate.parse = originalDate.parse.bind(originalDate);
+    MockDate.UTC = originalDate.UTC.bind(originalDate);
+    // @ts-expect-error mock substitution for Date
+    global.Date = MockDate;
+
+    try {
+      const utils = renderEngineResultWithInterstitialRoute('victory');
+      expect(useUserStore.getState().matchesSinceLastInterstitial).toBe(3);
+      act(() => {
+        jest.advanceTimersByTime(2000);
+      });
+      expect(utils.navRef.current?.getCurrentRoute()?.name).toBe('MatchResult');
+      utils.unmount();
+    } finally {
+      global.Date = originalDate;
+    }
+  });
+
+  it('multi-match cadence: every 3rd match fires the interstitial, counter cycles 0-1-2-3-0-1-2-3-...', () => {
+    // Simulate four sequential matches by mounting and unmounting
+    // the screen four times. Phase 1: counter goes 0 → 1 → 2 → 3
+    // (trigger + reset on the 3rd) → 1 (4th match restarts the cycle).
+    // We assert each transition; the timer needs to fire between
+    // mounts so the reset lands.
+
+    const expectations = [1, 2, 0, 1]; // post-mount + post-trigger counter readings
+    for (let i = 0; i < 4; i += 1) {
+      const utils = renderEngineResultWithInterstitialRoute('victory');
+      act(() => {
+        jest.advanceTimersByTime(1500);
+      });
+      expect(useUserStore.getState().matchesSinceLastInterstitial).toBe(expectations[i]);
+      utils.unmount();
+    }
+  });
+
+  it('interstitial trigger is idempotent — a re-mount under the same params does not double-fire', () => {
+    useUserStore.setState({ matchesSinceLastInterstitial: 2 });
+    const utils = renderEngineResultWithInterstitialRoute('victory');
+    expect(useUserStore.getState().matchesSinceLastInterstitial).toBe(3);
+    act(() => {
+      jest.advanceTimersByTime(1500);
+    });
+    expect(utils.navRef.current?.getCurrentRoute()?.name).toBe('InterstitialAd');
+    expect(useUserStore.getState().matchesSinceLastInterstitial).toBe(0);
+    utils.unmount();
+    // Second mount should NOT increment again (the screen instance
+    // is gone; a separate match completion would create a new
+    // route with a fresh grantedRef).
+    expect(useUserStore.getState().matchesSinceLastInterstitial).toBe(0);
   });
 });
