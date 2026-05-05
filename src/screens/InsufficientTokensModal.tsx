@@ -1,9 +1,25 @@
 /**
  * Soft-block modal when the player taps a mode they cannot afford.
- * Two paths out: watch a reward ad (cyan CTA, +50) or open the shop
- * (primary CTA). The backdrop tap and the close X both `goBack` to
- * the dimmed Home behind. Stake number comes from the catalog so the
- * copy stays accurate when a mode's stake changes.
+ * Phase 7A.5 CP4 reshape:
+ *   - Body now reads `"You have X tokens. This match costs Y."` so
+ *     the player sees both sides of the gap, not just the
+ *     destination cost.
+ *   - "Buy tokens" → "Cancel" (Q6=A, brainstorm decision —
+ *     dismissing returns to HomeScreen rather than offering a
+ *     paid path inside this surface; the Shop is reachable from
+ *     the home top-bar TokenBadge).
+ *   - "Watch ad · +50" CTA disables when the player has hit the
+ *     `AD_CAP_PER_DAY` ceiling for the current local-calendar day
+ *     (CP1 cap state). Disabled label flips to "Daily ad limit
+ *     reached" so the affordance is honest about why it can't be
+ *     tapped.
+ *
+ * The backdrop tap, the X chip, and Cancel all `goBack` to the
+ * dimmed Home behind. Stake comes from the catalog so the copy
+ * stays accurate when a mode's stake re-balances. Wallet read is
+ * direct from `useUserStore` so a token credit elsewhere (e.g.
+ * the player just earned an ad reward and came back to this
+ * modal via navigation pop) re-renders the body in real time.
  */
 
 import { useCallback, useMemo } from 'react';
@@ -16,7 +32,10 @@ import { Button } from '@components/Button';
 import { GlassCard } from '@components/GlassCard';
 import { Screen } from '@components/Screen';
 import { findMode } from '@data/modeCatalog';
+import { formatDailyDate } from '@game/daily/dailyDate';
+import { canWatchAd } from '@game/economy/adCap';
 import type { RootStackParamList } from '@navigation/routes';
+import { useUserStore } from '@state/userStore';
 import { colors, fonts, withAlpha } from '@theme/tokens';
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'InsufficientTokens'>;
@@ -28,10 +47,21 @@ export function InsufficientTokensModal(): React.JSX.Element {
   const { modeId } = route.params;
 
   const stake = useMemo(() => findMode(modeId)?.meta.stake ?? 50, [modeId]);
+  const tokens = useUserStore((s) => s.tokens);
+  const adsWatchedToday = useUserStore((s) => s.adsWatchedToday);
+  const adsWatchedLastDate = useUserStore((s) => s.adsWatchedLastDate);
+
+  // Cap-aware Watch Ad gate. The cap module compares
+  // `adsWatchedLastDate` against today's local-calendar string so
+  // a stale day implicitly resets the quota. Ad-cap reach disables
+  // the CTA but leaves the modal usable (Cancel still works).
+  const canEarnAdNow = useMemo(() => {
+    const today = formatDailyDate(new Date());
+    return canWatchAd({ adsWatchedToday, adsWatchedLastDate }, today);
+  }, [adsWatchedToday, adsWatchedLastDate]);
 
   const close = useCallback(() => navigation.goBack(), [navigation]);
   const watchAd = useCallback(() => navigation.navigate('AdWatch'), [navigation]);
-  const buyTokens = useCallback(() => navigation.navigate('Shop'), [navigation]);
 
   return (
     <Screen>
@@ -66,22 +96,30 @@ export function InsufficientTokensModal(): React.JSX.Element {
               </View>
             </View>
 
-            <Text style={styles.title}>Not enough tokens</Text>
-            <Text style={styles.subtitle}>You need {stake} tokens to play this match.</Text>
+            <Text style={styles.title}>Need more tokens</Text>
+            <Text style={styles.subtitle}>
+              You have {tokens.toLocaleString()} tokens. This match costs {stake}.
+            </Text>
 
             <View style={styles.actions}>
-              <Button
-                onPress={watchAd}
-                variant="cyan"
-                icon={
-                  <Svg width={16} height={16} viewBox="0 0 16 16">
-                    <Path d="M6 3l7 5-7 5V3z" fill="#ffffff" />
-                  </Svg>
-                }
-              >
-                Watch ad · +50
-              </Button>
-              <Button onPress={buyTokens}>Buy tokens</Button>
+              {canEarnAdNow ? (
+                <Button
+                  onPress={watchAd}
+                  variant="cyan"
+                  icon={
+                    <Svg width={16} height={16} viewBox="0 0 16 16">
+                      <Path d="M6 3l7 5-7 5V3z" fill="#ffffff" />
+                    </Svg>
+                  }
+                >
+                  Watch ad · +50
+                </Button>
+              ) : (
+                <Button onPress={() => undefined} disabled>
+                  Daily ad limit reached
+                </Button>
+              )}
+              <Button onPress={close}>Cancel</Button>
             </View>
           </GlassCard>
         </View>

@@ -5487,7 +5487,7 @@ exports[`InsufficientTokensModal snapshots the modal layout 1`] = `
                                                 },
                                                 {
                                                   "children": [
-                                                    "Not enough tokens",
+                                                    "Need more tokens",
                                                   ],
                                                   "props": {
                                                     "style": {
@@ -5502,9 +5502,11 @@ exports[`InsufficientTokensModal snapshots the modal layout 1`] = `
                                                 },
                                                 {
                                                   "children": [
-                                                    "You need ",
+                                                    "You have ",
+                                                    "1,840",
+                                                    " tokens. This match costs ",
                                                     "50",
-                                                    " tokens to play this match.",
+                                                    ".",
                                                   ],
                                                   "props": {
                                                     "style": {
@@ -5718,7 +5720,7 @@ exports[`InsufficientTokensModal snapshots the modal layout 1`] = `
                                                               "children": [
                                                                 {
                                                                   "children": [
-                                                                    "Buy tokens",
+                                                                    "Cancel",
                                                                   ],
                                                                   "props": {
                                                                     "numberOfLines": 1,

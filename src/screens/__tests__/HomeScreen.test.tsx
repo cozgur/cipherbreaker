@@ -224,4 +224,66 @@ describe('HomeScreen', () => {
       expect(utils.navRef.current?.getCurrentRoute()?.name).toBe('DailyResult');
     });
   });
+
+  describe('Low Balance Toast — Phase 7A.5 CP4', () => {
+    it('hidden when wallet balance is at or above LOW_BALANCE_THRESHOLD (default fixture 1840)', () => {
+      const utils = renderWithNavigation('Home', { Home: HomeScreen });
+      expect(utils.queryByLabelText('Low balance')).toBeNull();
+    });
+
+    it('hidden when wallet exactly equals the threshold (100 — gate is strictly less-than)', () => {
+      mockUser.tokens = 100;
+      const utils = renderWithNavigation('Home', { Home: HomeScreen });
+      expect(utils.queryByLabelText('Low balance')).toBeNull();
+    });
+
+    it('visible when wallet drops below 100', () => {
+      mockUser.tokens = 75;
+      const utils = renderWithNavigation('Home', { Home: HomeScreen });
+      expect(utils.queryByLabelText('Low balance')).toBeTruthy();
+      expect(utils.queryByText('Low on tokens?')).toBeTruthy();
+      expect(utils.queryByText('Watch a quick ad to earn 50.')).toBeTruthy();
+    });
+
+    it('visible at 0 tokens (the worst-case recovery prompt)', () => {
+      mockUser.tokens = 0;
+      const utils = renderWithNavigation('Home', { Home: HomeScreen });
+      expect(utils.queryByLabelText('Low balance')).toBeTruthy();
+    });
+
+    it('Watch Ad CTA navigates to AdWatch', () => {
+      mockUser.tokens = 25;
+      const utils = renderWithNavigation('Home', {
+        Home: HomeScreen,
+        AdWatch: RouteStubScreen,
+      });
+      act(() => {
+        fireEvent.press(utils.getByLabelText('Watch ad'));
+      });
+      expect(utils.navRef.current?.getCurrentRoute()?.name).toBe('AdWatch');
+    });
+
+    it('Dismiss (X) hides the toast for the rest of the session', () => {
+      mockUser.tokens = 25;
+      const utils = renderWithNavigation('Home', { Home: HomeScreen });
+      expect(utils.queryByLabelText('Low balance')).toBeTruthy();
+      act(() => {
+        fireEvent.press(utils.getByLabelText('Dismiss low balance toast'));
+      });
+      expect(utils.queryByLabelText('Low balance')).toBeNull();
+    });
+
+    it('once dismissed, a balance change does NOT re-show within the same mount (session-scoped)', () => {
+      mockUser.tokens = 25;
+      const utils = renderWithNavigation('Home', { Home: HomeScreen });
+      act(() => {
+        fireEvent.press(utils.getByLabelText('Dismiss low balance toast'));
+      });
+      // Even at 0 tokens after a dismiss, the toast stays hidden
+      // until next mount. The screen-local dismiss flag is the
+      // brainstorm-decided "session" granularity.
+      mockUser.tokens = 0;
+      expect(utils.queryByLabelText('Low balance')).toBeNull();
+    });
+  });
 });

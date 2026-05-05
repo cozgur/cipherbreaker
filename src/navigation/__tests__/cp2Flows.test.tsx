@@ -76,27 +76,41 @@ describe('CP2 flows', () => {
   });
 
   // 3
-  it('InsufficientTokens → Buy tokens → Shop → close back to Home', () => {
+  // Phase 7A.5 CP4 reshape — the InsufficientTokens modal no
+  // longer offers a "Buy tokens" path (Q6=A — Cancel returns to
+  // Home; Shop is reachable from the home top-bar TokenBadge,
+  // covered separately in HomeScreen.test.tsx). The flow asserted
+  // here is now: tap mode → modal → Cancel → Home. The Shop modal
+  // stack push/pop integration is exercised in
+  // `Home → TokenBadge → Shop → close back to Home` below.
+  it('InsufficientTokens → Cancel → Home', () => {
     mockUser.tokens = 0;
     const utils = renderWithNavigation('Home', fullStack);
 
     act(() => {
       fireEvent.press(utils.getByLabelText('COLOR MATCH — 50 tokens'));
     });
+    expect(utils.navRef.current?.getCurrentRoute()?.name).toBe('InsufficientTokens');
+
     act(() => {
-      fireEvent.press(utils.getByText('Buy tokens'));
+      fireEvent.press(utils.getByText('Cancel'));
+    });
+    expect(utils.navRef.current?.getCurrentRoute()?.name).toBe('Home');
+  });
+
+  // 3b — Phase 7A.5 CP4 — Shop integration through the home
+  // TokenBadge. Replaces the old InsufficientTokens → Buy tokens
+  // path (CP4 dropped that affordance from the modal).
+  it('Home → TokenBadge → Shop → close back to Home', () => {
+    const utils = renderWithNavigation('Home', fullStack);
+
+    act(() => {
+      fireEvent.press(utils.getByLabelText('Open shop'));
     });
     expect(utils.navRef.current?.getCurrentRoute()?.name).toBe('Shop');
 
-    // Close shop returns to InsufficientTokens (still on the stack).
     act(() => {
       fireEvent.press(utils.getByLabelText('Close shop'));
-    });
-    expect(utils.navRef.current?.getCurrentRoute()?.name).toBe('InsufficientTokens');
-
-    // Close modal lands back on Home.
-    act(() => {
-      fireEvent.press(utils.getByLabelText('Close'));
     });
     expect(utils.navRef.current?.getCurrentRoute()?.name).toBe('Home');
   });

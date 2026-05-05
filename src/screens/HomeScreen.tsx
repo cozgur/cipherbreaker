@@ -15,6 +15,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { Avatar } from '@components/Avatar';
 import { LevelBar } from '@components/LevelBar';
+import { LowBalanceToast } from '@components/LowBalanceToast';
 import { ModeCard } from '@components/ModeCard';
 import { Screen } from '@components/Screen';
 import { SectionLabel } from '@components/SectionLabel';
@@ -29,6 +30,7 @@ import {
 } from '@game/daily/banner';
 import { calendarDayIndex, getDailyConfig } from '@game/daily/dailyConfig';
 import { formatDailyDate } from '@game/daily/dailyDate';
+import { LOW_BALANCE_THRESHOLD } from '@game/economy/constants';
 import type { ModeCatalogEntry } from '@game/types';
 import type { RootStackParamList } from '@navigation/routes';
 import { useUserStore } from '@state/userStore';
@@ -94,6 +96,19 @@ export function HomeScreen(): React.JSX.Element {
   const openProfile = useCallback(() => navigation.navigate('Profile'), [navigation]);
   const openShop = useCallback(() => navigation.navigate('Shop'), [navigation]);
 
+  // Phase 7A.5 CP4 — low-balance toast. Visible when wallet drops
+  // below `LOW_BALANCE_THRESHOLD` and the player has not dismissed
+  // it for the current session. Dismiss state is screen-local on
+  // purpose (brainstorm decision): a fresh mount re-evaluates so a
+  // returning player still sees the recovery prompt.
+  const [lowBalanceDismissed, setLowBalanceDismissed] = useState(false);
+  const showLowBalanceToast = user.tokens < LOW_BALANCE_THRESHOLD && !lowBalanceDismissed;
+  const onLowBalanceWatchAd = useCallback(
+    () => navigation.navigate('AdWatch'),
+    [navigation],
+  );
+  const onLowBalanceDismiss = useCallback(() => setLowBalanceDismissed(true), []);
+
   const playMode = useCallback(
     (entry: ModeCatalogEntry) => {
       if (user.tokens < entry.meta.stake) {
@@ -158,6 +173,13 @@ export function HomeScreen(): React.JSX.Element {
             {bannerCopy.subline}
           </Text>
         </Pressable>
+
+        {showLowBalanceToast ? (
+          <LowBalanceToast
+            onWatchAd={onLowBalanceWatchAd}
+            onDismiss={onLowBalanceDismiss}
+          />
+        ) : null}
 
         <View style={styles.sectionHeader}>
           <SectionLabel>CLASSIC</SectionLabel>
