@@ -28,7 +28,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { Screen } from '@components/Screen';
@@ -36,19 +36,30 @@ import { TokenCoin } from '@components/TokenCoin';
 import { formatDailyDate } from '@game/daily/dailyDate';
 import { AD_REWARD_TOKENS } from '@game/economy/constants';
 import type { RootStackParamList } from '@navigation/routes';
+import { useMatchStore } from '@state/matchStore';
 import { useUserStore } from '@state/userStore';
 import { colors, fonts, withAlpha } from '@theme/tokens';
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'AdWatch'>;
+type RouteParams = RouteProp<RootStackParamList, 'AdWatch'>;
 
 const COUNTDOWN_SECONDS = 5;
 const SKIP_AVAILABLE_AT = 2;
 
 export function AdWatchScreen(): React.JSX.Element {
   const navigation = useNavigation<Nav>();
+  const route = useRoute<RouteParams>();
   const insets = useSafeAreaInsets();
   const [secondsLeft, setSecondsLeft] = useState<number>(COUNTDOWN_SECONDS);
   const completedRef = useRef<boolean>(false);
+
+  // Phase 7A.5 CP6 — route params are optional + nullable for the
+  // legacy `navigation.navigate('AdWatch')` callers (no params at
+  // all). The double-mode branch requires both `mode === 'double'`
+  // AND a positive `extraReward`; missing either falls through to
+  // the regular reward flow defensively.
+  const mode = route.params?.mode ?? 'reward';
+  const extraReward = route.params?.extraReward;
 
   useEffect(() => {
     const tick = setInterval(() => {
@@ -61,23 +72,35 @@ export function AdWatchScreen(): React.JSX.Element {
     (reason: 'skipped' | 'completed'): void => {
       if (completedRef.current) return;
       completedRef.current = true;
-      // CP5 — gated reward via watchAdAction. The action runs the
-      // canWatchAd cap check; a cap-reached state returns
-      // {success:false, reward:0} without crediting tokens. In
-      // production the calling surfaces (modal + toast) prevent the
-      // tap from launching this screen at all when the cap is hit,
-      // so the false branch is purely defensive.
-      const today = formatDailyDate(new Date());
-      const result = useUserStore.getState().watchAdAction(today);
-      // Phase 7B replaces this with a real analytics provider.
-      console.log('[analytics] ad_watch_completed', {
-        tokens: result.reward,
-        reason,
-        success: result.success,
-      });
+      if (mode === 'double' && extraReward !== undefined && extraReward > 0) {
+        // CP6 — rewarded double path. Mark matchState first
+        // (own-state-first ordering, matchStore-pattern Phase 5+),
+        // then credit + cap-stamp + interstitial-reset on userStore.
+        useMatchStore.getState().setDoubledReward(true);
+        const result = useUserStore.getState().applyRewardedDouble(extraReward);
+        console.log('[analytics] rewarded_double_taken', {
+          reward: result.reward,
+          reason,
+          success: result.success,
+        });
+      } else {
+        // CP5 — regular rewarded flow. The action runs the
+        // canWatchAd cap check; a cap-reached state returns
+        // {success:false, reward:0} without crediting tokens. In
+        // production the calling surfaces (modal + toast) prevent
+        // the tap from launching this screen at all when the cap
+        // is hit, so the false branch is purely defensive.
+        const today = formatDailyDate(new Date());
+        const result = useUserStore.getState().watchAdAction(today);
+        console.log('[analytics] ad_watch_completed', {
+          tokens: result.reward,
+          reason,
+          success: result.success,
+        });
+      }
       navigation.goBack();
     },
-    [navigation],
+    [navigation, mode, extraReward],
   );
 
   useEffect(() => {
@@ -131,14 +154,20 @@ export function AdWatchScreen(): React.JSX.Element {
           <Text style={styles.adKicker}>Advertisement Area</Text>
           <View style={styles.adArt} />
           <Text style={styles.adTitle}>Sponsored Content</Text>
-          <Text style={styles.adSub}>Watch to earn {AD_REWARD_TOKENS} tokens</Text>
+          <Text style={styles.adSub}>
+            {mode === 'double' && extraReward !== undefined
+              ? `Watch to double — earn ${extraReward} extra tokens`
+              : `Watch to earn ${AD_REWARD_TOKENS} tokens`}
+          </Text>
         </View>
       </View>
 
       <View style={[styles.rewardWrap, { bottom: insets.bottom + 64 }]}>
         <View style={styles.rewardPill}>
           <TokenCoin size={16} />
-          <Text style={styles.rewardAmount}>+{AD_REWARD_TOKENS}</Text>
+          <Text style={styles.rewardAmount}>
+            +{mode === 'double' && extraReward !== undefined ? extraReward : AD_REWARD_TOKENS}
+          </Text>
           <Text style={styles.rewardLabel}>on finish</Text>
         </View>
       </View>

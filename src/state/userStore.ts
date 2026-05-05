@@ -22,6 +22,7 @@ import type { DailyChallengeState, DailyResultSummary } from '@game/daily/types'
 import { computeEarnedHints } from '@game/daily/hint';
 import { computeNextDailyStreakState } from '@game/daily/streak';
 import { calendarDayIndex, effectiveDigitTier, TIER_4_PERIOD, TIER_5_PERIOD } from '@game/daily/dailyConfig';
+import { formatDailyDate } from '@game/daily/dailyDate';
 import { applyAdWatched, canWatchAd } from '@game/economy/adCap';
 import { AD_REWARD_TOKENS } from '@game/economy/constants';
 import type { MatchResultOutcome } from '@navigation/routes';
@@ -176,6 +177,29 @@ export interface UserStoreActions {
    * pattern).
    */
   watchAdAction(today: string): { readonly success: boolean; readonly reward: number };
+  /**
+   * Phase 7A.5 CP6 — rewarded "Double" path. Credits an *extra*
+   * `extraReward` tokens on top of the original match reward,
+   * stamps an ad-cap watch (the double consumes one of the daily
+   * 10), and resets `matchesSinceLastInterstitial` (Q9 priority —
+   * Double > Interstitial; the rewarded watch counts as the
+   * frequency-cap impression for this cadence slot, so the
+   * forced interstitial does not also fire).
+   *
+   * Returns `{success:false, reward:0}` without mutating state if
+   * the daily ad cap is reached or `extraReward <= 0`. Idempotency
+   * (already-doubled state) is enforced at the call site by the
+   * MatchResultScreen Double UI, which hides itself off
+   * `matchState.doubledReward`. Defensive double-call here would
+   * still credit a second time — the gate is "have they already
+   * tapped Double?" not "has applyRewardedDouble run?". The
+   * production flow ensures this through the UI; tests cover the
+   * defensive path.
+   */
+  applyRewardedDouble(extraReward: number): {
+    readonly success: boolean;
+    readonly reward: number;
+  };
   /**
    * Phase 7A.5 CP1 — bump the periodic-interstitial counter. Wired
    * by CP3 from the Mode 1–7 match-completion seam
@@ -558,6 +582,33 @@ export const useUserStore = create<UserStoreState & UserStoreActions>()(
 
       setAdsRemoved: (value) => {
         set({ adsRemoved: value });
+      },
+
+      applyRewardedDouble: (extraReward) => {
+        if (extraReward <= 0) return { success: false, reward: 0 };
+        const today = formatDailyDate(new Date());
+        const snapshot = useUserStore.getState();
+        const capState = {
+          adsWatchedToday: snapshot.adsWatchedToday,
+          adsWatchedLastDate: snapshot.adsWatchedLastDate,
+        };
+        if (!canWatchAd(capState, today)) {
+          return { success: false, reward: 0 };
+        }
+        const next = applyAdWatched(capState, today);
+        // Single setState mutates four fields atomically: ad-cap
+        // counter + lastDate (one watch consumed), wallet credit
+        // (extra reward layered on top of the original), and the
+        // interstitial counter reset (Q9 priority — the double ad
+        // satisfies this cadence slot; the forced interstitial
+        // does not also fire).
+        set((s) => ({
+          adsWatchedToday: next.adsWatchedToday,
+          adsWatchedLastDate: next.adsWatchedLastDate,
+          tokens: s.tokens + extraReward,
+          matchesSinceLastInterstitial: 0,
+        }));
+        return { success: true, reward: extraReward };
       },
 
       watchAdAction: (today) => {

@@ -180,6 +180,37 @@ describe('useMatchStore', () => {
     });
   });
 
+  describe('setDoubledReward — Phase 7A.5 CP6', () => {
+    it('flips matchState.doubledReward from undefined → true', () => {
+      registerStub(1);
+      useMatchStore.getState().createMatch(1, '1234');
+      expect(useMatchStore.getState().matchState!.doubledReward).toBeUndefined();
+      useMatchStore.getState().setDoubledReward(true);
+      expect(useMatchStore.getState().matchState!.doubledReward).toBe(true);
+    });
+
+    it('no-op when matchState is null (defensive — the screen guard already prevents this)', () => {
+      useMatchStore.getState().clearMatch();
+      // Should not throw.
+      useMatchStore.getState().setDoubledReward(true);
+      expect(useMatchStore.getState().matchState).toBeNull();
+    });
+
+    it('preserves every other matchState field byte-for-byte', () => {
+      registerStub(1);
+      useMatchStore.getState().createMatch(1, '1234');
+      const before = useMatchStore.getState().matchState!;
+      useMatchStore.getState().setDoubledReward(true);
+      const after = useMatchStore.getState().matchState!;
+      // Every field except doubledReward identical to before.
+      expect(after.modeId).toBe(before.modeId);
+      expect(after.playerSecret).toBe(before.playerSecret);
+      expect(after.opponentSecret).toBe(before.opponentSecret);
+      expect(after.phase).toBe(before.phase);
+      expect(after.botDifficulty).toBe(before.botDifficulty);
+    });
+  });
+
   describe('runOpponentTurn', () => {
     it('no-ops when phase is not active_turn_opponent', async () => {
       registerStub(1);

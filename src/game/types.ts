@@ -421,6 +421,21 @@ export interface MatchState {
   readonly botDifficulty?: BotDifficulty;
 
   /**
+   * Phase 7A.5 CP6 — set when the player has redeemed the
+   * rewarded "Double your tokens" CTA on the post-match screen.
+   * Idempotency guard for the Double UI (the button hides when
+   * this flag is true) and an audit trail for analytics. Pre-CP6
+   * persisted matches hydrate with `undefined`, treated as not
+   * doubled — same optional-field pattern `botDifficulty` uses to
+   * avoid a persist version bump.
+   *
+   * Daily Challenge (`dailyChallengeStore.currentAttempt`) does
+   * NOT use this field — Daily is ad-free by design (Q7=B). The
+   * Double UI never reaches DailyResultScreen.
+   */
+  readonly doubledReward?: boolean;
+
+  /**
    * Side that took the very first turn — used by the UI to interleave
    * `playerGuesses` and `opponentGuesses` into a chronological timeline
    * for the MatchScreen scrollback. Set by `startMatch` from the same

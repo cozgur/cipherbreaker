@@ -29,7 +29,21 @@ export type RootStackParamList = {
     xpGain?: number;
   };
   Shop: undefined;
-  AdWatch: undefined;
+  /**
+   * Phase 7A.5 CP6 — `mode` chooses between the legacy reward
+   * flow (default `'reward'` → `+50` tokens via `watchAdAction`)
+   * and the rewarded-double flow (`'double'` → grants `extraReward`
+   * extra tokens via `applyRewardedDouble`). Both modes share the
+   * same screen surface (5-second countdown + Skip arming), only
+   * the finish handler branches.
+   *
+   * Both params are optional so existing call sites
+   * (`navigation.navigate('AdWatch')`) keep their pre-CP6 behaviour.
+   * `extraReward` is required when `mode === 'double'`; the screen
+   * defends against the missing-param edge by falling through to a
+   * no-credit completion.
+   */
+  AdWatch: { mode?: 'reward' | 'double'; extraReward?: number } | undefined;
   /**
    * Phase 7A.5 CP3 — periodic interstitial. Pushed from
    * `MatchResultScreen` after every Nth Mode 1-7 match

@@ -599,6 +599,97 @@ describe('useUserStore', () => {
       expect(useUserStore.getState().tokens).toBe(tokensBefore);
     });
 
+    describe('applyRewardedDouble — Phase 7A.5 CP6', () => {
+      let originalDate: typeof Date;
+
+      beforeEach(() => {
+        // Pin Date so the cap module's "today" string is deterministic
+        // across test runs.
+        originalDate = global.Date;
+        const fixedTime = new originalDate(2026, 4, 5, 12, 0, 0).getTime();
+        function MockDate(this: Date, ...args: unknown[]) {
+          if (!new.target) return new (originalDate as DateConstructor)().toString();
+          if (args.length === 0) return new (originalDate as DateConstructor)(fixedTime);
+          // @ts-expect-error pass-through to native Date constructor
+          return new (originalDate as DateConstructor)(...args);
+        }
+        MockDate.prototype = originalDate.prototype;
+        MockDate.now = () => fixedTime;
+        MockDate.parse = originalDate.parse.bind(originalDate);
+        MockDate.UTC = originalDate.UTC.bind(originalDate);
+        // @ts-expect-error mock Date substitution
+        global.Date = MockDate;
+      });
+
+      afterEach(() => {
+        global.Date = originalDate;
+      });
+
+      it('credits the extra reward, increments ad cap, and resets the interstitial counter (Q9 priority)', () => {
+        useUserStore.setState({
+          tokens: 100,
+          adsWatchedToday: 0,
+          adsWatchedLastDate: null,
+          matchesSinceLastInterstitial: 2,
+        });
+        const result = useUserStore.getState().applyRewardedDouble(180);
+        expect(result).toEqual({ success: true, reward: 180 });
+        const state = useUserStore.getState();
+        expect(state.tokens).toBe(280); // 100 + 180
+        expect(state.adsWatchedToday).toBe(1);
+        expect(state.adsWatchedLastDate).toBe('2026-05-05');
+        // Q9 — Double consumes the cadence slot; counter resets.
+        expect(state.matchesSinceLastInterstitial).toBe(0);
+      });
+
+      it('cap-reached defensive: refuses, no token credit, no counter touch', () => {
+        useUserStore.setState({
+          tokens: 100,
+          adsWatchedToday: 10,
+          adsWatchedLastDate: '2026-05-05',
+          matchesSinceLastInterstitial: 3,
+        });
+        const result = useUserStore.getState().applyRewardedDouble(180);
+        expect(result).toEqual({ success: false, reward: 0 });
+        const state = useUserStore.getState();
+        expect(state.tokens).toBe(100);
+        expect(state.adsWatchedToday).toBe(10);
+        // Counter NOT reset — the rewarded slot wasn't redeemed,
+        // so the interstitial cadence is still pending.
+        expect(state.matchesSinceLastInterstitial).toBe(3);
+      });
+
+      it('cross-midnight stale lastDate: counter resets, double credits cleanly', () => {
+        useUserStore.setState({
+          tokens: 100,
+          adsWatchedToday: 10,
+          adsWatchedLastDate: '2026-05-04', // yesterday — stale
+          matchesSinceLastInterstitial: 3,
+        });
+        const result = useUserStore.getState().applyRewardedDouble(150);
+        expect(result).toEqual({ success: true, reward: 150 });
+        const state = useUserStore.getState();
+        expect(state.tokens).toBe(250);
+        // Stale day collapse: counter back to 1, today's date stamped.
+        expect(state.adsWatchedToday).toBe(1);
+        expect(state.adsWatchedLastDate).toBe('2026-05-05');
+      });
+
+      it('zero or negative extraReward refuses without state mutation', () => {
+        const before = useUserStore.getState();
+        expect(useUserStore.getState().applyRewardedDouble(0)).toEqual({
+          success: false,
+          reward: 0,
+        });
+        expect(useUserStore.getState().applyRewardedDouble(-50)).toEqual({
+          success: false,
+          reward: 0,
+        });
+        expect(useUserStore.getState().tokens).toBe(before.tokens);
+        expect(useUserStore.getState().adsWatchedToday).toBe(before.adsWatchedToday);
+      });
+    });
+
     describe('watchAdAction', () => {
       it('first-ever watch: success, +50 tokens, counter bumps to 1', () => {
         const tokensBefore = useUserStore.getState().tokens;

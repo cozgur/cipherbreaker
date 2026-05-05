@@ -5307,9 +5307,7 @@ exports[`AdWatchScreen snapshots the initial countdown frame 1`] = `
                                     },
                                     {
                                       "children": [
-                                        "Watch to earn ",
-                                        "50",
-                                        " tokens",
+                                        "Watch to earn 50 tokens",
                                       ],
                                       "props": {
                                         "style": {

@@ -207,6 +207,18 @@ describe('DailyResultScreen', () => {
     });
   });
 
+  describe('Phase 7A.5 CP6 — Daily ad-free invariant (no rewarded Double UI)', () => {
+    it('a Daily win NEVER surfaces the "Double with ad?" affordance (Q7=B — Daily is ad-free)', () => {
+      // The Double UI lives exclusively on MatchResultScreen for
+      // Mode 1-7 wins. DailyResultScreen is a different surface
+      // and does not consume `applyRewardedDouble`. Pinned by
+      // searching the rendered output for the canonical CTA copy.
+      setLastResult(successResult);
+      const utils = renderWithNavigation('DailyResult', { DailyResult: DailyResultScreen });
+      expect(utils.queryByText('Double with ad?')).toBeNull();
+    });
+  });
+
   describe('hint badge — Phase 7A.4 CP6 PURE SKILL surface', () => {
     it('zero hints used shows the gold "PURE SKILL" badge', () => {
       setLastResult({ ...successResult, hintsUsed: 0 });

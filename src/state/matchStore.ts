@@ -83,6 +83,16 @@ export interface MatchStoreActions {
   applyTimeout(snapshot: ClockSnapshot): void;
   endMatch(result: MatchResult): void;
   clearMatch(): void;
+  /**
+   * Phase 7A.5 CP6 — flip `matchState.doubledReward` after the
+   * player redeems the rewarded "Double" CTA on the post-match
+   * screen. Idempotency for the Double UI is enforced by the
+   * screen reading this flag (button hides when true). No-op if
+   * matchState is null. Paired with `userStore.applyRewardedDouble`
+   * at the call site (`AdWatchScreen` finish handler in 'double'
+   * mode) — own-state-first ordering, see header.
+   */
+  setDoubledReward(value: boolean): void;
 }
 
 const STORE_VERSION = 1;
@@ -251,6 +261,12 @@ export const useMatchStore = create<MatchStoreState & MatchStoreActions>()(
       },
 
       clearMatch: () => set({ matchState: null }),
+
+      setDoubledReward: (value) => {
+        const current = get().matchState;
+        if (current === null) return;
+        set({ matchState: { ...current, doubledReward: value } });
+      },
     }),
     {
       name: 'cipherbreaker.match.v1',

@@ -2,6 +2,8 @@ import { act, fireEvent } from '@testing-library/react-native';
 
 import { __resetMockUserForTests, mockUser } from '@data/mockUser';
 import { AD_CAP_PER_DAY, AD_REWARD_TOKENS } from '@game/economy/constants';
+import type { RootStackParamList } from '@navigation/routes';
+import { useMatchStore } from '@state/matchStore';
 import { useUserStore } from '@state/userStore';
 import { AdWatchScreen } from '../AdWatchScreen';
 import { HomeScreen } from '../HomeScreen';
@@ -215,6 +217,99 @@ describe('AdWatchScreen', () => {
       expect(utils.navRef.current?.getCurrentRoute()?.name).toBe('InsufficientTokens');
       expect(useUserStore.getState().tokens).toBe(50);
       expect(utils.queryByText(/You have 50 tokens\. This match costs 50\./)).toBeTruthy();
+    });
+  });
+
+  describe('Phase 7A.5 CP6 — double mode (rewarded double)', () => {
+    it('renders the double-mode copy when route params include mode="double" + extraReward', () => {
+      const utils = renderWithNavigation(
+        'AdWatch',
+        { AdWatch: AdWatchScreen, Home: HomeScreen },
+        { mode: 'double', extraReward: 180 } as RootStackParamList['AdWatch'],
+      );
+      expect(utils.queryByText(/Watch to double — earn 180 extra tokens/)).toBeTruthy();
+      // The reward pill mirrors the extra amount (not the legacy +50).
+      expect(utils.queryByText('+180')).toBeTruthy();
+      expect(utils.queryByText('+50')).toBeNull();
+    });
+
+    it('completion calls applyRewardedDouble + setDoubledReward, NOT watchAdAction', () => {
+      const beforeTokens = useUserStore.getState().tokens;
+      // Need a matchState to set doubledReward against.
+      useMatchStore.setState({
+        matchState: {
+          modeId: 1,
+          playerSecret: '1234',
+          opponentSecret: '5678',
+          playerGuesses: [],
+          opponentGuesses: [],
+          rngState: { seed: 1, callCount: 0 },
+          phase: 'completed',
+          result: { outcome: 'player_won', reason: 'cracked', turns: 4 },
+        } as never,
+      });
+      renderWithNavigation(
+        'AdWatch',
+        { AdWatch: AdWatchScreen, Home: HomeScreen },
+        { mode: 'double', extraReward: 200 } as RootStackParamList['AdWatch'],
+      );
+      act(() => {
+        jest.advanceTimersByTime(5000);
+      });
+      // Wallet credited the extra (NOT the legacy +50).
+      expect(useUserStore.getState().tokens).toBe(beforeTokens + 200);
+      // matchState marked as doubled.
+      expect(useMatchStore.getState().matchState!.doubledReward).toBe(true);
+      // Counter reset (Q9 — Double > Interstitial).
+      expect(useUserStore.getState().matchesSinceLastInterstitial).toBe(0);
+    });
+
+    it('analytics event is rewarded_double_taken (not ad_watch_completed)', () => {
+      const logSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+      useMatchStore.setState({
+        matchState: {
+          modeId: 1,
+          playerSecret: '1234',
+          opponentSecret: '5678',
+          playerGuesses: [],
+          opponentGuesses: [],
+          rngState: { seed: 1, callCount: 0 },
+          phase: 'completed',
+          result: { outcome: 'player_won', reason: 'cracked', turns: 4 },
+        } as never,
+      });
+      renderWithNavigation(
+        'AdWatch',
+        { AdWatch: AdWatchScreen, Home: HomeScreen },
+        { mode: 'double', extraReward: 180 } as RootStackParamList['AdWatch'],
+      );
+      act(() => {
+        jest.advanceTimersByTime(5000);
+      });
+      expect(logSpy).toHaveBeenCalledWith(
+        '[analytics] rewarded_double_taken',
+        expect.objectContaining({ reward: 180, success: true }),
+      );
+      // Make sure the legacy event did NOT also fire.
+      expect(logSpy).not.toHaveBeenCalledWith(
+        '[analytics] ad_watch_completed',
+        expect.anything(),
+      );
+      logSpy.mockRestore();
+    });
+
+    it('missing extraReward falls through to the regular reward path (defensive)', () => {
+      const beforeTokens = useUserStore.getState().tokens;
+      renderWithNavigation(
+        'AdWatch',
+        { AdWatch: AdWatchScreen, Home: HomeScreen },
+        { mode: 'double' } as RootStackParamList['AdWatch'],
+      );
+      act(() => {
+        jest.advanceTimersByTime(5000);
+      });
+      // Falls through to watchAdAction — credits +50.
+      expect(useUserStore.getState().tokens).toBe(beforeTokens + AD_REWARD_TOKENS);
     });
   });
 
