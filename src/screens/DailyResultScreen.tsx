@@ -4,9 +4,9 @@
  * Reads `userStore.dailyChallenge.lastResult` (stamped at submit
  * time by `dailyChallengeStore.submitGuess` → `recordDailyResult`).
  * Surfaces the just-completed attempt: success or failure header,
- * turn count, current streak, the share button (CP7 — native
- * Share.share({message})) and the next-puzzle countdown (post-launch
- * polish — current copy is "tomorrow").
+ * turn count, current streak, the share button (native Share.share —
+ * iOS slide-up sheet / Android intent picker), and the next-puzzle
+ * countdown (post-launch polish — current copy is "tomorrow").
  *
  * No replay path — Wordle-faithful "you played today, see you
  * tomorrow." Tapping the back affordance returns to Home; banner
@@ -37,14 +37,20 @@ export function DailyResultScreen(): React.JSX.Element {
   const longestStreak = useUserStore((s) => s.dailyChallenge.longestStreak);
 
   const goHome = useCallback(() => navigation.navigate('Home'), [navigation]);
-  const onShare = useCallback(() => {
-    // Phase 7A.4 CP7 — native Share sheet hookup. iOS surfaces the
-    // system share sheet (AirDrop / Messages / Mail / etc.); Android
-    // surfaces the equivalent intent picker. The promise rejects on
-    // user cancel on iOS — swallow it so the screen doesn't show an
-    // unhandled-rejection toast for a non-error path.
+  const onShare = useCallback(async () => {
+    // Native Share sheet — iOS UIActivityViewController slides up
+    // from the bottom; Android opens the intent picker. The catch
+    // is intentionally silent: RN exposes no clean discriminator
+    // between "user cancelled" and "real native error", so an
+    // Alert fallback would fire on every cancel and re-create the
+    // exact bug iOS testing flagged. The empty catch keeps the
+    // screen quiet on both paths.
     if (lastResult === null) return;
-    void Share.share({ message: formatDailyShare(lastResult) }).catch(() => undefined);
+    try {
+      await Share.share({ message: formatDailyShare(lastResult) });
+    } catch {
+      // intentionally silent — see note above.
+    }
   }, [lastResult]);
 
   // Defensive — direct navigation to this screen with no recorded

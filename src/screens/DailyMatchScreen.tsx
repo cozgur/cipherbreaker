@@ -28,11 +28,12 @@
  * surfaces the same digit; the player chooses where to place it.
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
   Modal,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -222,6 +223,21 @@ export function DailyMatchScreen(): React.JSX.Element {
   const turnsUsed = guesses.length;
   const turnsRemaining = Math.max(0, config.turnLimit - turnsUsed);
 
+  // Phase 7A.4 post-CP7 iOS test fix — at 5+ guesses the history
+  // view's natural height pushed past its `flexShrink: 1` parent and
+  // the rows rendered through the draft row below (RN default
+  // `overflow: 'visible'`). Wrapping in a ScrollView gives the
+  // history a bounded scroll region and keeps the static stack
+  // (draft + hints + keypad + submit) anchored. Auto-scroll mirrors
+  // the chat-app convention used in `MatchScreen.tsx`.
+  const historyRef = useRef<ScrollView>(null);
+  useEffect(() => {
+    const id = setTimeout(() => {
+      historyRef.current?.scrollToEnd({ animated: true });
+    }, 100);
+    return () => clearTimeout(id);
+  }, [turnsUsed]);
+
   return (
     <Screen>
       <View style={[styles.topBar, { paddingTop: insets.top + 10 }]}>
@@ -256,7 +272,13 @@ export function DailyMatchScreen(): React.JSX.Element {
           </Text>
         </View>
 
-        <View style={styles.history} accessibilityLabel="Daily guess history">
+        <ScrollView
+          ref={historyRef}
+          style={styles.history}
+          contentContainerStyle={styles.historyContent}
+          accessibilityLabel="Daily guess history"
+          showsVerticalScrollIndicator={false}
+        >
           {guesses.map((entry, idx) => (
             <Mode3Row key={idx} {...buildRowProps(entry, username)} />
           ))}
@@ -265,7 +287,7 @@ export function DailyMatchScreen(): React.JSX.Element {
               Crack today&apos;s code in {config.turnLimit} guesses or fewer.
             </Text>
           ) : null}
-        </View>
+        </ScrollView>
 
         <View style={styles.draftBlock}>
           <View style={styles.draftRow}>
@@ -602,9 +624,12 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
   },
   history: {
+    flex: 1,
     marginTop: 16,
+  },
+  historyContent: {
+    flexGrow: 1,
     minHeight: 80,
-    flexShrink: 1,
   },
   placeholder: {
     fontFamily: fonts.body,

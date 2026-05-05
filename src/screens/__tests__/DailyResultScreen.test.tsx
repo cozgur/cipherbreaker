@@ -3,6 +3,7 @@
  */
 
 import { act, fireEvent } from '@testing-library/react-native';
+import type * as ReactNative from 'react-native';
 import { Share } from 'react-native';
 
 import { formatDailyShare } from '@game/daily/share';
@@ -158,6 +159,30 @@ describe('DailyResultScreen', () => {
       // the unhandled-rejection guard reports clean.
       await Promise.resolve();
       expect(shareSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('SHARE swallows a non-cancel native error without showing an Alert', async () => {
+      // Post-CP7 iOS test feedback: an Alert was appearing instead
+      // of the native share sheet. Root cause was a stale Metro
+      // bundle (the source had already migrated to Share.share).
+      // To make a regression structural: an iOS-layer error must
+      // never resurface as an Alert.alert popup. We rely on the
+      // import surface — if Alert was being called, the spy here
+      // would catch it.
+      const RN = jest.requireActual('react-native') as typeof ReactNative;
+      const alertSpy = jest.spyOn(RN.Alert, 'alert');
+      shareSpy.mockReset();
+      shareSpy.mockRejectedValue(new Error('Native module bridge failure'));
+      setLastResult(successResult);
+      const utils = renderWithNavigation('DailyResult', { DailyResult: DailyResultScreen });
+      act(() => {
+        fireEvent.press(utils.getByLabelText('SHARE'));
+      });
+      await Promise.resolve();
+      await Promise.resolve();
+      expect(shareSpy).toHaveBeenCalledTimes(1);
+      expect(alertSpy).not.toHaveBeenCalled();
+      alertSpy.mockRestore();
     });
 
     it('SHARE on a failure result still emits the same share format', () => {
