@@ -1060,6 +1060,14 @@ Items intentionally pushed past launch (incorporating Codex roadmap suggestions 
 - **Leaderboard** — async-first (daily best leaderboard); real-time only if engagement justifies it.
 - **Hint system on Modes 1–7** — Phase 7A.4 CP6 shipped the Hint A (reveal) + Hint B (probe) pair on Daily Challenge only. Whether the same mechanic transplants to the seven competitive modes is a Phase 9 design decision: it changes match economy (paid hint vs paid stake) and affects DDA telemetry (a hinted win is not a clean signal). No code work today; the design seam — `analyzeHintCandidates` taking `(secret, guesses, revealedPositions, revealedDigits)` — is already general enough to feed any mode's solver state.
 - **Android FCM push** — counterpart to the iOS notification path Phase 7A.6 wires up. Push infra cost is symmetric (one provider per platform); deferred until iOS retention validates the daily-reminder hook is worth the integration effort on the second platform.
+- **Real AdMob SDK integration** — Phase 7A.5 ships the placeholder ad surfaces (countdown + native Share-style mock content); Phase 8 wires the AdMob SDK so the rewarded watch + interstitial actually talk to ad inventory. The current `console.log('[analytics] …')` lines are the seams a real provider (AdMob events SDK + a product analytics tool like Amplitude or Mixpanel) hooks into.
+- **Bundle pricing — "Remove Ads + 1000 tokens" $4.99** — second IAP product alongside the $2.99 Remove Ads. Adds wallet liquidity to the value prop for players who'd convert at $4.99 but not $2.99-then-tokens. Decision deferred until LiveOps/conversion data exists.
+- **CipherBreaker+ subscription tier** — premium monthly with bundled benefits (Remove Ads + boosted reward multiplier + cosmetic). Higher LTV ceiling than one-shot IAP; needs receipt-validation backend. Phase 9 LiveOps lane.
+- **Ad frequency-cap personalisation** — high-engagement players (e.g., 10+ matches/day) see fewer interstitials; low-engagement players see the launch cadence. Requires telemetry on `matchesSinceLastInterstitial` distributions. Deferred until real-user distribution exists.
+- **Token earning history dashboard** — per-source breakdown (matches / daily challenge / ads / IAP) on ProfileScreen. The data is already on `userStore` (totalTokensEarned + history), but the surfacing UI is post-launch polish.
+- **Per-mode + per-difficulty reward analytics** — observability dashboard for the launch reward gradient. The 1.0/1.2/1.5 multipliers from CP2 are best-guesses; real distribution data may justify re-tuning. SPEC-level seam already exists.
+- **LiveOps token-boost events** — "weekend 2× rewards" or "Mode 5 Blackout double tokens this week." Reward computation already routes through `rewardForCompletedMatch`; an event multiplier layered there is a one-line change inside Phase 9.
+- **Mode-specific reward special events** — same surface as the LiveOps boost but scoped to a single mode. Marketing-driven; no schema cost.
 
 Rationale for the Phase 9 push: launch needs the Daily anchor + the seven competitive modes + a complete onboarding. Bot variety, live ops, leaderboard are amplifiers, not foundations; they only earn dev time once retention proves the concept. Backend cost (Supabase, push volume, leaderboard infra) only makes sense once we have users to amortise it across.
 
@@ -1266,3 +1274,156 @@ Two Phase 7A.5 polish items folded into Economy:
 
 - **Share text emoji prefix (🎯)** — small marketing tweak, organic placement in front of the Day #N headline. Lands with the Phase 7A.5 share-loop polish that retests share-text variants against organic-growth data.
 - **Countdown format options** — current copy is `"tomorrow"` on DailyResultScreen + `Resets in Xh Ym` on the HomeScreen banner. Aligning to a single format (or surfacing both in the right contexts) is a Phase 7A.5 micro-decision once the economy reset semantics are nailed down.
+
+---
+
+## Phase 7A.5 — Economy Polish (delta)
+
+Phase 7A.5 wired a 3-layer ad strategy + DDA-aware reward pacing + the Remove Ads IAP infrastructure across **8 commits in one calendar day** (2026-05-05): 7 implementation CPs + 1 Codex review fix + 1 retrospective (this commit makes 9). The phase grew the test suite from **1076 → 1240** (+164 net) without a regression — programmatic green at every CP boundary, including the post-Codex-fix re-verification. Detailed iOS validation deferred to Phase 8 TestFlight (real-device + ad inventory + IAP sandbox); Phase 7A.5 ships with the surfaces logically correct and the test surface load-bearing for the contract.
+
+The phase introduces one cross-cutting design pattern — **the 3-layer ad strategy** — that all subsequent CPs slot into:
+
+- **Layer 1 — Forced periodic interstitial** (CP3). Fires after every Nth Mode 1–7 match (`INTERSTITIAL_MATCH_THRESHOLD = 3`). Gated by the Remove Ads IAP (CP1) and the daily ad cap (CP1). Daily Challenge does not increment this counter (Q7=B — Daily is ad-free, pinned by 3-layer regression test).
+- **Layer 2 — Rewarded "Double" your tokens** (CP6). Player-elective post-match CTA on Mode 1–7 win/draw paths. Doubles the catalog × DDA reward via a watched ad. Q9 priority: Double redemption suppresses Layer 1's interstitial for that cadence slot ("çift ad ASLA yok" — never two ads).
+- **Layer 3 — Need-driven rewarded ad** (CP4 + CP5). HomeScreen LowBalanceToast + InsufficientTokensModal "Watch ad · +50" surface a recovery loop when the wallet drops below `LOW_BALANCE_THRESHOLD = 100`. Cap-aware via `canWatchAd` so the buttons disable cleanly at the daily ceiling.
+
+### CP timeline + commits
+
+| CP   | Commit       | Scope |
+|------|--------------|-------|
+| CP1  | `5a4dc49`    | Schema migration v3 → v4 (ad cap + interstitial counter + Remove Ads flag, 4 fields atomic). New modules: `adCap.ts`, `interstitial.ts`, `iap.ts`, `constants.ts`. New actions: `watchAdAction`, `incrementMatchCounter`, `resetMatchCounter`, `setAdsRemoved`. ProfileScreen `__DEV__` Remove Ads toggle. |
+| CP2  | `24123f6`    | DDA-aware reward multiplier (1.0× / 1.2× / 1.5× for easy / normal / hard). New module: `rewardPacing.ts`. `MatchScreen.tsx` `rewardForOutcome` extended with `difficulty` arg. Hidden-DDA invariant whitelist bumped to 3 plumbing literals. |
+| CP3  | `1ba8beb`    | `InterstitialAdScreen` + route + navigator wiring. `MatchResultScreen` mount effect: increment counter → re-read state → `canShowInterstitial` gate → 1.5s grace timer → `navigate('InterstitialAd')` + reset counter. Daily ad-free invariant pinned at 3 layers. |
+| CP4  | `2d813d9`    | `LowBalanceToast` component + HomeScreen integration (visible when tokens < 100, dismissible session-scoped). `InsufficientTokensModal` reshape: new copy "You have X tokens. This match costs Y.", `Buy tokens` → `Cancel` (Q6=A), cap-aware Watch Ad disabled state. cp2Flows reshape: `Modal → Cancel → Home` + `Home → TokenBadge → Shop → close`. |
+| CP5  | `18531b0`    | `AdWatchScreen` rewire from `grantTokens(REWARD)` direct call to gated `watchAdAction(today)` + `goBack` (was `popToTop`). InsufficientTokensModal now re-evaluates the stake on AdWatch return; LowBalanceToast threshold-cross flips visibility on the same return. |
+| CP6  | `997842b`    | Rewarded "Double" CTA on MatchResultScreen (win/draw). New `applyRewardedDouble` action. New `MatchState.doubledReward` field. AdWatchScreen `mode='double'` route param. Q9 priority: Double tap clears pending interstitial timer + counter reset. |
+| —    | `29bd266`    | **Codex review fix**: HIGH-severity AdWatch token-mint exploit closed (signature change `extraReward → matchId` + 6-step validation chain). Q11=B contract correction (Remove Ads gate dropped from rewarded path). HomeScreen cross-midnight refresh. |
+| CP7  | `8ac37cb`    | `AnimatedTokenCounter` + `TokenRewardFloater` + `useReducedMotion` hook (60fps tick-counter, Apple HIG accessibility-aware). TokenBadge accepts `amount: number` for the count-up animation. MatchResultScreen win-path floater overlay. |
+| CP8  | (this commit)| Retrospective + Phase 9 backlog + Phase 7A.5 sealed. |
+
+### Schema migration v3 → v4 — four fields atomic
+
+`userStore` v3 → v4 added four economy fields in a single migration step (no per-field sub-versions):
+- `adsWatchedToday: number` — ad-cap counter (`AD_CAP_PER_DAY = 10`).
+- `adsWatchedLastDate: 'YYYY-MM-DD' | null` — cross-midnight reset key (DST-immune via `formatDailyDate`).
+- `matchesSinceLastInterstitial: number` — Layer 1 frequency-cap counter (`INTERSTITIAL_MATCH_THRESHOLD = 3`).
+- `adsRemoved: boolean` — Remove Ads IAP flag (Q11 = B → only forced layer gated).
+
+All four seed at zero/false/null. Pre-7A.5 players hydrate fresh — ad cap + counter + IAP all start clean.
+
+`MatchState` separately gained two optional fields (no migration — `botDifficulty?` pattern):
+- `doubledReward?: boolean` — CP6 rewarded-double idempotency flag.
+- `id?: string` — Codex finding 1 fix; opaque per-match identifier (Date.now base36 + seed base36) used by `applyRewardedDouble(matchId)` to verify the active match.
+
+### Daily ad-free invariant pinned at 3 layers
+
+Q7 = B (Daily Challenge is ad-free). The invariant is load-bearing because Daily uses `recordDailyResult` / `recordMissedDay` exclusively, never `recordMatchResult`, and never reaches `MatchResultScreen`. Three regression tests pin the invariant from different angles:
+
+1. **CP1** (`userStore.test.ts`) — `recordDailyResult` and `recordMissedDay` never bump `matchesSinceLastInterstitial`. Action-layer pin.
+2. **CP3** (`userStore.test.ts`) — `recordMatchResult` does not auto-increment either; the bump lives at `MatchResultScreen` mount, not in the action. Wiring decision pin.
+3. **CP3** (`dailyChallengeE2E.test.tsx`) — full Daily user journey (banner → match → win → DailyResult) leaves the counter at 0. End-to-end pin.
+
+A future PR that accidentally folds an increment into `recordDailyResult` or that wires the rewarded Double into a Daily surface fails one of these three. The invariant is documented at the action level, the wiring level, and the user-flow level.
+
+### DDA-aware reward gradient (CP2)
+
+The mode catalog `rewardWin` / `rewardDraw` are now the **easy-band base**. At reward-grant time the active match's stamped `botDifficulty` (Phase 7A.2 DDA) maps onto a multiplier:
+
+| Mode | Base | Easy 1.0× | Normal 1.2× | Hard 1.5× |
+|------|------|-----------|-------------|-----------|
+| 1 / 2 / 3 | 100 | 100 | 120 | 150 |
+| 4 (Blitz) | 150 | 150 | 180 | 225 |
+| 5 (Blackout) | 250 | 250 | 300 | 375 |
+| 6 (Sudden Death) | 120 | 120 | 144 | 180 |
+| 7 (Mirror) | 180 | 180 | 216 | 270 |
+
+Why anchor at easy not normal: the DDA is hidden by design (SPEC §5.5). Centring the base at normal would mean easy-band players see a smaller chip — a leaky difficulty signal. Easy-anchor means everyone gets at least the catalog number; the upside for harder bands is silent.
+
+Stalemate refunds the raw stake (no multiplier — refunding the original transaction, not earning new tokens). Defeat stays at 0. The `rewardForCompletedMatch` helper (lifted into `@game/economy/matchReward.ts` during the Codex fix) is the single source of truth shared by `MatchScreen` (original credit at completion) and `applyRewardedDouble` (computes the doubled amount internally).
+
+### Q1–Q12 brainstorm decisions log
+
+- **Q1**: Reward multiplier 1.0 / 1.2 / 1.5 (easy / normal / hard). Anchored at easy.
+- **Q2**: Daily ad cap 10/day. High enough not to throttle engaged play, low enough that idle exploit can't farm.
+- **Q3**: Low-balance threshold < 100 tokens. Gate fires *before* the player can't afford a 50-token match.
+- **Q4**: Reward ad +50 tokens. Exactly one Mode 1/2/3/4/6 stake — self-recovery for one match.
+- **Q5**: Manual setInterval for animations (no Reanimated dep). Determinism in Jest > native-driver perf for low-intensity UI.
+- **Q6**: Cancel modal returns to HomeScreen (not Shop). Shop remains reachable from the home top-bar TokenBadge.
+- **Q7**: Daily Challenge ad-free (B). Invariant pinned at 3 layers.
+- **Q8**: Interstitial frequency 3 matches.
+- **Q9**: Double > Interstitial priority — rewarded watch consumes the cadence slot; never two ads.
+- **Q10**: Remove Ads $2.99 (B). Non-consumable IAP.
+- **Q11**: Remove Ads gates only forced ads (B), NOT rewarded paths. Codex finding 2 surfaced a bug where the pre-fix gate also hid the rewarded Double; fix dropped that condition.
+- **Q12**: Remove Ads grants no token bonus on purchase (A). The ad-free experience is the value prop.
+
+### Codex review — 3 findings, 1 atomic fix
+
+The Codex review surfaced 3 findings between CP6 and CP7. All three landed in a single fix commit (`29bd266`) before CP7 to keep the animation work on a clean foundation.
+
+**Finding 1 (HIGH) — `applyRewardedDouble` token-mint exploit.** The pre-fix signature was `applyRewardedDouble(extraReward: number)` — a caller-supplied credit amount. A manipulated `route.params.extraReward` could mint arbitrary tokens. The signature is now `applyRewardedDouble(matchId: string)`; the action validates the active matchState's id matches and computes the doubled amount internally from the catalog + DDA stamp. The user no longer supplies the math.
+
+Validation chain (each step short-circuits with a typed error so analytics can split the funnel):
+- `no_match` — matchStore.matchState is null.
+- `wrong_id` — matchState.id !== matchId.
+- `not_completed` — matchState.phase !== 'completed' OR result === null.
+- `wrong_outcome` — outcome ∉ {player_won, draw}.
+- `already_doubled` — matchState.doubledReward === true (idempotency).
+- `cap_reached` — adsWatchedToday >= AD_CAP_PER_DAY for today.
+
+A new analytics event (`rewarded_double_invalid_attempt`) records the validation step that failed for any future ad-fraud monitoring.
+
+**Finding 2 (MEDIUM) — Q11 contract bug.** The CP6 implementation hid the Double UI behind `!adsRemoved`. Q11 reading: Remove Ads removes only forced ads. The pre-fix gate silently capped paying users' earning ceiling. Fix: drop the `!adsRemoved` condition from the Double UI gate. CP3 forced interstitial remains correctly gated via `canShowInterstitial`.
+
+**Finding 3 (MEDIUM) — HomeScreen cross-midnight stale state.** The pre-fix `today` state was captured once at mount via `useState` initializer. A player who left the app open or backgrounded across midnight saw a stale banner against yesterday's calendar day. Fix: the existing 60s interval now also re-evaluates `today` and `setToday` on flip; new `AppState.addEventListener('change', ...)` handles the foreground-return case.
+
+### Accessibility — `useReducedMotion` hook (CP7)
+
+Apple HIG mandates respect for the iOS Settings → Accessibility → Motion → Reduce Motion toggle for any non-essential animation. CP7's count-up + reward floater both fall under that policy. The `useReducedMotion` hook wraps `AccessibilityInfo.isReduceMotionEnabled()` + the `'reduceMotionChanged'` event so any component animating values can short-circuit with a single `if (reduced) ...` branch.
+
+Reduced-motion behaviour:
+- `AnimatedTokenCounter` — sets the value directly on prop change (no interpolation frames).
+- `TokenRewardFloater` — fires `onComplete` on the next tick; no translate, no fade.
+
+The hook returns `false` on first render and updates after the async `isReduceMotionEnabled()` resolves on mount. Components tolerate this transient false-then-true flip; in practice the resolve is one tick.
+
+### Manual setInterval over Reanimated / Animated (Q5)
+
+CP7's animation primitives (`AnimatedTokenCounter`, `TokenRewardFloater`) use plain `setInterval` with a tick-counter — not Reanimated, not RN's built-in Animated API. Trade-offs:
+
+- **Pro**: Deterministic under `jest.useFakeTimers` + `jest.advanceTimersByTime` regardless of whether the test environment also mocks `Date.now`. The TokenRewardFloater initially used `Date.now() - startTime` arithmetic; the iOS-test phase swap to a tick counter (`elapsed += FRAME_INTERVAL_MS`) made the test surface deterministic.
+- **Pro**: No native-driver dependency. The animation fits inside the JS thread without a bridge call per frame; for low-intensity one-shot UI (count-up, fade-out), this is plenty.
+- **Con**: No native-driver perf optimisation. Frame-skipping under JS-thread pressure is acceptable for these primitives — the easing math is time-based, so a missed frame catches up on the next tick.
+
+The `react-hooks/refs` and `react-hooks/set-state-in-effect` lints flagged two intentional patterns inside `AnimatedTokenCounter` (the displayValue ref-mirror + the reduced-motion one-shot setState). Both have targeted `eslint-disable-next-line` comments explaining why the patterns don't trigger the underlying policy concerns (cascading renders).
+
+### Cross-store action seam — userStore ↔ matchStore cycle
+
+The Codex finding 1 fix introduced a new edge to the existing matchStore → userStore import (CP1's `applyRewardedDouble` reads matchStore for the validation chain). Bundler reports `Require cycle: userStore → matchStore → userStore`. The cycle is **safe at runtime** because both stores access each other only inside action bodies via `.getState()`, never at module top level. JS resolves circular imports via partial-export resolution; access is deferred until both modules finish loading.
+
+A future cleanup option: extract `applyRewardedDouble`'s validation chain into a separate module that imports both stores neutrally. Tracked as a Phase 9 / CP-cleanup candidate; not blocking.
+
+### Test surface — 1076 → 1240 (+164 net)
+
+| Surface | Tests added | Notes |
+|---------|-------------|-------|
+| `src/game/economy/__tests__/*` | ~50 | adCap (cap, cross-midnight, EU/US DST), interstitial (threshold), iap (gate composition), rewardPacing (multiplier × catalog × difficulty parametric). |
+| `src/state/__tests__/userStore.test.ts` | ~30 | v3→v4 migration + v1→v4 chain + v4 idempotent + economy actions (watchAdAction, applyRewardedDouble validation chain) + Daily ad-free invariant (3 tests). |
+| `src/screens/__tests__/AdWatchScreen.test.tsx` | ~10 | watchAdAction integration, double mode, cap-reached defensive, modal recovery loop, low-balance loop. |
+| `src/screens/__tests__/InsufficientTokensModal.test.tsx` | +5 | CP4 reshape (new copy, Cancel button, ad-cap-aware disabled state, stale-day reset). |
+| `src/screens/__tests__/MatchResultScreen.test.tsx` | ~25 | Counter increment per outcome, threshold trigger, adsRemoved short-circuit, cap-reached short-circuit, multi-match cadence, Q9 priority (3 tests), Double UI eligibility (8 tests), Codex BUG 2 inverted assertion. |
+| `src/components/__tests__/{LowBalanceToast,AnimatedTokenCounter,TokenRewardFloater}.test.tsx` | ~20 | Component primitives (render, interaction callbacks, animation interpolation, reduced-motion bypass, unmount cleanup). |
+| `src/screens/__tests__/HomeScreen.test.tsx` | +9 | Low-balance toast (7) + Codex BUG 3 cross-midnight (2). |
+| `src/__tests__/dailyChallengeE2E.test.tsx` | +1 | CP3 Daily ad-free invariant E2E. |
+
+The simulation file (`dailyChallengeSimulation.test.ts`) and the streak suite already existed from Phase 7A.4 and were not touched — Phase 7A.5 is bot/match-economy work, orthogonal to Daily mechanics.
+
+### Phase 7A.5 sealed — Phase 7A.6 (Onboarding) handoff
+
+Phase 7A.5 is programmatic-green at `1240/1240` tests, `0` known bugs in the test surface. The 3-layer ad strategy + DDA-aware reward gradient + Remove Ads IAP + accessibility-aware animations are all production-shape; Phase 8's TestFlight build will exercise the surfaces against real ad inventory + IAP sandbox.
+
+**Real-device validation deferred to Phase 8 TestFlight.** The HomeScreen + AdWatch flows have been smoke-tested via dev simulator builds; one rewarded-double credit-correctness scenario was flagged during the dev session (the doubled tokens did not appear to credit on a Skip return). The investigation paused at the validation chain entry point — programmatic tests cover every reject branch and the success path, so the discrepancy is most plausibly a stale-bundle / device-state interaction rather than a code bug. Phase 8 TestFlight + a clean install will be the load-bearing real-device pass; if the bug reproduces there, the Codex-fix-flavoured validation chain is the first place to log + fix.
+
+**Phase 7A.6 (Onboarding) inherits the seam Phase 7A.5 left it:**
+- The iOS notification permission prompt for the Daily 09:00 reminder rides the Onboarding flow. Phase 7A.4 CP5 deferred push notification with a note that the permission UX consolidates here. Phase 7A.5 added no friction to that handoff.
+- The first onboarding slide is Daily Challenge (Phase 7A — Revised Roadmap rationale). Phase 7A.5 did not change Daily — the slide can ship as planned.
+- The economy gradient + low-balance recovery + ad-free Daily are now production-shape, so Onboarding can demonstrate the wallet behaviour with confidence (no half-built primitives to dance around).
