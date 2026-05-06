@@ -12,6 +12,7 @@ import { InterstitialAdScreen } from '@screens/InterstitialAdScreen';
 import { MatchmakingScreen } from '@screens/MatchmakingScreen';
 import { MatchResultScreen } from '@screens/MatchResultScreen';
 import { MatchScreen } from '@screens/MatchScreen';
+import { OnboardingIntroScreen } from '@screens/OnboardingIntroScreen';
 import { OnboardingScreen } from '@screens/OnboardingScreen';
 import { ProfileScreen } from '@screens/ProfileScreen';
 import { SecretSetupScreen } from '@screens/SecretSetupScreen';
@@ -50,6 +51,15 @@ export function RootNavigator(): React.JSX.Element {
         }}
       >
         <Stack.Screen name="Onboarding" component={OnboardingScreen} />
+        <Stack.Screen
+          name="OnboardingIntro"
+          component={OnboardingIntroScreen}
+          options={{
+            presentation: 'fullScreenModal',
+            gestureEnabled: false,
+            headerShown: false,
+          }}
+        />
         <Stack.Screen name="Home" component={HomeScreen} />
         <Stack.Screen name="Matchmaking" component={MatchmakingScreen} />
         <Stack.Screen
