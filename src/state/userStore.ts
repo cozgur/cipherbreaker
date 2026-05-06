@@ -333,6 +333,16 @@ export interface UserStoreActions {
    * by the screen handler (CP4 Start Playing:
    * `markTokenWalkthroughSeen()` then
    * `stampOnboardingComplete(today)`).
+   *
+   * CP7.2 caveat — if you hit
+   * `[TypeError: stampOnboardingComplete is not a function]`
+   * (or the equivalent for any new action added to this store)
+   * during local dev: it's almost certainly a stale Zustand store
+   * instance held by Fast Refresh across module swaps, NOT a code
+   * bug. Run `npx expo start --clear` to nuke Metro caches and
+   * force a clean store re-instantiation. The persist-hydration
+   * regression test (`cp72PersistRehydration.test.ts`) catches the
+   * other failure mode (real action loss during rehydrate).
    */
   stampOnboardingComplete(today: string): void;
   /**
