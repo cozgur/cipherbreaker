@@ -1,7 +1,7 @@
 import { __resetRegistryForTests, modeRegistry } from '@game/modeRegistry';
 import { mode1ColorMatch } from '@game/modes/mode1ColorMatch';
 import { useMatchStore } from '@state/matchStore';
-import { __migrateUserStoreForTests, USER_STORE_DEFAULTS, useUserStore } from '../userStore';
+import { __migrateUserStoreForTests, ONBOARDING_DEFAULTS, USER_STORE_DEFAULTS, useUserStore } from '../userStore';
 
 describe('useUserStore', () => {
   beforeEach(() => {
@@ -349,7 +349,7 @@ describe('useUserStore', () => {
     });
   });
 
-  describe('migration — chained v1 → v2 → v3 → v4', () => {
+  describe('migration — chained v1 → v2 → v3 → v4 → v5', () => {
     // Phase 7A.4 CP3 + Phase 7A.5 CP1: chained migration pattern.
     // A v1 blob hydrates through every upgrade step to land at v4;
     // a v3 blob takes the v3 → v4 step alone; v4 is identity. Each
@@ -451,8 +451,8 @@ describe('useUserStore', () => {
       expect(next.dailyChallenge.lastResult).toBeNull();
     });
 
-    it('v4 is idempotent — current-version state passes through unchanged', () => {
-      const next = __migrateUserStoreForTests(USER_STORE_DEFAULTS, 4);
+    it('v5 is idempotent — current-version state passes through unchanged', () => {
+      const next = __migrateUserStoreForTests(USER_STORE_DEFAULTS, 5);
       expect(next).toBe(USER_STORE_DEFAULTS);
     });
 
@@ -505,9 +505,9 @@ describe('useUserStore', () => {
       expect(next.adsRemoved).toBe(false);
     });
 
-    it('v1 → v4: full chain hydrates through every step', () => {
+    it('v1 → v5: full chain hydrates through every step', () => {
       // Pre-Phase-7A.1 v1 blob with the original `tokensEarned`
-      // field name. Must land at v4 with all upgrade-step fields
+      // field name. Must land at v5 with all upgrade-step fields
       // seeded, NOT fall through to defaults.
       const v1State = {
         username: 'ancient_user',
@@ -538,9 +538,104 @@ describe('useUserStore', () => {
       expect(next.adsWatchedLastDate).toBeNull();
       expect(next.matchesSinceLastInterstitial).toBe(0);
       expect(next.adsRemoved).toBe(false);
-      // Identity preservation across all three steps.
+      // v4 → v5 step (Phase 7A.6) — onboarding seeded with
+      // introSeen=true (existing-user heuristic — they made it
+      // through every prior migration so they're an upgrade).
+      expect(next.onboarding.introSeen).toBe(true);
+      expect(next.onboarding.tutorialMatchCompleted).toBe(false);
+      expect(next.onboarding.completedAt).toBeNull();
+      expect(next.matchesCompletedSinceOnboarding).toBe(0);
+      // Identity preservation across all four steps.
       expect(next.username).toBe('ancient_user');
       expect(next.tokens).toBe(800);
+    });
+
+    // Realistic v4 blob shared across the v4→v5 heuristic tests.
+    const v4StateActivePlayer = {
+      username: 'streak_seven',
+      tokens: 500,
+      level: 12,
+      currentXP: 2340,
+      targetXP: 3200,
+      hasOnboarded: true,
+      stats: {
+        gamesPlayed: 247,
+        winRate: 68,
+        currentStreak: 4,
+        bestStreak: 11,
+        avgTurns: 5.3,
+        totalTokensEarned: 12_400,
+        recentMatches: ['victory', 'victory', 'defeat'],
+      },
+      perMode: { 1: { winRate: 72 }, 7: { winRate: 52 } },
+      dailyChallenge: {
+        lastPlayedDate: '2026-05-04',
+        currentStreak: 7,
+        longestStreak: 7,
+        effectiveDayOffset: 0,
+        lastResult: null,
+        history: [],
+        earnedHints: 1,
+        lastHintEarnedAtStreak: 7,
+      },
+      adsWatchedToday: 3,
+      adsWatchedLastDate: '2026-05-05',
+      matchesSinceLastInterstitial: 1,
+      adsRemoved: true,
+    };
+
+    it('v4 → v5: preserves every v4 field and seeds introSeen=true when gamesPlayed > 0', () => {
+      // Active player — the v4 → v5 step must not touch any v4 field.
+      const next = __migrateUserStoreForTests(v4StateActivePlayer, 4);
+      // Every v4 field survives byte-for-byte.
+      expect(next.username).toBe('streak_seven');
+      expect(next.tokens).toBe(500);
+      expect(next.adsWatchedToday).toBe(3);
+      expect(next.adsRemoved).toBe(true);
+      expect(next.matchesSinceLastInterstitial).toBe(1);
+      expect(next.dailyChallenge.currentStreak).toBe(7);
+      // Phase 7A.6 onboarding seeded — engaged player skips intro;
+      // remaining flags stay false so tutorial / token walkthrough
+      // / teasers / push opt-in can still fire when those moments
+      // arrive.
+      expect(next.onboarding.introSeen).toBe(true);
+      expect(next.onboarding.tutorialMatchCompleted).toBe(false);
+      expect(next.onboarding.tokenWalkthroughSeen).toBe(false);
+      expect(next.onboarding.blitzTeaserSeen).toBe(false);
+      expect(next.onboarding.mirrorTeaserSeen).toBe(false);
+      expect(next.onboarding.notificationOptInAsked).toBe(false);
+      expect(next.onboarding.completedAt).toBeNull();
+      expect(next.matchesCompletedSinceOnboarding).toBe(0);
+    });
+
+    it('v4 → v5: gamesPlayed === 0 (reset-then-upgrade) → introSeen=false (sees intro on relaunch)', () => {
+      // resetPlayStats clears gamesPlayed → 0. A reset-then-upgrade
+      // user should see the intro again — the reset semantics are
+      // "start over from scratch," and the heuristic respects that.
+      const v4ResetState = {
+        ...v4StateActivePlayer,
+        stats: { ...v4StateActivePlayer.stats, gamesPlayed: 0, winRate: 0, currentStreak: 0 },
+      };
+      const next = __migrateUserStoreForTests(v4ResetState, 4);
+      expect(next.onboarding.introSeen).toBe(false);
+      // Other onboarding flags untouched — only the intro decision
+      // is gamesPlayed-keyed; the rest follow their own milestones.
+      expect(next.onboarding.tutorialMatchCompleted).toBe(false);
+      expect(next.onboarding.completedAt).toBeNull();
+      // Non-onboarding v4 fields still survive — reset only clears
+      // stats, not the wallet / IAP / ad-cap state.
+      expect(next.tokens).toBe(500);
+      expect(next.adsRemoved).toBe(true);
+    });
+
+    it('v4 → v5: missing stats (defensive — corrupt v4 blob) → introSeen=false (does not silently skip intro)', () => {
+      // A malformed v4 blob with no stats field: the migrator must
+      // fall back to "show intro" rather than skip it. Defensive
+      // default — never silently suppress onboarding on corrupt data.
+      const v4Corrupt = { username: 'broken', tokens: 100 };
+      const next = __migrateUserStoreForTests(v4Corrupt, 4);
+      expect(next.onboarding.introSeen).toBe(false);
+      expect(next.matchesCompletedSinceOnboarding).toBe(0);
     });
 
     it('falls back to defaults for an unknown (future) version stamp', () => {
@@ -548,7 +643,7 @@ describe('useUserStore', () => {
       expect(next).toEqual(USER_STORE_DEFAULTS);
     });
 
-    it('handles a v1 state with a missing `stats` key without throwing — chains to v4', () => {
+    it('handles a v1 state with a missing `stats` key without throwing — chains to v5', () => {
       const partial = { username: 'ghost', tokens: 100 };
       const next = __migrateUserStoreForTests(partial, 1);
       expect(next.username).toBe('ghost');
@@ -834,6 +929,183 @@ describe('useUserStore', () => {
         expect(useUserStore.getState().adsWatchedToday).toBe(1);
         expect(useUserStore.getState().adsWatchedLastDate).toBe('2026-05-05');
       });
+    });
+  });
+
+  describe('Phase 7A.6 CP1 — onboarding actions', () => {
+    it('markIntroSeen flips introSeen and leaves every other onboarding flag alone', () => {
+      useUserStore.setState({ onboarding: { ...ONBOARDING_DEFAULTS } });
+      useUserStore.getState().markIntroSeen();
+      const { onboarding } = useUserStore.getState();
+      expect(onboarding.introSeen).toBe(true);
+      expect(onboarding.tutorialMatchCompleted).toBe(false);
+      expect(onboarding.tokenWalkthroughSeen).toBe(false);
+      expect(onboarding.blitzTeaserSeen).toBe(false);
+      expect(onboarding.mirrorTeaserSeen).toBe(false);
+      expect(onboarding.notificationOptInAsked).toBe(false);
+      expect(onboarding.completedAt).toBeNull();
+    });
+
+    it('markIntroSeen is idempotent — calling twice is a no-op on the second call', () => {
+      useUserStore.setState({ onboarding: { ...ONBOARDING_DEFAULTS } });
+      useUserStore.getState().markIntroSeen();
+      useUserStore.getState().markIntroSeen();
+      expect(useUserStore.getState().onboarding.introSeen).toBe(true);
+    });
+
+    it('markTutorialMatchCompleted flips only tutorialMatchCompleted', () => {
+      useUserStore.setState({ onboarding: { ...ONBOARDING_DEFAULTS } });
+      useUserStore.getState().markTutorialMatchCompleted();
+      const { onboarding } = useUserStore.getState();
+      expect(onboarding.introSeen).toBe(false);
+      expect(onboarding.tutorialMatchCompleted).toBe(true);
+      expect(onboarding.tokenWalkthroughSeen).toBe(false);
+    });
+
+    it('markTokenWalkthroughSeen flips only tokenWalkthroughSeen', () => {
+      useUserStore.setState({ onboarding: { ...ONBOARDING_DEFAULTS } });
+      useUserStore.getState().markTokenWalkthroughSeen();
+      const { onboarding } = useUserStore.getState();
+      expect(onboarding.tutorialMatchCompleted).toBe(false);
+      expect(onboarding.tokenWalkthroughSeen).toBe(true);
+      expect(onboarding.blitzTeaserSeen).toBe(false);
+    });
+
+    it('markBlitzTeaserSeen flips only blitzTeaserSeen', () => {
+      useUserStore.setState({ onboarding: { ...ONBOARDING_DEFAULTS } });
+      useUserStore.getState().markBlitzTeaserSeen();
+      const { onboarding } = useUserStore.getState();
+      expect(onboarding.tokenWalkthroughSeen).toBe(false);
+      expect(onboarding.blitzTeaserSeen).toBe(true);
+      expect(onboarding.mirrorTeaserSeen).toBe(false);
+    });
+
+    it('markMirrorTeaserSeen flips only mirrorTeaserSeen', () => {
+      useUserStore.setState({ onboarding: { ...ONBOARDING_DEFAULTS } });
+      useUserStore.getState().markMirrorTeaserSeen();
+      const { onboarding } = useUserStore.getState();
+      expect(onboarding.blitzTeaserSeen).toBe(false);
+      expect(onboarding.mirrorTeaserSeen).toBe(true);
+      expect(onboarding.notificationOptInAsked).toBe(false);
+    });
+
+    it('markNotificationOptInAsked flips only notificationOptInAsked', () => {
+      useUserStore.setState({ onboarding: { ...ONBOARDING_DEFAULTS } });
+      useUserStore.getState().markNotificationOptInAsked();
+      const { onboarding } = useUserStore.getState();
+      expect(onboarding.mirrorTeaserSeen).toBe(false);
+      expect(onboarding.notificationOptInAsked).toBe(true);
+      expect(onboarding.completedAt).toBeNull();
+    });
+
+    describe('completeOnboarding', () => {
+      it('flips every flag to true and stamps completedAt with the supplied today string', () => {
+        useUserStore.setState({ onboarding: { ...ONBOARDING_DEFAULTS } });
+        useUserStore.getState().completeOnboarding('2026-05-05');
+        const { onboarding } = useUserStore.getState();
+        expect(onboarding.introSeen).toBe(true);
+        expect(onboarding.tutorialMatchCompleted).toBe(true);
+        expect(onboarding.tokenWalkthroughSeen).toBe(true);
+        expect(onboarding.blitzTeaserSeen).toBe(true);
+        expect(onboarding.mirrorTeaserSeen).toBe(true);
+        expect(onboarding.notificationOptInAsked).toBe(true);
+        expect(onboarding.completedAt).toBe('2026-05-05');
+      });
+
+      it('is idempotent — second call is a no-op regardless of the supplied date', () => {
+        useUserStore.setState({ onboarding: { ...ONBOARDING_DEFAULTS } });
+        useUserStore.getState().completeOnboarding('2026-05-05');
+        // Supply a different date to prove the guard fires, not just same-day coincidence.
+        useUserStore.getState().completeOnboarding('2026-05-06');
+        expect(useUserStore.getState().onboarding.completedAt).toBe('2026-05-05');
+      });
+
+      it('flips the remaining flags when called from a partially-marked state', () => {
+        // A player who marked intro + tutorial then taps Skip All:
+        // the remaining four flags must still flip to true so no
+        // post-onboarding surface re-shows.
+        useUserStore.setState({
+          onboarding: {
+            ...ONBOARDING_DEFAULTS,
+            introSeen: true,
+            tutorialMatchCompleted: true,
+          },
+        });
+        useUserStore.getState().completeOnboarding('2026-05-06');
+        const { onboarding } = useUserStore.getState();
+        expect(onboarding.introSeen).toBe(true);
+        expect(onboarding.tutorialMatchCompleted).toBe(true);
+        expect(onboarding.tokenWalkthroughSeen).toBe(true);
+        expect(onboarding.blitzTeaserSeen).toBe(true);
+        expect(onboarding.mirrorTeaserSeen).toBe(true);
+        expect(onboarding.notificationOptInAsked).toBe(true);
+        expect(onboarding.completedAt).toBe('2026-05-06');
+      });
+
+      it('does NOT reset matchesCompletedSinceOnboarding (counter outlives the flow)', () => {
+        // Mode-variety teasers (3 matches → Blitz, 5 → Mirror) fire
+        // post-onboarding. Skip All must not zero the counter — a
+        // player with 4 matches already deserves the Blitz teaser
+        // on their next eligible moment, not a reset window.
+        useUserStore.setState({
+          matchesCompletedSinceOnboarding: 4,
+          onboarding: { ...ONBOARDING_DEFAULTS },
+        });
+        useUserStore.getState().completeOnboarding('2026-05-06');
+        expect(useUserStore.getState().matchesCompletedSinceOnboarding).toBe(4);
+      });
+    });
+
+    it('incrementMatchesSinceOnboarding bumps the counter by 1 each call', () => {
+      useUserStore.setState({ matchesCompletedSinceOnboarding: 0 });
+      useUserStore.getState().incrementMatchesSinceOnboarding();
+      expect(useUserStore.getState().matchesCompletedSinceOnboarding).toBe(1);
+      useUserStore.getState().incrementMatchesSinceOnboarding();
+      expect(useUserStore.getState().matchesCompletedSinceOnboarding).toBe(2);
+    });
+  });
+
+  describe('Phase 7A.6 CP1 — Daily-Challenge invariant for matchesCompletedSinceOnboarding', () => {
+    // Daily Challenge must never increment `matchesCompletedSinceOnboarding`.
+    // Only the Mode 1–7 engine path (CP2+ wires it) may bump this counter.
+
+    it('recordDailyResult does NOT bump matchesCompletedSinceOnboarding', () => {
+      useUserStore.setState({ matchesCompletedSinceOnboarding: 0 });
+      useUserStore.getState().recordDailyResult({
+        date: '2026-05-05',
+        digits: 4,
+        turnLimit: 10,
+        turnsUsed: 3,
+        success: true,
+        secret: '1234',
+        feedbackTrail: [],
+        hintsUsed: 0,
+      });
+      expect(useUserStore.getState().matchesCompletedSinceOnboarding).toBe(0);
+    });
+
+    it('recordMissedDay does NOT bump matchesCompletedSinceOnboarding', () => {
+      useUserStore.setState({
+        matchesCompletedSinceOnboarding: 0,
+        dailyChallenge: {
+          ...USER_STORE_DEFAULTS.dailyChallenge,
+          lastPlayedDate: '2026-05-03',
+          currentStreak: 2,
+        },
+      });
+      useUserStore.getState().recordMissedDay('2026-05-05');
+      expect(useUserStore.getState().matchesCompletedSinceOnboarding).toBe(0);
+    });
+
+    it('recordMatchResult does NOT auto-increment matchesCompletedSinceOnboarding — CP2+ wires the bump', () => {
+      useUserStore.setState({ matchesCompletedSinceOnboarding: 0 });
+      useUserStore.getState().recordMatchResult({
+        modeId: 1,
+        outcome: 'victory',
+        turns: 4,
+        tokensEarnedThisMatch: 100,
+      });
+      expect(useUserStore.getState().matchesCompletedSinceOnboarding).toBe(0);
     });
   });
 

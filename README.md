@@ -76,3 +76,4 @@ TypeScript + Metro resolve these at runtime; Jest mirrors them in `jest.config.j
 @data/*       → src/data/*
 @navigation/* → src/navigation/*
 ```
+

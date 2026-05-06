@@ -41,3 +41,6 @@ yarn-error.*
 
 # Project-specific
 fonts-download/
+
+# Claude Code runtime artifacts (scheduled tasks lockfile, etc.)
+.claude/

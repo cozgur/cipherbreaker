@@ -97,6 +97,39 @@ export interface UserStoreState {
    * `__DEV__` Settings switch in dev/staging.
    */
   readonly adsRemoved: boolean;
+  /**
+   * Phase 7A.6 CP1 — onboarding flag bag. Tracks which onboarding
+   * surfaces the player has seen so the flow can resume mid-step
+   * across cold starts and so screens can avoid re-showing
+   * surfaces that have already landed. Defaults are all `false` /
+   * `null`; the v4 → v5 migration sets `introSeen: true` for
+   * upgrade users with `gamesPlayed > 0` (they've earned the
+   * right to skip the intro by actually playing).
+   */
+  readonly onboarding: OnboardingState;
+  /**
+   * Phase 7A.6 CP1 — counter incremented on every Mode 1–7 match
+   * completion (engine path only). Drives the post-onboarding
+   * mode-variety teasers (3 matches → Blitz teaser, 5 matches →
+   * Mirror teaser). Daily Challenge does NOT touch this counter
+   * — same ad-free-Daily pattern Phase 7A.5's
+   * `matchesSinceLastInterstitial` follows. Pinned by an
+   * invariant test: `recordDailyResult` and `recordMissedDay`
+   * never mutate this field.
+   */
+  readonly matchesCompletedSinceOnboarding: number;
+}
+
+export interface OnboardingState {
+  readonly introSeen: boolean;
+  readonly tutorialMatchCompleted: boolean;
+  readonly tokenWalkthroughSeen: boolean;
+  readonly blitzTeaserSeen: boolean;
+  readonly mirrorTeaserSeen: boolean;
+  readonly notificationOptInAsked: boolean;
+  /** ISO 'YYYY-MM-DD' date stamped when the player either
+   *  finishes the full flow or taps Skip All. */
+  readonly completedAt: string | null;
 }
 
 export interface RecordMatchResultInput {
@@ -238,6 +271,41 @@ export interface UserStoreActions {
    * is the value prop, no bonus).
    */
   setAdsRemoved(value: boolean): void;
+  /**
+   * Phase 7A.6 CP1 — flip the corresponding onboarding flag to
+   * `true`. Each is a one-shot record of "the player has seen
+   * this surface"; the flow never un-sets a flag (a Replay
+   * Tutorial entry point on Settings is a separate future
+   * affordance that will clear flags then). Idempotent — calling
+   * twice is a no-op.
+   */
+  markIntroSeen(): void;
+  markTutorialMatchCompleted(): void;
+  markTokenWalkthroughSeen(): void;
+  markBlitzTeaserSeen(): void;
+  markMirrorTeaserSeen(): void;
+  markNotificationOptInAsked(): void;
+  /**
+   * Phase 7A.6 CP1 — atomic "Skip All" / completion. Stamps
+   * `completedAt` to `today` and flips every onboarding flag to
+   * `true` so no surface re-shows after dismissal. Idempotent: if
+   * `completedAt` is already set, the action is a no-op (the
+   * original completion timestamp is the canonical analytics event).
+   * `today` follows the 'YYYY-MM-DD' injection pattern used by
+   * `watchAdAction` and `recordMissedDay` for deterministic tests.
+   * CP1 ships the action; call sites land in later CPs.
+   */
+  completeOnboarding(today: string): void;
+  /**
+   * Phase 7A.6 CP1 — bump the post-onboarding Mode 1–7 match
+   * counter that drives the variety teasers (3 matches → Blitz,
+   * 5 matches → Mirror). Wired by the match-completion seam
+   * (`MatchResultScreen` mount effect) in a later CP; CP1 ships
+   * only the primitive. Daily Challenge does NOT call this —
+   * mirrors Phase 7A.5's `incrementMatchCounter` ad-free Daily
+   * invariant. Pinned by regression tests.
+   */
+  incrementMatchesSinceOnboarding(): void;
 }
 
 export const DAILY_CHALLENGE_DEFAULTS: DailyChallengeState = {
@@ -249,6 +317,28 @@ export const DAILY_CHALLENGE_DEFAULTS: DailyChallengeState = {
   history: [],
   earnedHints: 0,
   lastHintEarnedAtStreak: 0,
+};
+
+export const ONBOARDING_DEFAULTS: OnboardingState = {
+  introSeen: false,
+  tutorialMatchCompleted: false,
+  tokenWalkthroughSeen: false,
+  blitzTeaserSeen: false,
+  mirrorTeaserSeen: false,
+  notificationOptInAsked: false,
+  completedAt: null,
+};
+
+// TypeScript-enforced exhaustive set of all boolean onboarding flags.
+// Adding a new boolean field to OnboardingState will cause a compile error
+// here, forcing `completeOnboarding` to be updated in lockstep.
+const ONBOARDING_ALL_SEEN: Omit<OnboardingState, 'completedAt'> = {
+  introSeen: true,
+  tutorialMatchCompleted: true,
+  tokenWalkthroughSeen: true,
+  blitzTeaserSeen: true,
+  mirrorTeaserSeen: true,
+  notificationOptInAsked: true,
 };
 
 export const USER_STORE_DEFAULTS: UserStoreState = {
@@ -281,9 +371,11 @@ export const USER_STORE_DEFAULTS: UserStoreState = {
   adsWatchedLastDate: null,
   matchesSinceLastInterstitial: 0,
   adsRemoved: false,
+  onboarding: ONBOARDING_DEFAULTS,
+  matchesCompletedSinceOnboarding: 0,
 };
 
-const STORE_VERSION = 4;
+const STORE_VERSION = 5;
 
 /**
  * Migrate persisted state across `STORE_VERSION` bumps. The persist
@@ -311,6 +403,20 @@ const STORE_VERSION = 4;
  *     migration step covers all four — keeps the upgrade atomic
  *     and avoids per-field sub-versions for what is conceptually
  *     one "Phase 7A.5 economy schema bump."
+ *   v4 → v5 (Phase 7A.6 CP1): seed `onboarding` flags +
+ *     `matchesCompletedSinceOnboarding: 0`. Existing-user
+ *     heuristic: stamp `onboarding.introSeen: true` only when
+ *     `stats.gamesPlayed > 0` — the player has actually played
+ *     at least one match on a v4 build. resetPlayStats clears
+ *     `gamesPlayed` → 0, so a reset-then-upgrade user is treated
+ *     as starting over and sees the intro again (matches the
+ *     reset semantics). Fresh installs (no prior persist) never
+ *     run this migration; they get `introSeen: false` from
+ *     `ONBOARDING_DEFAULTS` and see the full flow. The remaining
+ *     onboarding surfaces (tutorial match, token walkthrough,
+ *     mode-variety teasers, push opt-in) stay false so the
+ *     post-onboarding milestones can still fire if/when those
+ *     moments arrive.
  */
 
 // Loose v1 shape — only the fields the v1→v2 mapper inspects.
@@ -318,15 +424,19 @@ type V1Stats = Omit<UserStats, 'totalTokensEarned' | 'recentMatches'> & {
   readonly tokensEarned?: number;
 };
 type V7A5Fields = 'adsWatchedToday' | 'adsWatchedLastDate' | 'matchesSinceLastInterstitial' | 'adsRemoved';
-type V1State = Omit<UserStoreState, 'stats' | 'dailyChallenge' | V7A5Fields> & {
+type V7A6Fields = 'onboarding' | 'matchesCompletedSinceOnboarding';
+type V1State = Omit<UserStoreState, 'stats' | 'dailyChallenge' | V7A5Fields | V7A6Fields> & {
   readonly stats?: V1Stats;
 };
 
-// v2 shape — UserStoreState minus dailyChallenge + every Phase 7A.5 field.
-type V2State = Omit<UserStoreState, 'dailyChallenge' | V7A5Fields>;
+// v2 shape — UserStoreState minus dailyChallenge + every later-phase field.
+type V2State = Omit<UserStoreState, 'dailyChallenge' | V7A5Fields | V7A6Fields>;
 
-// v3 shape — UserStoreState minus the four Phase 7A.5 fields.
-type V3State = Omit<UserStoreState, V7A5Fields>;
+// v3 shape — UserStoreState minus the Phase 7A.5 + 7A.6 fields.
+type V3State = Omit<UserStoreState, V7A5Fields | V7A6Fields>;
+
+// v4 shape — UserStoreState minus the Phase 7A.6 fields.
+type V4State = Omit<UserStoreState, V7A6Fields>;
 
 function migrateV1ToV2(persisted: unknown): V2State {
   const v1 = (persisted ?? {}) as V1State;
@@ -354,7 +464,7 @@ function migrateV2ToV3(persisted: unknown): V3State {
   };
 }
 
-function migrateV3ToV4(persisted: unknown): UserStoreState {
+function migrateV3ToV4(persisted: unknown): V4State {
   const v3 = (persisted ?? {}) as V3State;
   return {
     ...v3,
@@ -362,6 +472,27 @@ function migrateV3ToV4(persisted: unknown): UserStoreState {
     adsWatchedLastDate: null,
     matchesSinceLastInterstitial: 0,
     adsRemoved: false,
+  };
+}
+
+function migrateV4ToV5(persisted: unknown): UserStoreState {
+  const v4 = (persisted ?? {}) as V4State;
+  // Existing-user heuristic: gamesPlayed > 0 means the player
+  // has actually engaged (not just installed and bounced).
+  // resetPlayStats clears gamesPlayed → 0, so a player who admin-
+  // reset before upgrading is treated as "start over from scratch"
+  // and sees the intro again. The optional chain + ?? 0 also
+  // covers a malformed v4 blob with a missing stats field —
+  // defaults to "show intro" rather than "skip intro" so a
+  // corrupt persist never silently suppresses onboarding.
+  const playedAtLeastOnce = (v4.stats?.gamesPlayed ?? 0) > 0;
+  return {
+    ...v4,
+    onboarding: {
+      ...ONBOARDING_DEFAULTS,
+      introSeen: playedAtLeastOnce,
+    },
+    matchesCompletedSinceOnboarding: 0,
   };
 }
 
@@ -389,6 +520,9 @@ function migrateUserStore(persisted: unknown, version: number): UserStoreState {
     } else if (v === 3) {
       current = migrateV3ToV4(current);
       v = 4;
+    } else if (v === 4) {
+      current = migrateV4ToV5(current);
+      v = 5;
     } else {
       // Defensive — the bounds check above should prevent reaching
       // this branch, but it keeps the loop total in case the bound
@@ -599,6 +733,46 @@ export const useUserStore = create<UserStoreState & UserStoreActions>()(
 
       setAdsRemoved: (value) => {
         set({ adsRemoved: value });
+      },
+
+      markIntroSeen: () => {
+        set((s) => ({ onboarding: { ...s.onboarding, introSeen: true } }));
+      },
+
+      markTutorialMatchCompleted: () => {
+        set((s) => ({ onboarding: { ...s.onboarding, tutorialMatchCompleted: true } }));
+      },
+
+      markTokenWalkthroughSeen: () => {
+        set((s) => ({ onboarding: { ...s.onboarding, tokenWalkthroughSeen: true } }));
+      },
+
+      markBlitzTeaserSeen: () => {
+        set((s) => ({ onboarding: { ...s.onboarding, blitzTeaserSeen: true } }));
+      },
+
+      markMirrorTeaserSeen: () => {
+        set((s) => ({ onboarding: { ...s.onboarding, mirrorTeaserSeen: true } }));
+      },
+
+      markNotificationOptInAsked: () => {
+        set((s) => ({ onboarding: { ...s.onboarding, notificationOptInAsked: true } }));
+      },
+
+      completeOnboarding: (today) => {
+        set((s) => {
+          // Idempotency guard — completedAt is the canonical
+          // analytics event timestamp; overwriting it on a second
+          // call would corrupt cohort analysis keyed off that stamp.
+          if (s.onboarding.completedAt !== null) return {};
+          return { onboarding: { ...ONBOARDING_ALL_SEEN, completedAt: today } };
+        });
+      },
+
+      incrementMatchesSinceOnboarding: () => {
+        set((s) => ({
+          matchesCompletedSinceOnboarding: s.matchesCompletedSinceOnboarding + 1,
+        }));
       },
 
       applyRewardedDouble: (matchId) => {
