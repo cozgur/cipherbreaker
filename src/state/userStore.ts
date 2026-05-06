@@ -146,8 +146,18 @@ export interface RecordMatchResultInput {
 }
 
 export interface UserStoreActions {
-  /** Positive-only — Shop, ad reward, match win. */
-  addTokens(amount: number): void;
+  /**
+   * Positive-only — Shop, ad reward, match win, tutorial completion.
+   *
+   * Phase 7A.6 CP3 — `source` is an optional intent tag preserved
+   * for future analytics. The action does not consume it today
+   * (no logging side-effect, no field mutation); it exists so call
+   * sites can document *why* a credit happened (e.g. the tutorial
+   * win passes `'tutorial_match_complete'` to distinguish it from
+   * a Mode 1 win in a later analytics pass). Existing callers
+   * continue to call `addTokens(amount)` unchanged.
+   */
+  addTokens(amount: number, source?: string): void;
   /** Clamps at zero, ignores ≤0 — forfeit penalty + future stake debit. */
   subtractTokens(amount: number): void;
   setHasOnboarded(value: boolean): void;
@@ -538,7 +548,7 @@ export const useUserStore = create<UserStoreState & UserStoreActions>()(
     (set) => ({
       ...USER_STORE_DEFAULTS,
 
-      addTokens: (amount) => {
+      addTokens: (amount, _source) => {
         if (amount <= 0) return;
         set((s) => ({ tokens: s.tokens + amount }));
       },

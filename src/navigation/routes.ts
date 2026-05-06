@@ -15,6 +15,15 @@ export type RootStackParamList = {
    * RootNavigator based on `onboarding.introSeen` / `completedAt`.
    */
   OnboardingIntro: undefined;
+  /**
+   * Phase 7A.6 CP3 — guided first match. Self-contained tutorial
+   * surface that reuses Mode 1's `evaluateColorMatch` evaluator
+   * without going through `matchStore` / `MatchScreen` /
+   * `MatchResultScreen` (see TutorialMatchScreen header for the
+   * isolation rationale). All exit paths reach Home today; CP7
+   * swaps Home for the next onboarding step (token walkthrough).
+   */
+  TutorialMatch: undefined;
   Home: undefined;
   Matchmaking: { modeId: number };
   SecretSetup: { modeId: number; opponentId: string };

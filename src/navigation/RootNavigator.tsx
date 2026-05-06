@@ -17,6 +17,7 @@ import { OnboardingScreen } from '@screens/OnboardingScreen';
 import { ProfileScreen } from '@screens/ProfileScreen';
 import { SecretSetupScreen } from '@screens/SecretSetupScreen';
 import { ShopScreen } from '@screens/ShopScreen';
+import { TutorialMatchScreen } from '@screens/TutorialMatchScreen';
 import { colors } from '@theme/index';
 import type { RootStackParamList } from './routes';
 
@@ -54,6 +55,15 @@ export function RootNavigator(): React.JSX.Element {
         <Stack.Screen
           name="OnboardingIntro"
           component={OnboardingIntroScreen}
+          options={{
+            presentation: 'fullScreenModal',
+            gestureEnabled: false,
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen
+          name="TutorialMatch"
+          component={TutorialMatchScreen}
           options={{
             presentation: 'fullScreenModal',
             gestureEnabled: false,
