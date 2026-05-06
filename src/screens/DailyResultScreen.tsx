@@ -20,6 +20,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
+import { NotificationOptInModal } from '@components/notifications/NotificationOptInModal';
 import { Screen } from '@components/Screen';
 import { calendarDayIndex } from '@game/daily/dailyConfig';
 import { formatDailyShare } from '@game/daily/share';
@@ -35,6 +36,24 @@ export function DailyResultScreen(): React.JSX.Element {
   const lastResult = useUserStore((s) => s.dailyChallenge.lastResult);
   const currentStreak = useUserStore((s) => s.dailyChallenge.currentStreak);
   const longestStreak = useUserStore((s) => s.dailyChallenge.longestStreak);
+
+  // Phase 7A.6 CP6 — soft-ask gate. The modal fires on any Daily
+  // win where the player hasn't been asked yet; once asked, the
+  // flag flips and the gate stays closed forever (the soft-ask is
+  // single-shot from CP6's perspective — re-enable via a future
+  // Settings entry, CP8). The flag-as-gate doubles as the "first
+  // win" detector: by definition, only the first Daily win after
+  // install can find the flag false.
+  const notificationOptInAsked = useUserStore(
+    (s) => s.onboarding.notificationOptInAsked,
+  );
+  const showNotificationOptIn =
+    lastResult !== null && lastResult.success === true && !notificationOptInAsked;
+  // No-op onClose: the modal flips the flag itself, which makes
+  // the derived `showNotificationOptIn` boolean flip to false on
+  // the next render → modal unmounts. The callback is kept for
+  // future analytics hooks (Phase 7B).
+  const handleOptInClose = useCallback(() => {}, []);
 
   const goHome = useCallback(() => navigation.navigate('Home'), [navigation]);
   const onShare = useCallback(async () => {
@@ -120,6 +139,11 @@ export function DailyResultScreen(): React.JSX.Element {
           <SecondaryButton label="HOME" onPress={goHome} />
         </View>
       </View>
+
+      <NotificationOptInModal
+        visible={showNotificationOptIn}
+        onClose={handleOptInClose}
+      />
     </Screen>
   );
 }

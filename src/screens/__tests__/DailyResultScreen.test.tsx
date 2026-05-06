@@ -238,4 +238,57 @@ describe('DailyResultScreen', () => {
       expect(utils.getByText('Used 3 hints')).toBeTruthy();
     });
   });
+
+  describe('Notification opt-in modal — Phase 7A.6 CP6', () => {
+    function setOptInAsked(value: boolean): void {
+      useUserStore.setState((s) => ({
+        onboarding: { ...s.onboarding, notificationOptInAsked: value },
+      }));
+    }
+
+    it('opens on Daily WIN when notificationOptInAsked === false', () => {
+      setOptInAsked(false);
+      setLastResult(successResult);
+      const utils = renderWithNavigation('DailyResult', { DailyResult: DailyResultScreen });
+      expect(utils.queryByTestId('notification-opt-in-modal')).toBeTruthy();
+      expect(utils.queryByText("Don't miss tomorrow's Daily")).toBeTruthy();
+    });
+
+    it('does NOT open on Daily LOSE (win-only trigger)', () => {
+      setOptInAsked(false);
+      setLastResult(failureResult);
+      const utils = renderWithNavigation('DailyResult', { DailyResult: DailyResultScreen });
+      expect(utils.queryByTestId('notification-opt-in-modal')).toBeNull();
+    });
+
+    it('does NOT open when notificationOptInAsked === true (single-shot)', () => {
+      setOptInAsked(true);
+      setLastResult(successResult);
+      const utils = renderWithNavigation('DailyResult', { DailyResult: DailyResultScreen });
+      expect(utils.queryByTestId('notification-opt-in-modal')).toBeNull();
+    });
+
+    it('does NOT open when there is no recorded result', () => {
+      setOptInAsked(false);
+      setLastResult(null);
+      const utils = renderWithNavigation('DailyResult', { DailyResult: DailyResultScreen });
+      expect(utils.queryByTestId('notification-opt-in-modal')).toBeNull();
+    });
+
+    it('"Not now" tap unmounts the modal via the seen-flag flip', () => {
+      setOptInAsked(false);
+      setLastResult(successResult);
+      const utils = renderWithNavigation('DailyResult', { DailyResult: DailyResultScreen });
+      expect(utils.queryByTestId('notification-opt-in-modal')).toBeTruthy();
+
+      act(() => {
+        fireEvent.press(utils.getByLabelText('Dismiss notification opt-in'));
+      });
+
+      // Flag flip → derived `showNotificationOptIn` is now false → modal
+      // unmounts on next render.
+      expect(useUserStore.getState().onboarding.notificationOptInAsked).toBe(true);
+      expect(utils.queryByTestId('notification-opt-in-modal')).toBeNull();
+    });
+  });
 });

@@ -82,6 +82,27 @@ jest.mock('@lib/usernameGen', () => ({
   generateUsername: jest.fn(() => 'nova_code'),
 }));
 
+// Phase 7A.6 CP6 — expo-notifications wraps native APNs / Android
+// notification surfaces that aren't reachable in Node. We stub the
+// two methods CP6 actually calls (getPermissionsAsync,
+// requestPermissionsAsync) and return a `'granted'` shape by
+// default. Tests override per-case with
+// `(Notifications.requestPermissionsAsync as jest.Mock).mockResolvedValueOnce(...)`.
+jest.mock('expo-notifications', () => ({
+  getPermissionsAsync: jest.fn(async () => ({
+    status: 'granted',
+    granted: true,
+    canAskAgain: true,
+    expires: 'never',
+  })),
+  requestPermissionsAsync: jest.fn(async () => ({
+    status: 'granted',
+    granted: true,
+    canAskAgain: true,
+    expires: 'never',
+  })),
+}));
+
 // Phase 7A.5 Codex round 2 finding 3 — `useReducedMotion` wraps
 // `AccessibilityInfo.isReduceMotionEnabled()` which resolves
 // asynchronously. Without a mock, every test that mounts a

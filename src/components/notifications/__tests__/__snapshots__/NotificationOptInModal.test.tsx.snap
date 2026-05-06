@@ -1,0 +1,488 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`NotificationOptInModal matches the visible-state snapshot 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": null,
+          "props": {
+            "accessibilityState": {
+              "busy": undefined,
+              "checked": undefined,
+              "disabled": undefined,
+              "expanded": undefined,
+              "selected": undefined,
+            },
+            "accessibilityValue": {
+              "max": undefined,
+              "min": undefined,
+              "now": undefined,
+              "text": undefined,
+            },
+            "accessible": false,
+            "collapsable": false,
+            "focusable": true,
+            "importantForAccessibility": "no-hide-descendants",
+            "onBlur": [Function],
+            "onClick": [Function],
+            "onFocus": [Function],
+            "onResponderGrant": [Function],
+            "onResponderMove": [Function],
+            "onResponderRelease": [Function],
+            "onResponderTerminate": [Function],
+            "onResponderTerminationRequest": [Function],
+            "onStartShouldSetResponder": [Function],
+            "style": {
+              "backgroundColor": "rgba(0,0,0,0.78)",
+              "bottom": 0,
+              "left": 0,
+              "position": "absolute",
+              "right": 0,
+              "top": 0,
+            },
+          },
+          "type": "View",
+        },
+        {
+          "children": [
+            {
+              "children": [
+                {
+                  "children": [
+                    {
+                      "children": [
+                        {
+                          "children": [
+                            {
+                              "children": [
+                                "🔓",
+                              ],
+                              "props": {
+                                "style": {
+                                  "fontSize": 20,
+                                },
+                              },
+                              "type": "Text",
+                            },
+                          ],
+                          "props": {
+                            "style": {
+                              "alignItems": "center",
+                              "backgroundColor": "#0a0b1e",
+                              "borderRadius": 9,
+                              "height": 38,
+                              "justifyContent": "center",
+                              "width": 38,
+                            },
+                          },
+                          "type": "View",
+                        },
+                        {
+                          "children": [
+                            {
+                              "children": [
+                                {
+                                  "children": [
+                                    "CipherBreaker",
+                                  ],
+                                  "props": {
+                                    "style": {
+                                      "color": "#000000",
+                                      "fontFamily": "Inter-SemiBold",
+                                      "fontSize": 13,
+                                      "letterSpacing": 0.1,
+                                    },
+                                  },
+                                  "type": "Text",
+                                },
+                                {
+                                  "children": [
+                                    "now",
+                                  ],
+                                  "props": {
+                                    "style": {
+                                      "color": "rgba(0,0,0,0.5)",
+                                      "fontFamily": "Inter-Regular",
+                                      "fontSize": 11,
+                                    },
+                                  },
+                                  "type": "Text",
+                                },
+                              ],
+                              "props": {
+                                "style": {
+                                  "alignItems": "baseline",
+                                  "flexDirection": "row",
+                                  "justifyContent": "space-between",
+                                },
+                              },
+                              "type": "View",
+                            },
+                            {
+                              "children": [
+                                "✨ New Daily Challenge unlocked",
+                              ],
+                              "props": {
+                                "numberOfLines": 2,
+                                "style": {
+                                  "color": "#000000",
+                                  "fontFamily": "Inter-Regular",
+                                  "fontSize": 13,
+                                  "lineHeight": 17,
+                                },
+                              },
+                              "type": "Text",
+                            },
+                          ],
+                          "props": {
+                            "style": {
+                              "flex": 1,
+                              "gap": 2,
+                            },
+                          },
+                          "type": "View",
+                        },
+                      ],
+                      "props": {
+                        "accessibilityLabel": "Example notification: New Daily Challenge unlocked",
+                        "accessibilityRole": "image",
+                        "style": {
+                          "alignItems": "center",
+                          "backgroundColor": "rgba(255,255,255,0.92)",
+                          "borderRadius": 16,
+                          "flexDirection": "row",
+                          "gap": 10,
+                          "paddingHorizontal": 12,
+                          "paddingVertical": 12,
+                          "width": "100%",
+                        },
+                        "testID": "notification-banner-mockup",
+                      },
+                      "type": "View",
+                    },
+                  ],
+                  "props": {
+                    "colors": [
+                      4293675161,
+                      4287323382,
+                    ],
+                    "dither": undefined,
+                    "endPoint": [
+                      1,
+                      1,
+                    ],
+                    "locations": undefined,
+                    "startPoint": [
+                      0,
+                      0,
+                    ],
+                    "style": {
+                      "alignItems": "center",
+                      "justifyContent": "center",
+                      "paddingHorizontal": 22,
+                      "paddingVertical": 32,
+                      "width": "100%",
+                    },
+                  },
+                  "type": "ViewManagerAdapter_ExpoLinearGradient",
+                },
+                {
+                  "children": [
+                    {
+                      "children": [
+                        "Don't miss tomorrow's Daily",
+                      ],
+                      "props": {
+                        "accessibilityRole": "header",
+                        "style": {
+                          "color": "#f5f5f7",
+                          "fontFamily": "ChakraPetch-Bold",
+                          "fontSize": 26,
+                          "letterSpacing": -0.4,
+                          "textAlign": "center",
+                        },
+                      },
+                      "type": "Text",
+                    },
+                    {
+                      "children": [
+                        "We'll remind you when a new Daily Challenge unlocks.",
+                      ],
+                      "props": {
+                        "style": {
+                          "color": "#a1a1b5",
+                          "fontFamily": "Inter-Regular",
+                          "fontSize": 14,
+                          "lineHeight": 20,
+                          "marginTop": 10,
+                          "textAlign": "center",
+                        },
+                      },
+                      "type": "Text",
+                    },
+                  ],
+                  "props": {
+                    "style": {
+                      "alignItems": "center",
+                      "paddingHorizontal": 22,
+                      "paddingTop": 22,
+                    },
+                  },
+                  "type": "View",
+                },
+                {
+                  "children": [
+                    {
+                      "children": [
+                        {
+                          "children": [
+                            {
+                              "children": [
+                                "Turn on reminders",
+                              ],
+                              "props": {
+                                "numberOfLines": 1,
+                                "style": [
+                                  {
+                                    "fontFamily": "Inter-SemiBold",
+                                    "fontWeight": "600",
+                                    "letterSpacing": 1.12,
+                                    "textTransform": "uppercase",
+                                  },
+                                  {
+                                    "color": "#ffffff",
+                                    "fontSize": 15,
+                                  },
+                                ],
+                              },
+                              "type": "Text",
+                            },
+                          ],
+                          "props": {
+                            "style": {
+                              "alignItems": "center",
+                              "flexDirection": "row",
+                              "gap": 8,
+                            },
+                          },
+                          "type": "View",
+                        },
+                      ],
+                      "props": {
+                        "colors": [
+                          4287323382,
+                          4285343961,
+                        ],
+                        "dither": undefined,
+                        "endPoint": [
+                          0.5,
+                          1,
+                        ],
+                        "locations": undefined,
+                        "startPoint": [
+                          0.5,
+                          0,
+                        ],
+                        "style": [
+                          {
+                            "alignItems": "center",
+                            "borderRadius": 16,
+                            "justifyContent": "center",
+                            "overflow": "hidden",
+                          },
+                          {
+                            "borderColor": "rgba(139,92,246,0.8)",
+                            "borderWidth": 1,
+                            "height": 56,
+                            "paddingHorizontal": 24,
+                          },
+                        ],
+                      },
+                      "type": "ViewManagerAdapter_ExpoLinearGradient",
+                    },
+                  ],
+                  "props": {
+                    "accessibilityRole": "button",
+                    "accessibilityState": {
+                      "busy": undefined,
+                      "checked": undefined,
+                      "disabled": false,
+                      "expanded": undefined,
+                      "selected": undefined,
+                    },
+                    "accessibilityValue": {
+                      "max": undefined,
+                      "min": undefined,
+                      "now": undefined,
+                      "text": undefined,
+                    },
+                    "accessible": true,
+                    "collapsable": false,
+                    "focusable": true,
+                    "onBlur": [Function],
+                    "onClick": [Function],
+                    "onFocus": [Function],
+                    "onResponderGrant": [Function],
+                    "onResponderMove": [Function],
+                    "onResponderRelease": [Function],
+                    "onResponderTerminate": [Function],
+                    "onResponderTerminationRequest": [Function],
+                    "onStartShouldSetResponder": [Function],
+                    "style": [
+                      {
+                        "alignSelf": "stretch",
+                        "borderRadius": 16,
+                        "overflow": "visible",
+                      },
+                      {
+                        "shadowColor": "rgba(139,92,246,0.45)",
+                        "shadowOffset": {
+                          "height": 4,
+                          "width": 0,
+                        },
+                        "shadowOpacity": 1,
+                        "shadowRadius": 20,
+                      },
+                      {
+                        "width": "100%",
+                      },
+                      null,
+                      null,
+                      {
+                        "marginHorizontal": 18,
+                        "marginTop": 18,
+                      },
+                    ],
+                  },
+                  "type": "View",
+                },
+              ],
+              "props": {
+                "accessibilityLabel": "Don't miss tomorrow's Daily. We'll remind you when a new Daily Challenge unlocks.",
+                "accessibilityViewIsModal": true,
+                "accessible": true,
+                "style": {
+                  "backgroundColor": "#15172e",
+                  "borderColor": "#2a2c54",
+                  "borderRadius": 24,
+                  "borderWidth": 1,
+                  "overflow": "hidden",
+                  "paddingBottom": 18,
+                  "width": "100%",
+                },
+              },
+              "type": "View",
+            },
+          ],
+          "props": {
+            "pointerEvents": "box-none",
+            "style": [
+              {
+                "flex": 1,
+                "justifyContent": "center",
+                "paddingHorizontal": 24,
+              },
+              {
+                "paddingBottom": 58,
+                "paddingTop": 104,
+              },
+            ],
+          },
+          "type": "View",
+        },
+        {
+          "children": [
+            {
+              "children": [
+                "Not now",
+              ],
+              "props": {
+                "style": {
+                  "color": "#ffffff",
+                  "fontFamily": "Inter-SemiBold",
+                  "fontSize": 12,
+                  "letterSpacing": 1.1,
+                  "opacity": 0.85,
+                  "textTransform": "uppercase",
+                },
+              },
+              "type": "Text",
+            },
+          ],
+          "props": {
+            "accessibilityLabel": "Dismiss notification opt-in",
+            "accessibilityRole": "button",
+            "accessibilityState": {
+              "busy": undefined,
+              "checked": undefined,
+              "disabled": undefined,
+              "expanded": undefined,
+              "selected": undefined,
+            },
+            "accessibilityValue": {
+              "max": undefined,
+              "min": undefined,
+              "now": undefined,
+              "text": undefined,
+            },
+            "accessible": true,
+            "collapsable": false,
+            "focusable": true,
+            "onBlur": [Function],
+            "onClick": [Function],
+            "onFocus": [Function],
+            "onResponderGrant": [Function],
+            "onResponderMove": [Function],
+            "onResponderRelease": [Function],
+            "onResponderTerminate": [Function],
+            "onResponderTerminationRequest": [Function],
+            "onStartShouldSetResponder": [Function],
+            "style": [
+              {
+                "borderRadius": 10,
+                "elevation": 12,
+                "paddingHorizontal": 12,
+                "paddingVertical": 6,
+                "position": "absolute",
+                "right": 12,
+                "zIndex": 100,
+              },
+              {
+                "top": 58,
+              },
+              false,
+            ],
+            "testID": "notification-opt-in-skip",
+          },
+          "type": "View",
+        },
+      ],
+      "props": {
+        "accessibilityRole": "alert",
+        "pointerEvents": "box-none",
+        "style": {
+          "bottom": 0,
+          "left": 0,
+          "position": "absolute",
+          "right": 0,
+          "top": 0,
+        },
+        "testID": "notification-opt-in-modal",
+      },
+      "type": "View",
+    },
+  ],
+  "props": {
+    "onInsetsChange": [Function],
+    "style": [
+      {
+        "flex": 1,
+      },
+      undefined,
+    ],
+  },
+  "type": "RNCSafeAreaProvider",
+}
+`;
