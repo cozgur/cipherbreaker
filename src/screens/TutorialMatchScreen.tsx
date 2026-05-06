@@ -62,7 +62,12 @@ type Nav = NativeStackNavigationProp<RootStackParamList, 'TutorialMatch'>;
 
 const MAX_TURNS = 10;
 const AUTO_HINT_TURN = 6;
-const TUTORIAL_REWARD_TOKENS = 10;
+// Phase 7A.6 CP3.1 — recalibrated from 10 → 50. Pre-CP3.1 the
+// 10-token reward sat below every spend threshold in this economy
+// (lowest stake = 50, lowest hint = 50), so the chip was
+// functionally inert. 50 tokens covers exactly one Mode 1/2/3/4/6
+// stake or one Hint B, giving the user a concrete first-action.
+const TUTORIAL_REWARD_TOKENS = 50;
 
 interface TutorialGuess {
   readonly digits: readonly number[];

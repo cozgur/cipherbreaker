@@ -34,10 +34,13 @@ describe('InsufficientTokensModal', () => {
   });
 
   it('renders the CP4 copy ("You have X tokens. This match costs Y.")', () => {
-    // Default seeded balance is 1840 (USER_STORE_DEFAULTS) — that's
-    // what the modal surfaces. Mode 5 stake = 100.
+    // Phase 7A.6 CP3.1 — default starting balance reset to 100. Pin
+    // a low balance explicitly so the modal copy demonstrates the
+    // "insufficient" framing (default 100 actually equals Mode 5
+    // stake, which is the edge of affordable).
+    useUserStore.setState({ tokens: 25 });
     const utils = renderModal(5);
-    expect(utils.queryByText(/You have 1,840 tokens\. This match costs 100\./)).toBeTruthy();
+    expect(utils.queryByText(/You have 25 tokens\. This match costs 100\./)).toBeTruthy();
   });
 
   it('reflects the live wallet balance (re-renders on token change)', () => {

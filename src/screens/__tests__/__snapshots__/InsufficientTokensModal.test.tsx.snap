@@ -5503,7 +5503,7 @@ exports[`InsufficientTokensModal snapshots the modal layout 1`] = `
                                                 {
                                                   "children": [
                                                     "You have ",
-                                                    "1,840",
+                                                    "100",
                                                     " tokens. This match costs ",
                                                     "50",
                                                     ".",

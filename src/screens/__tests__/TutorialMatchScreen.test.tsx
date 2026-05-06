@@ -226,7 +226,7 @@ describe('TutorialMatchScreen', () => {
     expect(utils.queryByTestId('tutorial-toast-auto-hint')).toBeNull();
   });
 
-  it('win surfaces the celebration overlay; Continue grants 10 tokens and marks complete', () => {
+  it('win surfaces the celebration overlay; Continue grants 50 tokens and marks complete', () => {
     pinSecret(SECRET_DIGITS_1234);
     const utils = mountTutorial();
     dismissWelcome(utils);
@@ -234,7 +234,7 @@ describe('TutorialMatchScreen', () => {
     submitGuess(utils);
 
     expect(utils.getByText('Code cracked!')).toBeTruthy();
-    expect(utils.getByText('+10 tokens earned.')).toBeTruthy();
+    expect(utils.getByText('+50 tokens earned.')).toBeTruthy();
 
     const before = useUserStore.getState();
     expect(before.onboarding.tutorialMatchCompleted).toBe(false);
@@ -244,7 +244,7 @@ describe('TutorialMatchScreen', () => {
     });
 
     const after = useUserStore.getState();
-    expect(after.tokens).toBe(before.tokens + 10);
+    expect(after.tokens).toBe(before.tokens + 50);
     expect(after.onboarding.tutorialMatchCompleted).toBe(true);
     // recordMatchResult was NOT called — gamesPlayed must be unchanged
     // (DDA bypass invariant).

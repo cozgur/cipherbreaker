@@ -18,6 +18,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
+import { generateUsername } from '@lib/usernameGen';
+
 import type { DailyChallengeState, DailyResultSummary } from '@game/daily/types';
 import { computeEarnedHints } from '@game/daily/hint';
 import { computeNextDailyStreakState } from '@game/daily/streak';
@@ -351,30 +353,60 @@ const ONBOARDING_ALL_SEEN: Omit<OnboardingState, 'completedAt'> = {
   notificationOptInAsked: true,
 };
 
+/**
+ * Phase 7A.6 CP3.1 — fresh-install defaults sweep.
+ *
+ * Pre-CP3.1, `USER_STORE_DEFAULTS` was a Phase 1B mock fixture: every
+ * fresh install inherited a level-12 / 247-games / 68%-win-rate /
+ * 1,840-tokens / pre-onboarded / `'nova_code'`-named profile. That
+ * was fine for hand-driving Phase 1B prototype screens; it's wrong
+ * for real users.
+ *
+ * The fix zeroes every fixture-tinged field, so a fresh install
+ * starts as a real new user:
+ *   - `hasOnboarded: false` — without this, RootNavigator skips the
+ *     entire onboarding flow on fresh installs.
+ *   - `username` — random `player_<hex4>` per `generateUsername()`.
+ *     Tests run with a globally-mocked `'nova_code'` so existing
+ *     assertions stay deterministic.
+ *   - `tokens: 100` — covers 2× the lowest competitive stake
+ *     (Mode 1/2/3/4/6) OR 1× Mode 5 stake OR 1× Hint A. Meaningful
+ *     starter, not generous.
+ *   - `targetXP: 100` — placeholder until Phase 7A's level-up curve
+ *     lands (`getTargetXpForLevel` does not exist yet — flagged in
+ *     CP3.1 pre-impl).
+ *
+ * Existing users keep their balance — every migration step spreads
+ * persisted state on top of these defaults, so v1-v5 upgrades are
+ * unaffected. Pinned by the migration test suite.
+ */
 export const USER_STORE_DEFAULTS: UserStoreState = {
-  username: 'nova_code',
-  tokens: 1840,
-  level: 12,
-  currentXP: 2340,
-  targetXP: 3200,
-  hasOnboarded: true,
+  username: generateUsername(),
+  tokens: 100,
+  level: 1,
+  currentXP: 0,
+  // Placeholder — Phase 7A's level-up rollover will replace this
+  // with a real progression curve. Kept low so the level-1 → 2
+  // arc is fast (~one match's XP gain).
+  targetXP: 100,
+  hasOnboarded: false,
   stats: {
-    gamesPlayed: 247,
-    winRate: 68,
-    currentStreak: 4,
-    bestStreak: 11,
-    avgTurns: 5.3,
-    totalTokensEarned: 12_400,
+    gamesPlayed: 0,
+    winRate: 0,
+    currentStreak: 0,
+    bestStreak: 0,
+    avgTurns: 0,
+    totalTokensEarned: 0,
     recentMatches: [],
   },
   perMode: {
-    1: { winRate: 72 },
-    2: { winRate: 64 },
-    3: { winRate: 58 },
-    4: { winRate: 55 },
-    5: { winRate: 49 },
-    6: { winRate: 61 },
-    7: { winRate: 52 },
+    1: { winRate: 0 },
+    2: { winRate: 0 },
+    3: { winRate: 0 },
+    4: { winRate: 0 },
+    5: { winRate: 0 },
+    6: { winRate: 0 },
+    7: { winRate: 0 },
   },
   dailyChallenge: DAILY_CHALLENGE_DEFAULTS,
   adsWatchedToday: 0,

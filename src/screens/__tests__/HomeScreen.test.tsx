@@ -296,7 +296,7 @@ describe('HomeScreen', () => {
   });
 
   describe('Low Balance Toast — Phase 7A.5 CP4', () => {
-    it('hidden when wallet balance is at or above LOW_BALANCE_THRESHOLD (default fixture 1840)', () => {
+    it('hidden when wallet balance is at or above LOW_BALANCE_THRESHOLD (default 100, exactly at threshold)', () => {
       const utils = renderWithNavigation('Home', { Home: HomeScreen });
       expect(utils.queryByLabelText('Low balance')).toBeNull();
     });

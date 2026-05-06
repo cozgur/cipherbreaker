@@ -6,7 +6,7 @@ import { RouteStubScreen } from '@/test-utils/RouteStubScreen';
 import { renderWithNavigation, stableTreeForSnapshot } from '@/test-utils/renderWithNavigation';
 import type { MatchResultOutcome, RootStackParamList } from '@navigation/routes';
 import { useMatchStore } from '@state/matchStore';
-import { useUserStore } from '@state/userStore';
+import { useUserStore, USER_STORE_DEFAULTS } from '@state/userStore';
 
 function renderResult(modeId: number, outcome: MatchResultOutcome) {
   return renderWithNavigation(
@@ -44,6 +44,19 @@ function renderEngineResult(
 describe('MatchResultScreen', () => {
   beforeEach(() => {
     __resetMockUserForTests();
+    // Phase 7A.6 CP3.1 — fresh-install defaults zero gamesPlayed
+    // and bestStreak. Post-victory recording bumps both to 1, which
+    // makes the digit-tile reveal tests collide ("1" appears as a
+    // stat AND as a secret tile). Pin stats to multi-digit values
+    // here so single-digit `queryByText` stays unambiguous.
+    useUserStore.setState({
+      stats: {
+        ...USER_STORE_DEFAULTS.stats,
+        gamesPlayed: 100,
+        winRate: 60,
+        bestStreak: 99,
+      },
+    });
   });
 
   it.each(['victory', 'defeat', 'draw', 'stalemate'] as const)(
@@ -146,6 +159,17 @@ describe('MatchResultScreen', () => {
 describe('MatchResultScreen — engine path (route params)', () => {
   beforeEach(() => {
     __resetMockUserForTests();
+    // Phase 7A.6 CP3.1 — same multi-digit stat pin as the parent
+    // describe so single-digit reveal queries don't collide with
+    // the StatCard values post-recordMatchResult.
+    useUserStore.setState({
+      stats: {
+        ...USER_STORE_DEFAULTS.stats,
+        gamesPlayed: 100,
+        winRate: 60,
+        bestStreak: 99,
+      },
+    });
   });
 
   it('renders the route-supplied secret instead of the catalog mock', () => {

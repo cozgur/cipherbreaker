@@ -20,14 +20,18 @@ describe('RootNavigator', () => {
   });
 
   it('lands on Home when the player has already onboarded', () => {
-    expect(mockUser.hasOnboarded).toBe(true);
+    // Phase 7A.6 CP3.1 — hasOnboarded default flipped to false, so
+    // the "already onboarded" path now requires an explicit flip.
+    mockUser.hasOnboarded = true;
     const utils = renderRoot();
     // The "CipherBreaker" hero on Home is unique to that screen.
     expect(utils.getByText('CipherBreaker')).toBeTruthy();
   });
 
   it('lands on Onboarding for a fresh install', () => {
-    mockUser.hasOnboarded = false;
+    // hasOnboarded defaults to false post-CP3.1 — no explicit flip
+    // needed; this matches a real fresh-install path.
+    expect(mockUser.hasOnboarded).toBe(false);
     const utils = renderRoot();
     expect(utils.getByText('Crack the code.\nBeat your rival.')).toBeTruthy();
   });

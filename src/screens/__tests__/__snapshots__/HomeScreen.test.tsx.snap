@@ -5451,7 +5451,7 @@ exports[`HomeScreen snapshots the seven-mode layout 1`] = `
                                                 },
                                                 {
                                                   "children": [
-                                                    "1,840",
+                                                    "100",
                                                   ],
                                                   "props": {
                                                     "style": [
@@ -9631,7 +9631,7 @@ exports[`HomeScreen snapshots the seven-mode layout 1`] = `
                                                 {
                                                   "children": [
                                                     "LEVEL ",
-                                                    "12",
+                                                    "1",
                                                   ],
                                                   "props": {
                                                     "style": [
@@ -9651,9 +9651,9 @@ exports[`HomeScreen snapshots the seven-mode layout 1`] = `
                                                 },
                                                 {
                                                   "children": [
-                                                    "2,340",
+                                                    "0",
                                                     " / ",
-                                                    "3,200",
+                                                    "100",
                                                     " XP",
                                                   ],
                                                   "props": {
@@ -9718,7 +9718,7 @@ exports[`HomeScreen snapshots the seven-mode layout 1`] = `
                                                         "shadowRadius": 12,
                                                       },
                                                       {
-                                                        "width": "73%",
+                                                        "width": "0%",
                                                       },
                                                     ],
                                                   },

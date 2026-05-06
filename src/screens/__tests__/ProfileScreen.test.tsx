@@ -28,10 +28,15 @@ describe('ProfileScreen', () => {
   });
 
   it('shows lifetime stats from the mock user', () => {
-    const { getByText } = renderWithNavigation('Profile', { Profile: ProfileScreen });
-    expect(getByText('247')).toBeTruthy();
-    expect(getByText('68%')).toBeTruthy();
-    expect(getByText('12.4K')).toBeTruthy();
+    // Phase 7A.6 CP3.1 — fresh-install defaults zeroed. A new user
+    // sees 0 across the lifetime grid; previously the Phase 1B
+    // mock fixture inflated to 247 / 68% / 12.4K.
+    const { getAllByText } = renderWithNavigation('Profile', { Profile: ProfileScreen });
+    // Multiple cells render '0' (Games, Streak, Best, Tokens
+    // Earned, Avg Turns) — assert there are at least the expected
+    // zeroed stats present.
+    expect(getAllByText('0').length).toBeGreaterThanOrEqual(4);
+    expect(getAllByText('0%').length).toBeGreaterThanOrEqual(1);
   });
 
   it('lists per-mode win rate for all seven modes', () => {
@@ -43,7 +48,7 @@ describe('ProfileScreen', () => {
   describe('Stats / Settings tab toggle', () => {
     it('defaults to the Stats tab — lifetime grid is visible, settings list is not', () => {
       const utils = renderWithNavigation('Profile', { Profile: ProfileScreen });
-      expect(utils.getByText('247')).toBeTruthy(); // lifetime games stat
+      expect(utils.getByText('Games Played')).toBeTruthy(); // lifetime games stat
       expect(utils.queryByText('Privacy Policy')).toBeNull();
       expect(utils.queryByText('Terms of Service')).toBeNull();
     });
@@ -55,7 +60,7 @@ describe('ProfileScreen', () => {
       });
       expect(utils.getByText('Privacy Policy')).toBeTruthy();
       expect(utils.getByText('Terms of Service')).toBeTruthy();
-      expect(utils.queryByText('247')).toBeNull(); // lifetime games stat hidden
+      expect(utils.queryByText('Games Played')).toBeNull(); // lifetime games stat hidden
     });
 
     it('switching back to Stats restores the stats grid', () => {
@@ -63,11 +68,11 @@ describe('ProfileScreen', () => {
       act(() => {
         fireEvent.press(utils.getByLabelText('Settings'));
       });
-      expect(utils.queryByText('247')).toBeNull();
+      expect(utils.queryByText('Games Played')).toBeNull();
       act(() => {
         fireEvent.press(utils.getByLabelText('Stats'));
       });
-      expect(utils.getByText('247')).toBeTruthy();
+      expect(utils.getByText('Games Played')).toBeTruthy();
     });
 
     it('exposes the segmented control as a tablist with two tabs', () => {

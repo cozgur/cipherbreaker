@@ -73,6 +73,15 @@ jest.mock('react-native-reanimated', () => {
   };
 });
 
+// Phase 7A.6 CP3.1 — `generateUsername` returns a stable
+// `'nova_code'` in tests so snapshots and existing username
+// assertions stay deterministic. Production runs the real function
+// (random `player_<hex4>`); `usernameGen.test.ts` calls
+// `jest.unmock('@lib/usernameGen')` to exercise the real impl.
+jest.mock('@lib/usernameGen', () => ({
+  generateUsername: jest.fn(() => 'nova_code'),
+}));
+
 // Phase 7A.5 Codex round 2 finding 3 — `useReducedMotion` wraps
 // `AccessibilityInfo.isReduceMotionEnabled()` which resolves
 // asynchronously. Without a mock, every test that mounts a

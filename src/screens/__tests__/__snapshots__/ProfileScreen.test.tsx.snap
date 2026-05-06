@@ -5426,7 +5426,7 @@ exports[`ProfileScreen snapshots the profile layout 1`] = `
                                             },
                                             {
                                               "children": [
-                                                "1,840",
+                                                "100",
                                               ],
                                               "props": {
                                                 "style": [
@@ -5633,7 +5633,7 @@ exports[`ProfileScreen snapshots the profile layout 1`] = `
                                                 {
                                                   "children": [
                                                     "LV. ",
-                                                    "12",
+                                                    "1",
                                                   ],
                                                   "props": {
                                                     "style": {
@@ -5787,9 +5787,9 @@ exports[`ProfileScreen snapshots the profile layout 1`] = `
                                         },
                                         {
                                           "children": [
-                                            "2,340",
+                                            "0",
                                             " / ",
-                                            "3,200",
+                                            "100",
                                             " XP",
                                           ],
                                           "props": {
@@ -5971,7 +5971,7 @@ exports[`ProfileScreen snapshots the profile layout 1`] = `
                                               "children": [
                                                 {
                                                   "children": [
-                                                    "247",
+                                                    "0",
                                                   ],
                                                   "props": {
                                                     "style": {
@@ -6015,7 +6015,7 @@ exports[`ProfileScreen snapshots the profile layout 1`] = `
                                               "children": [
                                                 {
                                                   "children": [
-                                                    "68%",
+                                                    "0%",
                                                   ],
                                                   "props": {
                                                     "style": {
@@ -6059,7 +6059,7 @@ exports[`ProfileScreen snapshots the profile layout 1`] = `
                                               "children": [
                                                 {
                                                   "children": [
-                                                    "4",
+                                                    "0",
                                                   ],
                                                   "props": {
                                                     "style": {
@@ -6103,7 +6103,7 @@ exports[`ProfileScreen snapshots the profile layout 1`] = `
                                               "children": [
                                                 {
                                                   "children": [
-                                                    "11",
+                                                    "0",
                                                   ],
                                                   "props": {
                                                     "style": {
@@ -6147,7 +6147,7 @@ exports[`ProfileScreen snapshots the profile layout 1`] = `
                                               "children": [
                                                 {
                                                   "children": [
-                                                    "5.3",
+                                                    "0.0",
                                                   ],
                                                   "props": {
                                                     "style": {
@@ -6191,7 +6191,7 @@ exports[`ProfileScreen snapshots the profile layout 1`] = `
                                               "children": [
                                                 {
                                                   "children": [
-                                                    "12.4K",
+                                                    "0",
                                                   ],
                                                   "props": {
                                                     "style": {
@@ -6547,7 +6547,7 @@ exports[`ProfileScreen snapshots the profile layout 1`] = `
                                                       "children": [
                                                         {
                                                           "children": [
-                                                            "72",
+                                                            "0",
                                                             "%",
                                                           ],
                                                           "props": {
@@ -6613,7 +6613,7 @@ exports[`ProfileScreen snapshots the profile layout 1`] = `
                                                       "children": [
                                                         {
                                                           "children": [
-                                                            "64",
+                                                            "0",
                                                             "%",
                                                           ],
                                                           "props": {
@@ -6679,7 +6679,7 @@ exports[`ProfileScreen snapshots the profile layout 1`] = `
                                                       "children": [
                                                         {
                                                           "children": [
-                                                            "58",
+                                                            "0",
                                                             "%",
                                                           ],
                                                           "props": {
@@ -6696,67 +6696,6 @@ exports[`ProfileScreen snapshots the profile layout 1`] = `
                                                             ],
                                                           },
                                                           "type": "Text",
-                                                        },
-                                                        {
-                                                          "children": [
-                                                            {
-                                                              "children": [
-                                                                {
-                                                                  "children": null,
-                                                                  "props": {
-                                                                    "d": "M2 4L5 7L8 4",
-                                                                    "fill": null,
-                                                                    "propList": [
-                                                                      "fill",
-                                                                      "stroke",
-                                                                      "strokeWidth",
-                                                                      "strokeLinecap",
-                                                                    ],
-                                                                    "stroke": {
-                                                                      "payload": 4293870660,
-                                                                      "type": 0,
-                                                                    },
-                                                                    "strokeLinecap": 1,
-                                                                    "strokeWidth": 2,
-                                                                  },
-                                                                  "type": "RNSVGPath",
-                                                                },
-                                                              ],
-                                                              "props": {
-                                                                "fill": {
-                                                                  "payload": 4278190080,
-                                                                  "type": 0,
-                                                                },
-                                                              },
-                                                              "type": "RNSVGGroup",
-                                                            },
-                                                          ],
-                                                          "props": {
-                                                            "accessibilityLabel": "trend down",
-                                                            "align": "xMidYMid",
-                                                            "bbHeight": 10,
-                                                            "bbWidth": 10,
-                                                            "focusable": false,
-                                                            "height": 10,
-                                                            "meetOrSlice": 0,
-                                                            "minX": 0,
-                                                            "minY": 0,
-                                                            "style": [
-                                                              {
-                                                                "backgroundColor": "transparent",
-                                                                "borderWidth": 0,
-                                                              },
-                                                              {
-                                                                "flex": 0,
-                                                                "height": 10,
-                                                                "width": 10,
-                                                              },
-                                                            ],
-                                                            "vbHeight": 10,
-                                                            "vbWidth": 10,
-                                                            "width": 10,
-                                                          },
-                                                          "type": "RNSVGSvgView",
                                                         },
                                                       ],
                                                       "props": {
@@ -6806,7 +6745,7 @@ exports[`ProfileScreen snapshots the profile layout 1`] = `
                                                       "children": [
                                                         {
                                                           "children": [
-                                                            "55",
+                                                            "0",
                                                             "%",
                                                           ],
                                                           "props": {
@@ -6823,67 +6762,6 @@ exports[`ProfileScreen snapshots the profile layout 1`] = `
                                                             ],
                                                           },
                                                           "type": "Text",
-                                                        },
-                                                        {
-                                                          "children": [
-                                                            {
-                                                              "children": [
-                                                                {
-                                                                  "children": null,
-                                                                  "props": {
-                                                                    "d": "M2 4L5 7L8 4",
-                                                                    "fill": null,
-                                                                    "propList": [
-                                                                      "fill",
-                                                                      "stroke",
-                                                                      "strokeWidth",
-                                                                      "strokeLinecap",
-                                                                    ],
-                                                                    "stroke": {
-                                                                      "payload": 4293870660,
-                                                                      "type": 0,
-                                                                    },
-                                                                    "strokeLinecap": 1,
-                                                                    "strokeWidth": 2,
-                                                                  },
-                                                                  "type": "RNSVGPath",
-                                                                },
-                                                              ],
-                                                              "props": {
-                                                                "fill": {
-                                                                  "payload": 4278190080,
-                                                                  "type": 0,
-                                                                },
-                                                              },
-                                                              "type": "RNSVGGroup",
-                                                            },
-                                                          ],
-                                                          "props": {
-                                                            "accessibilityLabel": "trend down",
-                                                            "align": "xMidYMid",
-                                                            "bbHeight": 10,
-                                                            "bbWidth": 10,
-                                                            "focusable": false,
-                                                            "height": 10,
-                                                            "meetOrSlice": 0,
-                                                            "minX": 0,
-                                                            "minY": 0,
-                                                            "style": [
-                                                              {
-                                                                "backgroundColor": "transparent",
-                                                                "borderWidth": 0,
-                                                              },
-                                                              {
-                                                                "flex": 0,
-                                                                "height": 10,
-                                                                "width": 10,
-                                                              },
-                                                            ],
-                                                            "vbHeight": 10,
-                                                            "vbWidth": 10,
-                                                            "width": 10,
-                                                          },
-                                                          "type": "RNSVGSvgView",
                                                         },
                                                       ],
                                                       "props": {
@@ -6933,7 +6811,7 @@ exports[`ProfileScreen snapshots the profile layout 1`] = `
                                                       "children": [
                                                         {
                                                           "children": [
-                                                            "49",
+                                                            "0",
                                                             "%",
                                                           ],
                                                           "props": {
@@ -6950,67 +6828,6 @@ exports[`ProfileScreen snapshots the profile layout 1`] = `
                                                             ],
                                                           },
                                                           "type": "Text",
-                                                        },
-                                                        {
-                                                          "children": [
-                                                            {
-                                                              "children": [
-                                                                {
-                                                                  "children": null,
-                                                                  "props": {
-                                                                    "d": "M2 4L5 7L8 4",
-                                                                    "fill": null,
-                                                                    "propList": [
-                                                                      "fill",
-                                                                      "stroke",
-                                                                      "strokeWidth",
-                                                                      "strokeLinecap",
-                                                                    ],
-                                                                    "stroke": {
-                                                                      "payload": 4293870660,
-                                                                      "type": 0,
-                                                                    },
-                                                                    "strokeLinecap": 1,
-                                                                    "strokeWidth": 2,
-                                                                  },
-                                                                  "type": "RNSVGPath",
-                                                                },
-                                                              ],
-                                                              "props": {
-                                                                "fill": {
-                                                                  "payload": 4278190080,
-                                                                  "type": 0,
-                                                                },
-                                                              },
-                                                              "type": "RNSVGGroup",
-                                                            },
-                                                          ],
-                                                          "props": {
-                                                            "accessibilityLabel": "trend down",
-                                                            "align": "xMidYMid",
-                                                            "bbHeight": 10,
-                                                            "bbWidth": 10,
-                                                            "focusable": false,
-                                                            "height": 10,
-                                                            "meetOrSlice": 0,
-                                                            "minX": 0,
-                                                            "minY": 0,
-                                                            "style": [
-                                                              {
-                                                                "backgroundColor": "transparent",
-                                                                "borderWidth": 0,
-                                                              },
-                                                              {
-                                                                "flex": 0,
-                                                                "height": 10,
-                                                                "width": 10,
-                                                              },
-                                                            ],
-                                                            "vbHeight": 10,
-                                                            "vbWidth": 10,
-                                                            "width": 10,
-                                                          },
-                                                          "type": "RNSVGSvgView",
                                                         },
                                                       ],
                                                       "props": {
@@ -7060,7 +6877,7 @@ exports[`ProfileScreen snapshots the profile layout 1`] = `
                                                       "children": [
                                                         {
                                                           "children": [
-                                                            "61",
+                                                            "0",
                                                             "%",
                                                           ],
                                                           "props": {
@@ -7077,67 +6894,6 @@ exports[`ProfileScreen snapshots the profile layout 1`] = `
                                                             ],
                                                           },
                                                           "type": "Text",
-                                                        },
-                                                        {
-                                                          "children": [
-                                                            {
-                                                              "children": [
-                                                                {
-                                                                  "children": null,
-                                                                  "props": {
-                                                                    "d": "M2 4L5 7L8 4",
-                                                                    "fill": null,
-                                                                    "propList": [
-                                                                      "fill",
-                                                                      "stroke",
-                                                                      "strokeWidth",
-                                                                      "strokeLinecap",
-                                                                    ],
-                                                                    "stroke": {
-                                                                      "payload": 4293870660,
-                                                                      "type": 0,
-                                                                    },
-                                                                    "strokeLinecap": 1,
-                                                                    "strokeWidth": 2,
-                                                                  },
-                                                                  "type": "RNSVGPath",
-                                                                },
-                                                              ],
-                                                              "props": {
-                                                                "fill": {
-                                                                  "payload": 4278190080,
-                                                                  "type": 0,
-                                                                },
-                                                              },
-                                                              "type": "RNSVGGroup",
-                                                            },
-                                                          ],
-                                                          "props": {
-                                                            "accessibilityLabel": "trend down",
-                                                            "align": "xMidYMid",
-                                                            "bbHeight": 10,
-                                                            "bbWidth": 10,
-                                                            "focusable": false,
-                                                            "height": 10,
-                                                            "meetOrSlice": 0,
-                                                            "minX": 0,
-                                                            "minY": 0,
-                                                            "style": [
-                                                              {
-                                                                "backgroundColor": "transparent",
-                                                                "borderWidth": 0,
-                                                              },
-                                                              {
-                                                                "flex": 0,
-                                                                "height": 10,
-                                                                "width": 10,
-                                                              },
-                                                            ],
-                                                            "vbHeight": 10,
-                                                            "vbWidth": 10,
-                                                            "width": 10,
-                                                          },
-                                                          "type": "RNSVGSvgView",
                                                         },
                                                       ],
                                                       "props": {
@@ -7187,7 +6943,7 @@ exports[`ProfileScreen snapshots the profile layout 1`] = `
                                                       "children": [
                                                         {
                                                           "children": [
-                                                            "52",
+                                                            "0",
                                                             "%",
                                                           ],
                                                           "props": {
@@ -7204,67 +6960,6 @@ exports[`ProfileScreen snapshots the profile layout 1`] = `
                                                             ],
                                                           },
                                                           "type": "Text",
-                                                        },
-                                                        {
-                                                          "children": [
-                                                            {
-                                                              "children": [
-                                                                {
-                                                                  "children": null,
-                                                                  "props": {
-                                                                    "d": "M2 4L5 7L8 4",
-                                                                    "fill": null,
-                                                                    "propList": [
-                                                                      "fill",
-                                                                      "stroke",
-                                                                      "strokeWidth",
-                                                                      "strokeLinecap",
-                                                                    ],
-                                                                    "stroke": {
-                                                                      "payload": 4293870660,
-                                                                      "type": 0,
-                                                                    },
-                                                                    "strokeLinecap": 1,
-                                                                    "strokeWidth": 2,
-                                                                  },
-                                                                  "type": "RNSVGPath",
-                                                                },
-                                                              ],
-                                                              "props": {
-                                                                "fill": {
-                                                                  "payload": 4278190080,
-                                                                  "type": 0,
-                                                                },
-                                                              },
-                                                              "type": "RNSVGGroup",
-                                                            },
-                                                          ],
-                                                          "props": {
-                                                            "accessibilityLabel": "trend down",
-                                                            "align": "xMidYMid",
-                                                            "bbHeight": 10,
-                                                            "bbWidth": 10,
-                                                            "focusable": false,
-                                                            "height": 10,
-                                                            "meetOrSlice": 0,
-                                                            "minX": 0,
-                                                            "minY": 0,
-                                                            "style": [
-                                                              {
-                                                                "backgroundColor": "transparent",
-                                                                "borderWidth": 0,
-                                                              },
-                                                              {
-                                                                "flex": 0,
-                                                                "height": 10,
-                                                                "width": 10,
-                                                              },
-                                                            ],
-                                                            "vbHeight": 10,
-                                                            "vbWidth": 10,
-                                                            "width": 10,
-                                                          },
-                                                          "type": "RNSVGSvgView",
                                                         },
                                                       ],
                                                       "props": {

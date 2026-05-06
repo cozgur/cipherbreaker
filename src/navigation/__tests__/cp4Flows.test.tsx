@@ -18,6 +18,7 @@ import type { MatchState } from '@game/types';
 import { MatchResultScreen } from '@screens/MatchResultScreen';
 import { MatchScreen } from '@screens/MatchScreen';
 import { useMatchStore } from '@state/matchStore';
+import { useUserStore, USER_STORE_DEFAULTS } from '@state/userStore';
 import { renderWithNavigation } from '@/test-utils/renderWithNavigation';
 import { RouteStubScreen } from '@/test-utils/RouteStubScreen';
 
@@ -62,6 +63,21 @@ describe('CP4 engine-path flows', () => {
     __resetRegistryForTests();
     modeRegistry.register(mode1ColorMatch);
     __resetMockUserForTests();
+    // Phase 7A.6 CP3.1 — fresh-install defaults zero gamesPlayed /
+    // bestStreak. Post-victory recording bumps gamesPlayed → 1,
+    // bestStreak → 1, which would collide with single-digit
+    // `queryByText` checks against the secret reveal (e.g. secret
+    // '9182' has digit '1', and the StatCard also shows '1').
+    // Pin to multi-digit values so single-digit reveals stay
+    // unambiguous.
+    useUserStore.setState({
+      stats: {
+        ...USER_STORE_DEFAULTS.stats,
+        gamesPlayed: 100,
+        winRate: 60,
+        bestStreak: 99,
+      },
+    });
   });
 
   afterEach(() => {

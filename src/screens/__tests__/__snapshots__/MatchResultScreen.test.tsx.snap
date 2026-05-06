@@ -5773,7 +5773,7 @@ exports[`MatchResultScreen snapshots the defeat variant 1`] = `
                                       "children": [
                                         {
                                           "children": [
-                                            "247",
+                                            "100",
                                           ],
                                           "props": {
                                             "style": {
@@ -5819,7 +5819,7 @@ exports[`MatchResultScreen snapshots the defeat variant 1`] = `
                                       "children": [
                                         {
                                           "children": [
-                                            "68%",
+                                            "60%",
                                           ],
                                           "props": {
                                             "style": {
@@ -5865,7 +5865,7 @@ exports[`MatchResultScreen snapshots the defeat variant 1`] = `
                                       "children": [
                                         {
                                           "children": [
-                                            "11",
+                                            "99",
                                           ],
                                           "props": {
                                             "style": {
@@ -12157,7 +12157,7 @@ exports[`MatchResultScreen snapshots the draw variant 1`] = `
                                       "children": [
                                         {
                                           "children": [
-                                            "247",
+                                            "100",
                                           ],
                                           "props": {
                                             "style": {
@@ -12203,7 +12203,7 @@ exports[`MatchResultScreen snapshots the draw variant 1`] = `
                                       "children": [
                                         {
                                           "children": [
-                                            "68%",
+                                            "60%",
                                           ],
                                           "props": {
                                             "style": {
@@ -12249,7 +12249,7 @@ exports[`MatchResultScreen snapshots the draw variant 1`] = `
                                       "children": [
                                         {
                                           "children": [
-                                            "11",
+                                            "99",
                                           ],
                                           "props": {
                                             "style": {
@@ -18541,7 +18541,7 @@ exports[`MatchResultScreen snapshots the stalemate variant 1`] = `
                                       "children": [
                                         {
                                           "children": [
-                                            "247",
+                                            "100",
                                           ],
                                           "props": {
                                             "style": {
@@ -18587,7 +18587,7 @@ exports[`MatchResultScreen snapshots the stalemate variant 1`] = `
                                       "children": [
                                         {
                                           "children": [
-                                            "68%",
+                                            "60%",
                                           ],
                                           "props": {
                                             "style": {
@@ -18633,7 +18633,7 @@ exports[`MatchResultScreen snapshots the stalemate variant 1`] = `
                                       "children": [
                                         {
                                           "children": [
-                                            "11",
+                                            "99",
                                           ],
                                           "props": {
                                             "style": {
@@ -26439,7 +26439,7 @@ exports[`MatchResultScreen snapshots the victory variant 1`] = `
                                       "children": [
                                         {
                                           "children": [
-                                            "247",
+                                            "100",
                                           ],
                                           "props": {
                                             "style": {
@@ -26485,7 +26485,7 @@ exports[`MatchResultScreen snapshots the victory variant 1`] = `
                                       "children": [
                                         {
                                           "children": [
-                                            "68%",
+                                            "60%",
                                           ],
                                           "props": {
                                             "style": {
@@ -26531,7 +26531,7 @@ exports[`MatchResultScreen snapshots the victory variant 1`] = `
                                       "children": [
                                         {
                                           "children": [
-                                            "11",
+                                            "99",
                                           ],
                                           "props": {
                                             "style": {

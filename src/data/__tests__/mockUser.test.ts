@@ -13,8 +13,11 @@ describe('mockUser', () => {
     __resetMockUserForTests();
   });
 
-  it('starts the player with onboarded state and a positive balance', () => {
-    expect(mockUser.hasOnboarded).toBe(true);
+  it('starts a fresh player un-onboarded with a positive starter balance', () => {
+    // Phase 7A.6 CP3.1 — fresh-install defaults flipped to a real
+    // new-user shape: not yet onboarded, but with a 100-token
+    // starter so the first match is reachable.
+    expect(mockUser.hasOnboarded).toBe(false);
     expect(mockUser.tokens).toBeGreaterThan(0);
   });
 

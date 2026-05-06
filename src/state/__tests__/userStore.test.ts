@@ -16,20 +16,25 @@ describe('useUserStore', () => {
 
   it('starts at the documented defaults', () => {
     const state = useUserStore.getState();
-    expect(state.tokens).toBe(1840);
+    // Phase 7A.6 CP3.1 — fresh-install defaults zeroed except for
+    // the 100-token starter balance. Username comes from the
+    // jest.setup.js mock of `@lib/usernameGen` (returns 'nova_code'
+    // for snapshot/test stability); the production module emits
+    // `player_<hex4>`.
+    expect(state.tokens).toBe(100);
     expect(state.username).toBe('nova_code');
-    expect(state.hasOnboarded).toBe(true);
+    expect(state.hasOnboarded).toBe(false);
   });
 
   it('addTokens accumulates positively', () => {
     useUserStore.getState().addTokens(500);
-    expect(useUserStore.getState().tokens).toBe(1840 + 500);
+    expect(useUserStore.getState().tokens).toBe(100 + 500);
   });
 
   it('addTokens ignores zero / negative input', () => {
     useUserStore.getState().addTokens(0);
     useUserStore.getState().addTokens(-100);
-    expect(useUserStore.getState().tokens).toBe(1840);
+    expect(useUserStore.getState().tokens).toBe(100);
   });
 
   it('subtractTokens deducts and clamps at zero', () => {
@@ -70,14 +75,15 @@ describe('useUserStore', () => {
 
   describe('addXp', () => {
     it('accumulates positive amounts onto currentXP', () => {
+      // Phase 7A.6 CP3.1 — currentXP default zeroed (was 2340).
       useUserStore.getState().addXp(30);
-      expect(useUserStore.getState().currentXP).toBe(2340 + 30);
+      expect(useUserStore.getState().currentXP).toBe(0 + 30);
     });
 
     it('ignores zero / negative input', () => {
       useUserStore.getState().addXp(0);
       useUserStore.getState().addXp(-50);
-      expect(useUserStore.getState().currentXP).toBe(2340);
+      expect(useUserStore.getState().currentXP).toBe(0);
     });
   });
 
