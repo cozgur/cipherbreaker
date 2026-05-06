@@ -14,6 +14,7 @@ import { MatchResultScreen } from '@screens/MatchResultScreen';
 import { MatchScreen } from '@screens/MatchScreen';
 import { OnboardingIntroScreen } from '@screens/OnboardingIntroScreen';
 import { OnboardingScreen } from '@screens/OnboardingScreen';
+import { OnboardingTokenWalkthroughScreen } from '@screens/OnboardingTokenWalkthroughScreen';
 import { ProfileScreen } from '@screens/ProfileScreen';
 import { SecretSetupScreen } from '@screens/SecretSetupScreen';
 import { ShopScreen } from '@screens/ShopScreen';
@@ -64,6 +65,15 @@ export function RootNavigator(): React.JSX.Element {
         <Stack.Screen
           name="TutorialMatch"
           component={TutorialMatchScreen}
+          options={{
+            presentation: 'fullScreenModal',
+            gestureEnabled: false,
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen
+          name="OnboardingTokenWalkthrough"
+          component={OnboardingTokenWalkthroughScreen}
           options={{
             presentation: 'fullScreenModal',
             gestureEnabled: false,

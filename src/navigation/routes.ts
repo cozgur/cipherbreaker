@@ -24,6 +24,14 @@ export type RootStackParamList = {
    * swaps Home for the next onboarding step (token walkthrough).
    */
   TutorialMatch: undefined;
+  /**
+   * Phase 7A.6 CP4 — 3-slide token economy walkthrough (Earn /
+   * Spend / Streak). Skip = `completeOnboarding`; Start playing →
+   * `markTokenWalkthroughSeen` + Home. CP4 only registers the
+   * route; CP7 wires the conditional flow from
+   * `onboarding.tokenWalkthroughSeen`.
+   */
+  OnboardingTokenWalkthrough: undefined;
   Home: undefined;
   Matchmaking: { modeId: number };
   SecretSetup: { modeId: number; opponentId: string };
