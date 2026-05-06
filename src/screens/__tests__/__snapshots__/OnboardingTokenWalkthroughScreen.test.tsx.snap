@@ -5232,6 +5232,134 @@ exports[`OnboardingTokenWalkthroughScreen snapshots the initial slide-1 layout 1
                                                               "children": [
                                                                 {
                                                                   "children": [
+                                                                    "✓",
+                                                                  ],
+                                                                  "props": {
+                                                                    "style": {
+                                                                      "color": "#fbbf24",
+                                                                      "fontFamily": "Inter-SemiBold",
+                                                                      "fontSize": 11,
+                                                                    },
+                                                                  },
+                                                                  "type": "Text",
+                                                                },
+                                                                {
+                                                                  "children": [
+                                                                    "VICTORY",
+                                                                  ],
+                                                                  "props": {
+                                                                    "style": {
+                                                                      "color": "#fbbf24",
+                                                                      "fontFamily": "Inter-SemiBold",
+                                                                      "fontSize": 11,
+                                                                      "letterSpacing": 1.6,
+                                                                    },
+                                                                  },
+                                                                  "type": "Text",
+                                                                },
+                                                              ],
+                                                              "props": {
+                                                                "style": {
+                                                                  "alignItems": "center",
+                                                                  "backgroundColor": "rgba(251,191,36,0.18)",
+                                                                  "borderColor": "rgba(251,191,36,0.55)",
+                                                                  "borderRadius": 999,
+                                                                  "borderWidth": 1,
+                                                                  "flexDirection": "row",
+                                                                  "gap": 6,
+                                                                  "paddingHorizontal": 10,
+                                                                  "paddingVertical": 4,
+                                                                },
+                                                              },
+                                                              "type": "View",
+                                                            },
+                                                            {
+                                                              "children": [
+                                                                {
+                                                                  "children": null,
+                                                                  "props": {
+                                                                    "style": [
+                                                                      {
+                                                                        "borderColor": "rgba(0,0,0,0.35)",
+                                                                        "borderRadius": 16,
+                                                                        "borderWidth": 1.5,
+                                                                        "height": 32,
+                                                                        "width": 32,
+                                                                      },
+                                                                      {
+                                                                        "backgroundColor": "#10b981",
+                                                                      },
+                                                                    ],
+                                                                  },
+                                                                  "type": "View",
+                                                                },
+                                                                {
+                                                                  "children": null,
+                                                                  "props": {
+                                                                    "style": [
+                                                                      {
+                                                                        "borderColor": "rgba(0,0,0,0.35)",
+                                                                        "borderRadius": 16,
+                                                                        "borderWidth": 1.5,
+                                                                        "height": 32,
+                                                                        "width": 32,
+                                                                      },
+                                                                      {
+                                                                        "backgroundColor": "#06b6d4",
+                                                                      },
+                                                                    ],
+                                                                  },
+                                                                  "type": "View",
+                                                                },
+                                                                {
+                                                                  "children": null,
+                                                                  "props": {
+                                                                    "style": [
+                                                                      {
+                                                                        "borderColor": "rgba(0,0,0,0.35)",
+                                                                        "borderRadius": 16,
+                                                                        "borderWidth": 1.5,
+                                                                        "height": 32,
+                                                                        "width": 32,
+                                                                      },
+                                                                      {
+                                                                        "backgroundColor": "#ec4899",
+                                                                      },
+                                                                    ],
+                                                                  },
+                                                                  "type": "View",
+                                                                },
+                                                                {
+                                                                  "children": null,
+                                                                  "props": {
+                                                                    "style": [
+                                                                      {
+                                                                        "borderColor": "rgba(0,0,0,0.35)",
+                                                                        "borderRadius": 16,
+                                                                        "borderWidth": 1.5,
+                                                                        "height": 32,
+                                                                        "width": 32,
+                                                                      },
+                                                                      {
+                                                                        "backgroundColor": "#f59e0b",
+                                                                      },
+                                                                    ],
+                                                                  },
+                                                                  "type": "View",
+                                                                },
+                                                              ],
+                                                              "props": {
+                                                                "style": {
+                                                                  "flexDirection": "row",
+                                                                  "gap": 8,
+                                                                },
+                                                              },
+                                                              "type": "View",
+                                                            },
+                                                            {
+                                                              "children": [
+                                                                {
+                                                                  "children": [
                                                                     {
                                                                       "children": [
                                                                         {
@@ -5253,7 +5381,7 @@ exports[`OnboardingTokenWalkthroughScreen snapshots the initial slide-1 layout 1
                                                                                 ],
                                                                                 "gradientTransform": null,
                                                                                 "gradientUnits": 0,
-                                                                                "name": "cb-coin-23",
+                                                                                "name": "cb-coin-35",
                                                                                 "rx": "70%",
                                                                                 "ry": "70%",
                                                                               },
@@ -5269,7 +5397,7 @@ exports[`OnboardingTokenWalkthroughScreen snapshots the initial slide-1 layout 1
                                                                             "cx": "10",
                                                                             "cy": "10",
                                                                             "fill": {
-                                                                              "brushRef": "cb-coin-23",
+                                                                              "brushRef": "cb-coin-35",
                                                                               "type": 1,
                                                                             },
                                                                             "propList": [
@@ -5374,10 +5502,10 @@ exports[`OnboardingTokenWalkthroughScreen snapshots the initial slide-1 layout 1
                                                                   ],
                                                                   "props": {
                                                                     "align": "xMidYMid",
-                                                                    "bbHeight": 120,
-                                                                    "bbWidth": 120,
+                                                                    "bbHeight": 20,
+                                                                    "bbWidth": 20,
                                                                     "focusable": false,
-                                                                    "height": 120,
+                                                                    "height": 20,
                                                                     "meetOrSlice": 0,
                                                                     "minX": 0,
                                                                     "minY": 0,
@@ -5388,61 +5516,126 @@ exports[`OnboardingTokenWalkthroughScreen snapshots the initial slide-1 layout 1
                                                                       },
                                                                       {
                                                                         "flex": 0,
-                                                                        "height": 120,
-                                                                        "width": 120,
+                                                                        "height": 20,
+                                                                        "width": 20,
                                                                       },
                                                                     ],
                                                                     "vbHeight": 20,
                                                                     "vbWidth": 20,
-                                                                    "width": 120,
+                                                                    "width": 20,
                                                                   },
                                                                   "type": "RNSVGSvgView",
                                                                 },
                                                                 {
                                                                   "children": [
-                                                                    {
-                                                                      "children": [
-                                                                        "+50",
-                                                                      ],
-                                                                      "props": {
-                                                                        "style": {
-                                                                          "color": "#fbbf24",
-                                                                          "fontFamily": "ChakraPetch-Bold",
-                                                                          "fontSize": 18,
-                                                                          "letterSpacing": 0.4,
-                                                                        },
-                                                                      },
-                                                                      "type": "Text",
-                                                                    },
+                                                                    "+120",
                                                                   ],
                                                                   "props": {
-                                                                    "collapsable": false,
                                                                     "style": {
-                                                                      "backgroundColor": "rgba(0,0,0,0.6)",
-                                                                      "borderColor": "#fbbf24",
-                                                                      "borderRadius": 999,
-                                                                      "borderWidth": 1,
-                                                                      "opacity": 0,
-                                                                      "paddingHorizontal": 12,
-                                                                      "paddingVertical": 6,
-                                                                      "position": "absolute",
-                                                                      "right": -28,
-                                                                      "top": -10,
-                                                                      "transform": [
-                                                                        {
-                                                                          "scale": 0,
-                                                                        },
-                                                                      ],
+                                                                      "color": "#fbbf24",
+                                                                      "fontFamily": "ChakraPetch-Bold",
+                                                                      "fontSize": 18,
+                                                                      "letterSpacing": -0.2,
                                                                     },
                                                                   },
-                                                                  "type": "View",
+                                                                  "type": "Text",
+                                                                },
+                                                                {
+                                                                  "children": [
+                                                                    "TOKENS",
+                                                                  ],
+                                                                  "props": {
+                                                                    "style": {
+                                                                      "color": "rgba(251,191,36,0.75)",
+                                                                      "fontFamily": "Inter-SemiBold",
+                                                                      "fontSize": 9,
+                                                                      "letterSpacing": 1.2,
+                                                                    },
+                                                                  },
+                                                                  "type": "Text",
                                                                 },
                                                               ],
                                                               "props": {
                                                                 "style": {
                                                                   "alignItems": "center",
-                                                                  "justifyContent": "center",
-                                                                  "position": "relative",
+                                                                  "backgroundColor": "rgba(0,0,0,0.55)",
+                                                                  "borderColor": "#fbbf24",
+                                                                  "borderRadius": 999,
+                                                                  "borderWidth": 1,
+                                                                  "flexDirection": "row",
+                                                                  "gap": 6,
+                                                                  "paddingHorizontal": 12,
+                                                                  "paddingVertical": 8,
+                                                                },
+                                                              },
+                                                              "type": "View",
+                                                            },
+                                                            {
+                                                              "children": [
+                                                                {
+                                                                  "children": [
+                                                                    "LEVEL 3",
+                                                                  ],
+                                                                  "props": {
+                                                                    "style": {
+                                                                      "color": "#ffffff",
+                                                                      "fontFamily": "Inter-SemiBold",
+                                                                      "fontSize": 9,
+                                                                      "letterSpacing": 1.4,
+                                                                      "opacity": 0.85,
+                                                                    },
+                                                                  },
+                                                                  "type": "Text",
+                                                                },
+                                                                {
+                                                                  "children": [
+                                                                    {
+                                                                      "children": null,
+                                                                      "props": {
+                                                                        "style": {
+                                                                          "backgroundColor": "#fbbf24",
+                                                                          "borderRadius": 3,
+                                                                          "height": "100%",
+                                                                          "width": "55%",
+                                                                        },
+                                                                      },
+                                                                      "type": "View",
+                                                                    },
+                                                                  ],
+                                                                  "props": {
+                                                                    "style": {
+                                                                      "backgroundColor": "rgba(0,0,0,0.4)",
+                                                                      "borderRadius": 3,
+                                                                      "flex": 1,
+                                                                      "height": 6,
+                                                                      "overflow": "hidden",
+                                                                    },
+                                                                  },
+                                                                  "type": "View",
+                                                                },
+                                                                {
+                                                                  "children": [
+                                                                    "+20 XP",
+                                                                  ],
+                                                                  "props": {
+                                                                    "style": {
+                                                                      "color": "#ffffff",
+                                                                      "fontFamily": "Inter-SemiBold",
+                                                                      "fontSize": 9,
+                                                                      "letterSpacing": 1.2,
+                                                                      "opacity": 0.85,
+                                                                    },
+                                                                  },
+                                                                  "type": "Text",
+                                                                },
+                                                              ],
+                                                              "props": {
+                                                                "style": {
+                                                                  "alignItems": "center",
+                                                                  "flexDirection": "row",
+                                                                  "gap": 8,
+                                                                  "paddingTop": 4,
+                                                                  "width": "100%",
                                                                 },
                                                               },
                                                               "type": "View",
@@ -5451,9 +5644,11 @@ exports[`OnboardingTokenWalkthroughScreen snapshots the initial slide-1 layout 1
                                                           "props": {
                                                             "style": {
                                                               "alignItems": "center",
+                                                              "gap": 14,
                                                               "justifyContent": "center",
+                                                              "paddingHorizontal": 20,
                                                             },
-                                                            "testID": "earn-visual",
+                                                            "testID": "match-win-mockup",
                                                           },
                                                           "type": "View",
                                                         },
@@ -5513,7 +5708,7 @@ exports[`OnboardingTokenWalkthroughScreen snapshots the initial slide-1 layout 1
                                                     },
                                                     {
                                                       "children": [
-                                                        "Crack codes faster, earn more. You just earned 50.",
+                                                        "Win matches, earn tokens. Faster wins earn more.",
                                                       ],
                                                       "props": {
                                                         "style": {
@@ -5539,7 +5734,7 @@ exports[`OnboardingTokenWalkthroughScreen snapshots the initial slide-1 layout 1
                                                 },
                                               ],
                                               "props": {
-                                                "accessibilityLabel": "Tokens for every win. Crack codes faster, earn more. You just earned 50.",
+                                                "accessibilityLabel": "Tokens for every win. Win matches, earn tokens. Faster wins earn more.",
                                                 "accessibilityRole": "text",
                                                 "style": {
                                                   "alignItems": "stretch",
@@ -5576,56 +5771,483 @@ exports[`OnboardingTokenWalkthroughScreen snapshots the initial slide-1 layout 1
                                                               "children": [
                                                                 {
                                                                   "children": [
-                                                                    "💡",
+                                                                    {
+                                                                      "children": [
+                                                                        {
+                                                                          "children": null,
+                                                                          "props": {
+                                                                            "style": [
+                                                                              {
+                                                                                "borderColor": "rgba(0,0,0,0.35)",
+                                                                                "borderRadius": 9,
+                                                                                "borderWidth": 1,
+                                                                                "height": 18,
+                                                                                "width": 18,
+                                                                              },
+                                                                              {
+                                                                                "backgroundColor": "#10b981",
+                                                                              },
+                                                                            ],
+                                                                          },
+                                                                          "type": "View",
+                                                                        },
+                                                                        {
+                                                                          "children": null,
+                                                                          "props": {
+                                                                            "style": [
+                                                                              {
+                                                                                "borderColor": "rgba(0,0,0,0.35)",
+                                                                                "borderRadius": 9,
+                                                                                "borderWidth": 1,
+                                                                                "height": 18,
+                                                                                "width": 18,
+                                                                              },
+                                                                              {
+                                                                                "backgroundColor": "#ec4899",
+                                                                              },
+                                                                            ],
+                                                                          },
+                                                                          "type": "View",
+                                                                        },
+                                                                        {
+                                                                          "children": null,
+                                                                          "props": {
+                                                                            "style": [
+                                                                              {
+                                                                                "borderColor": "rgba(0,0,0,0.35)",
+                                                                                "borderRadius": 9,
+                                                                                "borderWidth": 1,
+                                                                                "height": 18,
+                                                                                "width": 18,
+                                                                              },
+                                                                              {
+                                                                                "backgroundColor": "#06b6d4",
+                                                                              },
+                                                                            ],
+                                                                          },
+                                                                          "type": "View",
+                                                                        },
+                                                                        {
+                                                                          "children": null,
+                                                                          "props": {
+                                                                            "style": [
+                                                                              {
+                                                                                "borderColor": "rgba(0,0,0,0.35)",
+                                                                                "borderRadius": 9,
+                                                                                "borderWidth": 1,
+                                                                                "height": 18,
+                                                                                "width": 18,
+                                                                              },
+                                                                              {
+                                                                                "backgroundColor": "#f59e0b",
+                                                                              },
+                                                                            ],
+                                                                          },
+                                                                          "type": "View",
+                                                                        },
+                                                                      ],
+                                                                      "props": {
+                                                                        "style": {
+                                                                          "flexDirection": "row",
+                                                                          "gap": 4,
+                                                                        },
+                                                                      },
+                                                                      "type": "View",
+                                                                    },
+                                                                    {
+                                                                      "children": [
+                                                                        {
+                                                                          "children": null,
+                                                                          "props": {
+                                                                            "style": [
+                                                                              {
+                                                                                "borderRadius": 3.5,
+                                                                                "borderWidth": 0.6,
+                                                                                "height": 7,
+                                                                                "width": 7,
+                                                                              },
+                                                                              {
+                                                                                "backgroundColor": "#000000",
+                                                                                "borderColor": "#000000",
+                                                                              },
+                                                                            ],
+                                                                          },
+                                                                          "type": "View",
+                                                                        },
+                                                                        {
+                                                                          "children": null,
+                                                                          "props": {
+                                                                            "style": [
+                                                                              {
+                                                                                "borderRadius": 3.5,
+                                                                                "borderWidth": 0.6,
+                                                                                "height": 7,
+                                                                                "width": 7,
+                                                                              },
+                                                                              {
+                                                                                "backgroundColor": "transparent",
+                                                                                "borderColor": "rgba(255,255,255,0.4)",
+                                                                              },
+                                                                            ],
+                                                                          },
+                                                                          "type": "View",
+                                                                        },
+                                                                        {
+                                                                          "children": null,
+                                                                          "props": {
+                                                                            "style": [
+                                                                              {
+                                                                                "borderRadius": 3.5,
+                                                                                "borderWidth": 0.6,
+                                                                                "height": 7,
+                                                                                "width": 7,
+                                                                              },
+                                                                              {
+                                                                                "backgroundColor": "#ffffff",
+                                                                                "borderColor": "#000000",
+                                                                              },
+                                                                            ],
+                                                                          },
+                                                                          "type": "View",
+                                                                        },
+                                                                        {
+                                                                          "children": null,
+                                                                          "props": {
+                                                                            "style": [
+                                                                              {
+                                                                                "borderRadius": 3.5,
+                                                                                "borderWidth": 0.6,
+                                                                                "height": 7,
+                                                                                "width": 7,
+                                                                              },
+                                                                              {
+                                                                                "backgroundColor": "transparent",
+                                                                                "borderColor": "rgba(255,255,255,0.4)",
+                                                                              },
+                                                                            ],
+                                                                          },
+                                                                          "type": "View",
+                                                                        },
+                                                                      ],
+                                                                      "props": {
+                                                                        "style": {
+                                                                          "flexDirection": "row",
+                                                                          "flexWrap": "wrap",
+                                                                          "gap": 2,
+                                                                          "width": 18,
+                                                                        },
+                                                                      },
+                                                                      "type": "View",
+                                                                    },
                                                                   ],
                                                                   "props": {
                                                                     "style": {
-                                                                      "fontSize": 36,
+                                                                      "alignItems": "center",
+                                                                      "flexDirection": "row",
+                                                                      "gap": 8,
                                                                     },
                                                                   },
-                                                                  "type": "Text",
+                                                                  "type": "View",
                                                                 },
                                                                 {
                                                                   "children": [
-                                                                    "100",
+                                                                    {
+                                                                      "children": [
+                                                                        {
+                                                                          "children": null,
+                                                                          "props": {
+                                                                            "style": [
+                                                                              {
+                                                                                "borderColor": "rgba(0,0,0,0.35)",
+                                                                                "borderRadius": 9,
+                                                                                "borderWidth": 1,
+                                                                                "height": 18,
+                                                                                "width": 18,
+                                                                              },
+                                                                              {
+                                                                                "backgroundColor": "#10b981",
+                                                                              },
+                                                                            ],
+                                                                          },
+                                                                          "type": "View",
+                                                                        },
+                                                                        {
+                                                                          "children": null,
+                                                                          "props": {
+                                                                            "style": [
+                                                                              {
+                                                                                "borderColor": "rgba(0,0,0,0.35)",
+                                                                                "borderRadius": 9,
+                                                                                "borderWidth": 1,
+                                                                                "height": 18,
+                                                                                "width": 18,
+                                                                              },
+                                                                              {
+                                                                                "backgroundColor": "#06b6d4",
+                                                                              },
+                                                                            ],
+                                                                          },
+                                                                          "type": "View",
+                                                                        },
+                                                                        {
+                                                                          "children": null,
+                                                                          "props": {
+                                                                            "style": [
+                                                                              {
+                                                                                "borderColor": "rgba(0,0,0,0.35)",
+                                                                                "borderRadius": 9,
+                                                                                "borderWidth": 1,
+                                                                                "height": 18,
+                                                                                "width": 18,
+                                                                              },
+                                                                              {
+                                                                                "backgroundColor": "#ec4899",
+                                                                              },
+                                                                            ],
+                                                                          },
+                                                                          "type": "View",
+                                                                        },
+                                                                        {
+                                                                          "children": null,
+                                                                          "props": {
+                                                                            "style": [
+                                                                              {
+                                                                                "borderColor": "rgba(0,0,0,0.35)",
+                                                                                "borderRadius": 9,
+                                                                                "borderWidth": 1,
+                                                                                "height": 18,
+                                                                                "width": 18,
+                                                                              },
+                                                                              {
+                                                                                "backgroundColor": "#f59e0b",
+                                                                              },
+                                                                            ],
+                                                                          },
+                                                                          "type": "View",
+                                                                        },
+                                                                      ],
+                                                                      "props": {
+                                                                        "style": {
+                                                                          "flexDirection": "row",
+                                                                          "gap": 4,
+                                                                        },
+                                                                      },
+                                                                      "type": "View",
+                                                                    },
+                                                                    {
+                                                                      "children": [
+                                                                        {
+                                                                          "children": null,
+                                                                          "props": {
+                                                                            "style": [
+                                                                              {
+                                                                                "borderRadius": 3.5,
+                                                                                "borderWidth": 0.6,
+                                                                                "height": 7,
+                                                                                "width": 7,
+                                                                              },
+                                                                              {
+                                                                                "backgroundColor": "#000000",
+                                                                                "borderColor": "#000000",
+                                                                              },
+                                                                            ],
+                                                                          },
+                                                                          "type": "View",
+                                                                        },
+                                                                        {
+                                                                          "children": null,
+                                                                          "props": {
+                                                                            "style": [
+                                                                              {
+                                                                                "borderRadius": 3.5,
+                                                                                "borderWidth": 0.6,
+                                                                                "height": 7,
+                                                                                "width": 7,
+                                                                              },
+                                                                              {
+                                                                                "backgroundColor": "#000000",
+                                                                                "borderColor": "#000000",
+                                                                              },
+                                                                            ],
+                                                                          },
+                                                                          "type": "View",
+                                                                        },
+                                                                        {
+                                                                          "children": null,
+                                                                          "props": {
+                                                                            "style": [
+                                                                              {
+                                                                                "borderRadius": 3.5,
+                                                                                "borderWidth": 0.6,
+                                                                                "height": 7,
+                                                                                "width": 7,
+                                                                              },
+                                                                              {
+                                                                                "backgroundColor": "#ffffff",
+                                                                                "borderColor": "#000000",
+                                                                              },
+                                                                            ],
+                                                                          },
+                                                                          "type": "View",
+                                                                        },
+                                                                        {
+                                                                          "children": null,
+                                                                          "props": {
+                                                                            "style": [
+                                                                              {
+                                                                                "borderRadius": 3.5,
+                                                                                "borderWidth": 0.6,
+                                                                                "height": 7,
+                                                                                "width": 7,
+                                                                              },
+                                                                              {
+                                                                                "backgroundColor": "transparent",
+                                                                                "borderColor": "rgba(255,255,255,0.4)",
+                                                                              },
+                                                                            ],
+                                                                          },
+                                                                          "type": "View",
+                                                                        },
+                                                                      ],
+                                                                      "props": {
+                                                                        "style": {
+                                                                          "flexDirection": "row",
+                                                                          "flexWrap": "wrap",
+                                                                          "gap": 2,
+                                                                          "width": 18,
+                                                                        },
+                                                                      },
+                                                                      "type": "View",
+                                                                    },
                                                                   ],
                                                                   "props": {
                                                                     "style": {
-                                                                      "color": "#ffffff",
-                                                                      "fontFamily": "ChakraPetch-Bold",
-                                                                      "fontSize": 28,
-                                                                      "letterSpacing": -0.4,
-                                                                      "marginTop": 4,
+                                                                      "alignItems": "center",
+                                                                      "flexDirection": "row",
+                                                                      "gap": 8,
                                                                     },
                                                                   },
-                                                                  "type": "Text",
+                                                                  "type": "View",
                                                                 },
                                                                 {
                                                                   "children": [
-                                                                    "REVEAL",
+                                                                    {
+                                                                      "children": [
+                                                                        {
+                                                                          "children": null,
+                                                                          "props": {
+                                                                            "style": [
+                                                                              {
+                                                                                "borderColor": "rgba(0,0,0,0.35)",
+                                                                                "borderRadius": 9,
+                                                                                "borderWidth": 1,
+                                                                                "height": 18,
+                                                                                "width": 18,
+                                                                              },
+                                                                              {
+                                                                                "backgroundColor": "rgba(255,255,255,0.18)",
+                                                                                "borderColor": "rgba(255,255,255,0.5)",
+                                                                                "borderStyle": "dashed",
+                                                                              },
+                                                                            ],
+                                                                          },
+                                                                          "type": "View",
+                                                                        },
+                                                                        {
+                                                                          "children": null,
+                                                                          "props": {
+                                                                            "style": [
+                                                                              {
+                                                                                "borderColor": "rgba(0,0,0,0.35)",
+                                                                                "borderRadius": 9,
+                                                                                "borderWidth": 1,
+                                                                                "height": 18,
+                                                                                "width": 18,
+                                                                              },
+                                                                              {
+                                                                                "backgroundColor": "rgba(255,255,255,0.18)",
+                                                                                "borderColor": "rgba(255,255,255,0.5)",
+                                                                                "borderStyle": "dashed",
+                                                                              },
+                                                                            ],
+                                                                          },
+                                                                          "type": "View",
+                                                                        },
+                                                                        {
+                                                                          "children": null,
+                                                                          "props": {
+                                                                            "style": [
+                                                                              {
+                                                                                "borderColor": "rgba(0,0,0,0.35)",
+                                                                                "borderRadius": 9,
+                                                                                "borderWidth": 1,
+                                                                                "height": 18,
+                                                                                "width": 18,
+                                                                              },
+                                                                              {
+                                                                                "backgroundColor": "rgba(255,255,255,0.18)",
+                                                                                "borderColor": "rgba(255,255,255,0.5)",
+                                                                                "borderStyle": "dashed",
+                                                                              },
+                                                                            ],
+                                                                          },
+                                                                          "type": "View",
+                                                                        },
+                                                                        {
+                                                                          "children": null,
+                                                                          "props": {
+                                                                            "style": [
+                                                                              {
+                                                                                "borderColor": "rgba(0,0,0,0.35)",
+                                                                                "borderRadius": 9,
+                                                                                "borderWidth": 1,
+                                                                                "height": 18,
+                                                                                "width": 18,
+                                                                              },
+                                                                              {
+                                                                                "backgroundColor": "rgba(255,255,255,0.18)",
+                                                                                "borderColor": "rgba(255,255,255,0.5)",
+                                                                                "borderStyle": "dashed",
+                                                                              },
+                                                                            ],
+                                                                          },
+                                                                          "type": "View",
+                                                                        },
+                                                                      ],
+                                                                      "props": {
+                                                                        "style": {
+                                                                          "flexDirection": "row",
+                                                                          "gap": 4,
+                                                                        },
+                                                                      },
+                                                                      "type": "View",
+                                                                    },
+                                                                    {
+                                                                      "children": null,
+                                                                      "props": {
+                                                                        "style": {
+                                                                          "flexDirection": "row",
+                                                                          "flexWrap": "wrap",
+                                                                          "gap": 2,
+                                                                          "width": 18,
+                                                                        },
+                                                                      },
+                                                                      "type": "View",
+                                                                    },
                                                                   ],
                                                                   "props": {
                                                                     "style": {
-                                                                      "color": "#ffffff",
-                                                                      "fontFamily": "Inter-SemiBold",
-                                                                      "fontSize": 10,
-                                                                      "letterSpacing": 1.6,
-                                                                      "opacity": 0.85,
-                                                                      "textTransform": "uppercase",
+                                                                      "alignItems": "center",
+                                                                      "flexDirection": "row",
+                                                                      "gap": 8,
                                                                     },
                                                                   },
-                                                                  "type": "Text",
+                                                                  "type": "View",
                                                                 },
                                                               ],
                                                               "props": {
                                                                 "style": {
-                                                                  "alignItems": "center",
-                                                                  "backgroundColor": "rgba(0,0,0,0.32)",
-                                                                  "borderRadius": 18,
-                                                                  "gap": 4,
-                                                                  "paddingHorizontal": 14,
-                                                                  "paddingVertical": 18,
-                                                                  "width": 110,
+                                                                  "gap": 6,
                                                                 },
                                                               },
                                                               "type": "View",
@@ -5634,56 +6256,499 @@ exports[`OnboardingTokenWalkthroughScreen snapshots the initial slide-1 layout 1
                                                               "children": [
                                                                 {
                                                                   "children": [
-                                                                    "🔍",
+                                                                    {
+                                                                      "children": [
+                                                                        "💡",
+                                                                      ],
+                                                                      "props": {
+                                                                        "style": {
+                                                                          "fontSize": 16,
+                                                                        },
+                                                                      },
+                                                                      "type": "Text",
+                                                                    },
+                                                                    {
+                                                                      "children": [
+                                                                        "REVEAL",
+                                                                      ],
+                                                                      "props": {
+                                                                        "style": {
+                                                                          "color": "#ffffff",
+                                                                          "fontFamily": "Inter-SemiBold",
+                                                                          "fontSize": 11,
+                                                                          "letterSpacing": 1.2,
+                                                                        },
+                                                                      },
+                                                                      "type": "Text",
+                                                                    },
+                                                                    {
+                                                                      "children": [
+                                                                        {
+                                                                          "children": [
+                                                                            {
+                                                                              "children": [
+                                                                                {
+                                                                                  "children": [
+                                                                                    {
+                                                                                      "children": null,
+                                                                                      "props": {
+                                                                                        "cx": "35%",
+                                                                                        "cy": "30%",
+                                                                                        "fx": "35%",
+                                                                                        "fy": "30%",
+                                                                                        "gradient": [
+                                                                                          0,
+                                                                                          -137590,
+                                                                                          0.6,
+                                                                                          -278748,
+                                                                                          1,
+                                                                                          -4959479,
+                                                                                        ],
+                                                                                        "gradientTransform": null,
+                                                                                        "gradientUnits": 0,
+                                                                                        "name": "cb-coin-36",
+                                                                                        "rx": "70%",
+                                                                                        "ry": "70%",
+                                                                                      },
+                                                                                      "type": "RNSVGRadialGradient",
+                                                                                    },
+                                                                                  ],
+                                                                                  "props": {},
+                                                                                  "type": "RNSVGDefs",
+                                                                                },
+                                                                                {
+                                                                                  "children": null,
+                                                                                  "props": {
+                                                                                    "cx": "10",
+                                                                                    "cy": "10",
+                                                                                    "fill": {
+                                                                                      "brushRef": "cb-coin-36",
+                                                                                      "type": 1,
+                                                                                    },
+                                                                                    "propList": [
+                                                                                      "fill",
+                                                                                      "stroke",
+                                                                                      "strokeWidth",
+                                                                                    ],
+                                                                                    "r": "9",
+                                                                                    "stroke": {
+                                                                                      "payload": 4286067983,
+                                                                                      "type": 0,
+                                                                                    },
+                                                                                    "strokeWidth": "0.6",
+                                                                                  },
+                                                                                  "type": "RNSVGCircle",
+                                                                                },
+                                                                                {
+                                                                                  "children": null,
+                                                                                  "props": {
+                                                                                    "cx": "10",
+                                                                                    "cy": "10",
+                                                                                    "fill": null,
+                                                                                    "opacity": 0.5,
+                                                                                    "propList": [
+                                                                                      "fill",
+                                                                                      "stroke",
+                                                                                      "strokeWidth",
+                                                                                    ],
+                                                                                    "r": "6.5",
+                                                                                    "stroke": {
+                                                                                      "payload": 4286067983,
+                                                                                      "type": 0,
+                                                                                    },
+                                                                                    "strokeWidth": "0.6",
+                                                                                  },
+                                                                                  "type": "RNSVGCircle",
+                                                                                },
+                                                                                {
+                                                                                  "children": [
+                                                                                    {
+                                                                                      "children": null,
+                                                                                      "props": {
+                                                                                        "alignmentBaseline": undefined,
+                                                                                        "baselineShift": undefined,
+                                                                                        "content": "C",
+                                                                                        "dx": [],
+                                                                                        "dy": [],
+                                                                                        "fill": {
+                                                                                          "payload": 4278190080,
+                                                                                          "type": 0,
+                                                                                        },
+                                                                                        "font": {},
+                                                                                        "inlineSize": undefined,
+                                                                                        "rotate": [],
+                                                                                        "verticalAlign": undefined,
+                                                                                        "x": [],
+                                                                                        "y": [],
+                                                                                      },
+                                                                                      "type": "RNSVGTSpan",
+                                                                                    },
+                                                                                  ],
+                                                                                  "props": {
+                                                                                    "alignmentBaseline": undefined,
+                                                                                    "baselineShift": undefined,
+                                                                                    "content": null,
+                                                                                    "dx": [],
+                                                                                    "dy": [],
+                                                                                    "fill": {
+                                                                                      "payload": 4286067983,
+                                                                                      "type": 0,
+                                                                                    },
+                                                                                    "font": {
+                                                                                      "fontFamily": "ChakraPetch-Bold",
+                                                                                      "fontSize": 8.5,
+                                                                                      "fontWeight": "900",
+                                                                                      "textAnchor": "middle",
+                                                                                    },
+                                                                                    "inlineSize": undefined,
+                                                                                    "propList": [
+                                                                                      "fill",
+                                                                                    ],
+                                                                                    "rotate": [],
+                                                                                    "verticalAlign": undefined,
+                                                                                    "x": [
+                                                                                      "10",
+                                                                                    ],
+                                                                                    "y": [
+                                                                                      "13.5",
+                                                                                    ],
+                                                                                  },
+                                                                                  "type": "RNSVGText",
+                                                                                },
+                                                                              ],
+                                                                              "props": {
+                                                                                "fill": {
+                                                                                  "payload": 4278190080,
+                                                                                  "type": 0,
+                                                                                },
+                                                                              },
+                                                                              "type": "RNSVGGroup",
+                                                                            },
+                                                                          ],
+                                                                          "props": {
+                                                                            "align": "xMidYMid",
+                                                                            "bbHeight": 11,
+                                                                            "bbWidth": 11,
+                                                                            "focusable": false,
+                                                                            "height": 11,
+                                                                            "meetOrSlice": 0,
+                                                                            "minX": 0,
+                                                                            "minY": 0,
+                                                                            "style": [
+                                                                              {
+                                                                                "backgroundColor": "transparent",
+                                                                                "borderWidth": 0,
+                                                                              },
+                                                                              {
+                                                                                "flex": 0,
+                                                                                "height": 11,
+                                                                                "width": 11,
+                                                                              },
+                                                                            ],
+                                                                            "vbHeight": 20,
+                                                                            "vbWidth": 20,
+                                                                            "width": 11,
+                                                                          },
+                                                                          "type": "RNSVGSvgView",
+                                                                        },
+                                                                        {
+                                                                          "children": [
+                                                                            "100",
+                                                                          ],
+                                                                          "props": {
+                                                                            "style": {
+                                                                              "color": "#fbbf24",
+                                                                              "fontFamily": "Inter-SemiBold",
+                                                                              "fontSize": 10,
+                                                                              "letterSpacing": 0.2,
+                                                                            },
+                                                                          },
+                                                                          "type": "Text",
+                                                                        },
+                                                                      ],
+                                                                      "props": {
+                                                                        "style": {
+                                                                          "alignItems": "center",
+                                                                          "backgroundColor": "rgba(0,0,0,0.45)",
+                                                                          "borderRadius": 999,
+                                                                          "flexDirection": "row",
+                                                                          "gap": 3,
+                                                                          "paddingHorizontal": 6,
+                                                                          "paddingVertical": 2,
+                                                                        },
+                                                                      },
+                                                                      "type": "View",
+                                                                    },
                                                                   ],
                                                                   "props": {
-                                                                    "style": {
-                                                                      "fontSize": 36,
-                                                                    },
+                                                                    "style": [
+                                                                      {
+                                                                        "alignItems": "center",
+                                                                        "borderRadius": 12,
+                                                                        "borderWidth": 1,
+                                                                        "flexDirection": "row",
+                                                                        "gap": 6,
+                                                                        "paddingHorizontal": 12,
+                                                                        "paddingVertical": 10,
+                                                                      },
+                                                                      {
+                                                                        "backgroundColor": "rgba(139,92,246,0.22)",
+                                                                        "borderColor": "rgba(139,92,246,0.55)",
+                                                                      },
+                                                                    ],
                                                                   },
-                                                                  "type": "Text",
+                                                                  "type": "View",
                                                                 },
                                                                 {
                                                                   "children": [
-                                                                    "50",
+                                                                    {
+                                                                      "children": [
+                                                                        "🔍",
+                                                                      ],
+                                                                      "props": {
+                                                                        "style": {
+                                                                          "fontSize": 16,
+                                                                        },
+                                                                      },
+                                                                      "type": "Text",
+                                                                    },
+                                                                    {
+                                                                      "children": [
+                                                                        "PROBE",
+                                                                      ],
+                                                                      "props": {
+                                                                        "style": {
+                                                                          "color": "#ffffff",
+                                                                          "fontFamily": "Inter-SemiBold",
+                                                                          "fontSize": 11,
+                                                                          "letterSpacing": 1.2,
+                                                                        },
+                                                                      },
+                                                                      "type": "Text",
+                                                                    },
+                                                                    {
+                                                                      "children": [
+                                                                        {
+                                                                          "children": [
+                                                                            {
+                                                                              "children": [
+                                                                                {
+                                                                                  "children": [
+                                                                                    {
+                                                                                      "children": null,
+                                                                                      "props": {
+                                                                                        "cx": "35%",
+                                                                                        "cy": "30%",
+                                                                                        "fx": "35%",
+                                                                                        "fy": "30%",
+                                                                                        "gradient": [
+                                                                                          0,
+                                                                                          -137590,
+                                                                                          0.6,
+                                                                                          -278748,
+                                                                                          1,
+                                                                                          -4959479,
+                                                                                        ],
+                                                                                        "gradientTransform": null,
+                                                                                        "gradientUnits": 0,
+                                                                                        "name": "cb-coin-37",
+                                                                                        "rx": "70%",
+                                                                                        "ry": "70%",
+                                                                                      },
+                                                                                      "type": "RNSVGRadialGradient",
+                                                                                    },
+                                                                                  ],
+                                                                                  "props": {},
+                                                                                  "type": "RNSVGDefs",
+                                                                                },
+                                                                                {
+                                                                                  "children": null,
+                                                                                  "props": {
+                                                                                    "cx": "10",
+                                                                                    "cy": "10",
+                                                                                    "fill": {
+                                                                                      "brushRef": "cb-coin-37",
+                                                                                      "type": 1,
+                                                                                    },
+                                                                                    "propList": [
+                                                                                      "fill",
+                                                                                      "stroke",
+                                                                                      "strokeWidth",
+                                                                                    ],
+                                                                                    "r": "9",
+                                                                                    "stroke": {
+                                                                                      "payload": 4286067983,
+                                                                                      "type": 0,
+                                                                                    },
+                                                                                    "strokeWidth": "0.6",
+                                                                                  },
+                                                                                  "type": "RNSVGCircle",
+                                                                                },
+                                                                                {
+                                                                                  "children": null,
+                                                                                  "props": {
+                                                                                    "cx": "10",
+                                                                                    "cy": "10",
+                                                                                    "fill": null,
+                                                                                    "opacity": 0.5,
+                                                                                    "propList": [
+                                                                                      "fill",
+                                                                                      "stroke",
+                                                                                      "strokeWidth",
+                                                                                    ],
+                                                                                    "r": "6.5",
+                                                                                    "stroke": {
+                                                                                      "payload": 4286067983,
+                                                                                      "type": 0,
+                                                                                    },
+                                                                                    "strokeWidth": "0.6",
+                                                                                  },
+                                                                                  "type": "RNSVGCircle",
+                                                                                },
+                                                                                {
+                                                                                  "children": [
+                                                                                    {
+                                                                                      "children": null,
+                                                                                      "props": {
+                                                                                        "alignmentBaseline": undefined,
+                                                                                        "baselineShift": undefined,
+                                                                                        "content": "C",
+                                                                                        "dx": [],
+                                                                                        "dy": [],
+                                                                                        "fill": {
+                                                                                          "payload": 4278190080,
+                                                                                          "type": 0,
+                                                                                        },
+                                                                                        "font": {},
+                                                                                        "inlineSize": undefined,
+                                                                                        "rotate": [],
+                                                                                        "verticalAlign": undefined,
+                                                                                        "x": [],
+                                                                                        "y": [],
+                                                                                      },
+                                                                                      "type": "RNSVGTSpan",
+                                                                                    },
+                                                                                  ],
+                                                                                  "props": {
+                                                                                    "alignmentBaseline": undefined,
+                                                                                    "baselineShift": undefined,
+                                                                                    "content": null,
+                                                                                    "dx": [],
+                                                                                    "dy": [],
+                                                                                    "fill": {
+                                                                                      "payload": 4286067983,
+                                                                                      "type": 0,
+                                                                                    },
+                                                                                    "font": {
+                                                                                      "fontFamily": "ChakraPetch-Bold",
+                                                                                      "fontSize": 8.5,
+                                                                                      "fontWeight": "900",
+                                                                                      "textAnchor": "middle",
+                                                                                    },
+                                                                                    "inlineSize": undefined,
+                                                                                    "propList": [
+                                                                                      "fill",
+                                                                                    ],
+                                                                                    "rotate": [],
+                                                                                    "verticalAlign": undefined,
+                                                                                    "x": [
+                                                                                      "10",
+                                                                                    ],
+                                                                                    "y": [
+                                                                                      "13.5",
+                                                                                    ],
+                                                                                  },
+                                                                                  "type": "RNSVGText",
+                                                                                },
+                                                                              ],
+                                                                              "props": {
+                                                                                "fill": {
+                                                                                  "payload": 4278190080,
+                                                                                  "type": 0,
+                                                                                },
+                                                                              },
+                                                                              "type": "RNSVGGroup",
+                                                                            },
+                                                                          ],
+                                                                          "props": {
+                                                                            "align": "xMidYMid",
+                                                                            "bbHeight": 11,
+                                                                            "bbWidth": 11,
+                                                                            "focusable": false,
+                                                                            "height": 11,
+                                                                            "meetOrSlice": 0,
+                                                                            "minX": 0,
+                                                                            "minY": 0,
+                                                                            "style": [
+                                                                              {
+                                                                                "backgroundColor": "transparent",
+                                                                                "borderWidth": 0,
+                                                                              },
+                                                                              {
+                                                                                "flex": 0,
+                                                                                "height": 11,
+                                                                                "width": 11,
+                                                                              },
+                                                                            ],
+                                                                            "vbHeight": 20,
+                                                                            "vbWidth": 20,
+                                                                            "width": 11,
+                                                                          },
+                                                                          "type": "RNSVGSvgView",
+                                                                        },
+                                                                        {
+                                                                          "children": [
+                                                                            "50",
+                                                                          ],
+                                                                          "props": {
+                                                                            "style": {
+                                                                              "color": "#fbbf24",
+                                                                              "fontFamily": "Inter-SemiBold",
+                                                                              "fontSize": 10,
+                                                                              "letterSpacing": 0.2,
+                                                                            },
+                                                                          },
+                                                                          "type": "Text",
+                                                                        },
+                                                                      ],
+                                                                      "props": {
+                                                                        "style": {
+                                                                          "alignItems": "center",
+                                                                          "backgroundColor": "rgba(0,0,0,0.45)",
+                                                                          "borderRadius": 999,
+                                                                          "flexDirection": "row",
+                                                                          "gap": 3,
+                                                                          "paddingHorizontal": 6,
+                                                                          "paddingVertical": 2,
+                                                                        },
+                                                                      },
+                                                                      "type": "View",
+                                                                    },
                                                                   ],
                                                                   "props": {
-                                                                    "style": {
-                                                                      "color": "#ffffff",
-                                                                      "fontFamily": "ChakraPetch-Bold",
-                                                                      "fontSize": 28,
-                                                                      "letterSpacing": -0.4,
-                                                                      "marginTop": 4,
-                                                                    },
+                                                                    "style": [
+                                                                      {
+                                                                        "alignItems": "center",
+                                                                        "borderRadius": 12,
+                                                                        "borderWidth": 1,
+                                                                        "flexDirection": "row",
+                                                                        "gap": 6,
+                                                                        "paddingHorizontal": 12,
+                                                                        "paddingVertical": 10,
+                                                                      },
+                                                                      {
+                                                                        "backgroundColor": "rgba(245,158,11,0.22)",
+                                                                        "borderColor": "rgba(245,158,11,0.55)",
+                                                                      },
+                                                                    ],
                                                                   },
-                                                                  "type": "Text",
-                                                                },
-                                                                {
-                                                                  "children": [
-                                                                    "PROBE",
-                                                                  ],
-                                                                  "props": {
-                                                                    "style": {
-                                                                      "color": "#ffffff",
-                                                                      "fontFamily": "Inter-SemiBold",
-                                                                      "fontSize": 10,
-                                                                      "letterSpacing": 1.6,
-                                                                      "opacity": 0.85,
-                                                                      "textTransform": "uppercase",
-                                                                    },
-                                                                  },
-                                                                  "type": "Text",
+                                                                  "type": "View",
                                                                 },
                                                               ],
                                                               "props": {
                                                                 "style": {
-                                                                  "alignItems": "center",
-                                                                  "backgroundColor": "rgba(0,0,0,0.32)",
-                                                                  "borderRadius": 18,
-                                                                  "gap": 4,
-                                                                  "paddingHorizontal": 14,
-                                                                  "paddingVertical": 18,
-                                                                  "width": 110,
+                                                                  "flexDirection": "row",
+                                                                  "gap": 10,
                                                                 },
                                                               },
                                                               "type": "View",
@@ -5692,11 +6757,12 @@ exports[`OnboardingTokenWalkthroughScreen snapshots the initial slide-1 layout 1
                                                           "props": {
                                                             "style": {
                                                               "alignItems": "center",
-                                                              "flexDirection": "row",
-                                                              "gap": 18,
+                                                              "gap": 14,
                                                               "justifyContent": "center",
+                                                              "paddingHorizontal": 16,
+                                                              "width": "100%",
                                                             },
-                                                            "testID": "spend-visual",
+                                                            "testID": "daily-hint-mockup",
                                                           },
                                                           "type": "View",
                                                         },
@@ -5756,7 +6822,7 @@ exports[`OnboardingTokenWalkthroughScreen snapshots the initial slide-1 layout 1
                                                     },
                                                     {
                                                       "children": [
-                                                        "In real matches, hints aren't free anymore. Reveal a digit (100 tokens) or check one (50). Or earn free hints with daily streaks →",
+                                                        "Stuck? Spend tokens for hints. Or earn them free through daily streaks →",
                                                       ],
                                                       "props": {
                                                         "style": {
@@ -5782,7 +6848,7 @@ exports[`OnboardingTokenWalkthroughScreen snapshots the initial slide-1 layout 1
                                                 },
                                               ],
                                               "props": {
-                                                "accessibilityLabel": "Spend on hints. In real matches, hints aren't free anymore. Reveal a digit (100 tokens) or check one (50). Or earn free hints with daily streaks →",
+                                                "accessibilityLabel": "Spend on hints. Stuck? Spend tokens for hints. Or earn them free through daily streaks →",
                                                 "accessibilityRole": "text",
                                                 "style": {
                                                   "alignItems": "stretch",
@@ -5866,10 +6932,10 @@ exports[`OnboardingTokenWalkthroughScreen snapshots the initial slide-1 layout 1
                                                               ],
                                                               "props": {
                                                                 "align": "xMidYMid",
-                                                                "bbHeight": 98.82352941176471,
-                                                                "bbWidth": 80,
+                                                                "bbHeight": 103.76470588235294,
+                                                                "bbWidth": 84,
                                                                 "focusable": false,
-                                                                "height": 98.82352941176471,
+                                                                "height": 103.76470588235294,
                                                                 "meetOrSlice": 0,
                                                                 "minX": 0,
                                                                 "minY": 0,
@@ -5880,128 +6946,113 @@ exports[`OnboardingTokenWalkthroughScreen snapshots the initial slide-1 layout 1
                                                                   },
                                                                   {
                                                                     "flex": 0,
-                                                                    "height": 98,
-                                                                    "width": 80,
+                                                                    "height": 103,
+                                                                    "width": 84,
                                                                   },
                                                                 ],
                                                                 "vbHeight": 84,
                                                                 "vbWidth": 68,
-                                                                "width": 80,
+                                                                "width": 84,
                                                               },
                                                               "type": "RNSVGSvgView",
                                                             },
                                                             {
                                                               "children": [
                                                                 {
-                                                                  "children": null,
+                                                                  "children": [
+                                                                    "7 DAY STREAK",
+                                                                  ],
                                                                   "props": {
                                                                     "style": {
-                                                                      "backgroundColor": "#ffffff",
-                                                                      "borderRadius": 5,
-                                                                      "height": 10,
-                                                                      "opacity": 0.85,
-                                                                      "width": 10,
+                                                                      "color": "#ffffff",
+                                                                      "fontFamily": "ChakraPetch-Bold",
+                                                                      "fontSize": 14,
+                                                                      "letterSpacing": 1.6,
                                                                     },
                                                                   },
-                                                                  "type": "View",
+                                                                  "type": "Text",
+                                                                },
+                                                              ],
+                                                              "props": {
+                                                                "style": {
+                                                                  "backgroundColor": "rgba(0,0,0,0.55)",
+                                                                  "borderColor": "rgba(255,255,255,0.25)",
+                                                                  "borderRadius": 999,
+                                                                  "borderWidth": 1,
+                                                                  "paddingHorizontal": 14,
+                                                                  "paddingVertical": 6,
+                                                                },
+                                                              },
+                                                              "type": "View",
+                                                            },
+                                                            {
+                                                              "children": [
+                                                                {
+                                                                  "children": [
+                                                                    "✨",
+                                                                  ],
+                                                                  "props": {
+                                                                    "style": {
+                                                                      "fontSize": 12,
+                                                                    },
+                                                                  },
+                                                                  "type": "Text",
                                                                 },
                                                                 {
-                                                                  "children": null,
+                                                                  "children": [
+                                                                    "+1 FREE HINT",
+                                                                  ],
                                                                   "props": {
                                                                     "style": {
-                                                                      "backgroundColor": "#ffffff",
-                                                                      "borderRadius": 5,
-                                                                      "height": 10,
-                                                                      "opacity": 0.85,
-                                                                      "width": 10,
+                                                                      "color": "#fbbf24",
+                                                                      "fontFamily": "Inter-SemiBold",
+                                                                      "fontSize": 11,
+                                                                      "letterSpacing": 1.4,
                                                                     },
                                                                   },
-                                                                  "type": "View",
-                                                                },
-                                                                {
-                                                                  "children": null,
-                                                                  "props": {
-                                                                    "style": {
-                                                                      "backgroundColor": "#ffffff",
-                                                                      "borderRadius": 5,
-                                                                      "height": 10,
-                                                                      "opacity": 0.85,
-                                                                      "width": 10,
-                                                                    },
-                                                                  },
-                                                                  "type": "View",
-                                                                },
-                                                                {
-                                                                  "children": null,
-                                                                  "props": {
-                                                                    "style": {
-                                                                      "backgroundColor": "#ffffff",
-                                                                      "borderRadius": 5,
-                                                                      "height": 10,
-                                                                      "opacity": 0.85,
-                                                                      "width": 10,
-                                                                    },
-                                                                  },
-                                                                  "type": "View",
-                                                                },
-                                                                {
-                                                                  "children": null,
-                                                                  "props": {
-                                                                    "style": {
-                                                                      "backgroundColor": "#ffffff",
-                                                                      "borderRadius": 5,
-                                                                      "height": 10,
-                                                                      "opacity": 0.85,
-                                                                      "width": 10,
-                                                                    },
-                                                                  },
-                                                                  "type": "View",
-                                                                },
-                                                                {
-                                                                  "children": null,
-                                                                  "props": {
-                                                                    "style": {
-                                                                      "backgroundColor": "#ffffff",
-                                                                      "borderRadius": 5,
-                                                                      "height": 10,
-                                                                      "opacity": 0.85,
-                                                                      "width": 10,
-                                                                    },
-                                                                  },
-                                                                  "type": "View",
-                                                                },
-                                                                {
-                                                                  "children": null,
-                                                                  "props": {
-                                                                    "style": {
-                                                                      "backgroundColor": "#fb923c",
-                                                                      "borderColor": "#9a3412",
-                                                                      "borderRadius": 7,
-                                                                      "borderWidth": 1.5,
-                                                                      "height": 14,
-                                                                      "width": 14,
-                                                                    },
-                                                                  },
-                                                                  "type": "View",
+                                                                  "type": "Text",
                                                                 },
                                                               ],
                                                               "props": {
                                                                 "style": {
                                                                   "alignItems": "center",
+                                                                  "backgroundColor": "rgba(251,191,36,0.2)",
+                                                                  "borderColor": "rgba(251,191,36,0.6)",
+                                                                  "borderRadius": 999,
+                                                                  "borderWidth": 1,
                                                                   "flexDirection": "row",
-                                                                  "gap": 8,
+                                                                  "gap": 6,
+                                                                  "paddingHorizontal": 10,
+                                                                  "paddingVertical": 5,
                                                                 },
                                                               },
                                                               "type": "View",
+                                                            },
+                                                            {
+                                                              "children": [
+                                                                "COMES BACK TOMORROW",
+                                                              ],
+                                                              "props": {
+                                                                "style": {
+                                                                  "color": "#ffffff",
+                                                                  "fontFamily": "Inter-SemiBold",
+                                                                  "fontSize": 9,
+                                                                  "letterSpacing": 1.6,
+                                                                  "marginTop": 6,
+                                                                  "opacity": 0.6,
+                                                                },
+                                                              },
+                                                              "type": "Text",
                                                             },
                                                           ],
                                                           "props": {
                                                             "style": {
                                                               "alignItems": "center",
-                                                              "gap": 18,
+                                                              "gap": 12,
                                                               "justifyContent": "center",
+                                                              "paddingHorizontal": 20,
                                                             },
-                                                            "testID": "streak-visual",
+                                                            "testID": "streak-reward-mockup",
                                                           },
                                                           "type": "View",
                                                         },
@@ -6061,7 +7112,7 @@ exports[`OnboardingTokenWalkthroughScreen snapshots the initial slide-1 layout 1
                                                     },
                                                     {
                                                       "children": [
-                                                        "Play Daily Challenge each day. 7-day streak earns 1 free hint, up to 3.",
+                                                        "Play Daily Challenge each day. Every 7-day streak earns a free hint.",
                                                       ],
                                                       "props": {
                                                         "style": {
@@ -6087,7 +7138,7 @@ exports[`OnboardingTokenWalkthroughScreen snapshots the initial slide-1 layout 1
                                                 },
                                               ],
                                               "props": {
-                                                "accessibilityLabel": "Daily streaks unlock free hints. Play Daily Challenge each day. 7-day streak earns 1 free hint, up to 3.",
+                                                "accessibilityLabel": "Daily streaks unlock free hints. Play Daily Challenge each day. Every 7-day streak earns a free hint.",
                                                 "accessibilityRole": "text",
                                                 "style": {
                                                   "alignItems": "stretch",
@@ -6118,7 +7169,7 @@ exports[`OnboardingTokenWalkthroughScreen snapshots the initial slide-1 layout 1
                                   "props": {
                                     "data": [
                                       {
-                                        "body": "Crack codes faster, earn more. You just earned 50.",
+                                        "body": "Win matches, earn tokens. Faster wins earn more.",
                                         "gradient": [
                                           "#fbbf24",
                                           "#d97706",
@@ -6127,7 +7178,7 @@ exports[`OnboardingTokenWalkthroughScreen snapshots the initial slide-1 layout 1
                                         "title": "Tokens for every win",
                                       },
                                       {
-                                        "body": "In real matches, hints aren't free anymore. Reveal a digit (100 tokens) or check one (50). Or earn free hints with daily streaks →",
+                                        "body": "Stuck? Spend tokens for hints. Or earn them free through daily streaks →",
                                         "gradient": [
                                           "#8b5cf6",
                                           "#06b6d4",
@@ -6136,7 +7187,7 @@ exports[`OnboardingTokenWalkthroughScreen snapshots the initial slide-1 layout 1
                                         "title": "Spend on hints",
                                       },
                                       {
-                                        "body": "Play Daily Challenge each day. 7-day streak earns 1 free hint, up to 3.",
+                                        "body": "Play Daily Challenge each day. Every 7-day streak earns a free hint.",
                                         "gradient": [
                                           "#ec4899",
                                           "#8b5cf6",

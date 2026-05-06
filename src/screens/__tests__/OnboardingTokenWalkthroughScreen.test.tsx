@@ -32,7 +32,7 @@ describe('OnboardingTokenWalkthroughScreen', () => {
     const utils = mountWalkthrough();
     expect(utils.getByText('Tokens for every win')).toBeTruthy();
     expect(
-      utils.getByText('Crack codes faster, earn more. You just earned 50.'),
+      utils.getByText('Win matches, earn tokens. Faster wins earn more.'),
     ).toBeTruthy();
     // FlatList renders all 3 slides off-screen; the footer button
     // is the source of truth for "which slide is active."
@@ -162,16 +162,18 @@ describe('OnboardingTokenWalkthroughScreen', () => {
     // Each slide carries a composed text label so screen readers
     // announce title + body without relying on visual order.
     expect(
-      utils.getByLabelText('Tokens for every win. Crack codes faster, earn more. You just earned 50.'),
-    ).toBeTruthy();
-    expect(
       utils.getByLabelText(
-        "Spend on hints. In real matches, hints aren't free anymore. Reveal a digit (100 tokens) or check one (50). Or earn free hints with daily streaks →",
+        'Tokens for every win. Win matches, earn tokens. Faster wins earn more.',
       ),
     ).toBeTruthy();
     expect(
       utils.getByLabelText(
-        'Daily streaks unlock free hints. Play Daily Challenge each day. 7-day streak earns 1 free hint, up to 3.',
+        'Spend on hints. Stuck? Spend tokens for hints. Or earn them free through daily streaks →',
+      ),
+    ).toBeTruthy();
+    expect(
+      utils.getByLabelText(
+        'Daily streaks unlock free hints. Play Daily Challenge each day. Every 7-day streak earns a free hint.',
       ),
     ).toBeTruthy();
     // All three dots carry tab role + selected state.

@@ -26,7 +26,7 @@
  * still gates initial route on `mockUser.hasOnboarded`.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import {
   Animated,
   Dimensions,
@@ -66,25 +66,33 @@ const SLIDES: readonly WalkthroughSlide[] = [
   {
     key: 'earn',
     title: 'Tokens for every win',
-    body: 'Crack codes faster, earn more. You just earned 50.',
+    body: 'Win matches, earn tokens. Faster wins earn more.',
     gradient: [colors.gold, colors.goldDeep],
   },
   {
     key: 'spend',
     title: 'Spend on hints',
-    body: "In real matches, hints aren't free anymore. Reveal a digit (100 tokens) or check one (50). Or earn free hints with daily streaks →",
+    body: 'Stuck? Spend tokens for hints. Or earn them free through daily streaks →',
     gradient: [colors.violet, colors.cyan],
   },
   {
     key: 'streak',
     title: 'Daily streaks unlock free hints',
-    body: 'Play Daily Challenge each day. 7-day streak earns 1 free hint, up to 3.',
+    body: 'Play Daily Challenge each day. Every 7-day streak earns a free hint.',
     gradient: [colors.pink, colors.violet],
   },
 ];
 
 const SLIDE_COUNT = SLIDES.length;
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
+const FEEDBACK_DOT_STYLES: Readonly<
+  Record<'exact' | 'present' | 'absent', { backgroundColor: string; borderColor: string }>
+> = {
+  exact: { backgroundColor: '#000000', borderColor: '#000000' },
+  present: { backgroundColor: '#ffffff', borderColor: '#000000' },
+  absent: { backgroundColor: 'transparent', borderColor: withAlpha('#ffffff', 0.4) },
+};
 
 export function OnboardingTokenWalkthroughScreen(): React.JSX.Element {
   const navigation = useNavigation<Nav>();
@@ -231,11 +239,11 @@ function SlideView({ slide, index }: SlideViewProps): React.JSX.Element {
           style={styles.hero}
         >
           {index === 0 ? (
-            <EarnVisual />
+            <MatchWinMockup />
           ) : index === 1 ? (
-            <SpendVisual />
+            <DailyHintMockup />
           ) : (
-            <StreakVisual />
+            <StreakRewardMockup />
           )}
         </LinearGradient>
       </View>
@@ -247,88 +255,156 @@ function SlideView({ slide, index }: SlideViewProps): React.JSX.Element {
   );
 }
 
-/**
- * Slide 1 — single hero coin with a "+50" badge that pops in on
- * mount (scale + opacity over ~400ms). The badge anchors to the
- * coin so the player reads "earned 50" as one unit.
- */
-function EarnVisual(): React.JSX.Element {
-  const [scale] = useState(() => new Animated.Value(0));
-  const [opacity] = useState(() => new Animated.Value(0));
+// ─────────────────────────────────────────────────────────────
+// Slide 1 — Match win celebration mockup
+// ─────────────────────────────────────────────────────────────
+//
+// Stylized reference for what the post-match reward screen looks like.
+// VICTORY pill (TinyTag-style, gold-tinted), 4 cracked-code pegs in
+// distinct colors (Mastermind metaphor — diverges from production's
+// digit tiles, see CP4.1 pre-impl finding (a)), token chip with
+// real `TokenCoin` + "+120", and a small XP bar.
+//
+// `+120` is forward-looking (Mode 1 normal-band win = Math.floor(100 ×
+// 1.2) = 120). LEVEL 3 / 55%-fill XP bar is illustrative; intentionally
+// inconsistent with the player's actual fresh-install state (level 1)
+// because the mockup shows "what you'll see down the road," not "your
+// current state."
 
-  useEffect(() => {
-    // Pop-in on first render; non-blocking — even if the user swipes
-    // immediately to slide 2 the animation completes silently.
-    Animated.parallel([
-      Animated.spring(scale, {
-        toValue: 1,
-        friction: 5,
-        tension: 80,
-        useNativeDriver: true,
-      }),
-      Animated.timing(opacity, {
-        toValue: 1,
-        duration: 400,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, [scale, opacity]);
+const MOCKUP_PEG_COLORS = ['#10b981', '#06b6d4', '#ec4899', '#f59e0b'] as const;
 
+function MatchWinMockup(): React.JSX.Element {
   return (
-    <View style={styles.earnRoot} testID="earn-visual">
-      <View style={styles.coinWrap}>
-        <TokenCoin size={120} />
-        <Animated.View
-          style={[
-            styles.earnBadge,
-            { opacity, transform: [{ scale }] },
-          ]}
-        >
-          <Text style={styles.earnBadgeText}>+50</Text>
-        </Animated.View>
+    <View style={styles.matchMockupRoot} testID="match-win-mockup">
+      <View style={styles.victoryPill}>
+        <Text style={styles.victoryCheck}>✓</Text>
+        <Text style={styles.victoryLabel}>VICTORY</Text>
       </View>
-    </View>
-  );
-}
 
-/**
- * Slide 2 — two balanced hint tiles. Emoji glyphs match what
- * `DailyMatchScreen` already renders for the player's HINT / PROBE
- * buttons, so the walkthrough's visual language matches what the
- * player sees in production.
- */
-function SpendVisual(): React.JSX.Element {
-  return (
-    <View style={styles.spendRoot} testID="spend-visual">
-      <View style={styles.spendTile}>
-        <Text style={styles.spendEmoji}>💡</Text>
-        <Text style={styles.spendPrice}>100</Text>
-        <Text style={styles.spendLabel}>REVEAL</Text>
-      </View>
-      <View style={styles.spendTile}>
-        <Text style={styles.spendEmoji}>🔍</Text>
-        <Text style={styles.spendPrice}>50</Text>
-        <Text style={styles.spendLabel}>PROBE</Text>
-      </View>
-    </View>
-  );
-}
-
-/**
- * Slide 3 — flame icon + 7-dot streak row, last dot rendered as a
- * smaller flame so the eye reads "streak 7 → unlocks something." The
- * flame SVG paths mirror `OnboardingIntroScreen`'s flame visual so
- * the broader onboarding flow shares one streak idiom.
- */
-function StreakVisual(): React.JSX.Element {
-  return (
-    <View style={styles.streakRoot} testID="streak-visual">
-      <Flame size={80} />
-      <View style={styles.streakDots}>
-        {Array.from({ length: 7 }, (_, i) => (
-          <View key={i} style={i === 6 ? styles.streakFinalDot : styles.streakDot} />
+      <View style={styles.pegRow}>
+        {MOCKUP_PEG_COLORS.map((color, i) => (
+          <View key={i} style={[styles.peg, { backgroundColor: color }]} />
         ))}
       </View>
+
+      <View style={styles.tokenChip}>
+        <TokenCoin size={20} />
+        <Text style={styles.tokenChipValue}>+120</Text>
+        <Text style={styles.tokenChipLabel}>TOKENS</Text>
+      </View>
+
+      <View style={styles.xpRow}>
+        <Text style={styles.xpLabel}>LEVEL 3</Text>
+        <View style={styles.xpTrack}>
+          <View style={styles.xpFill} />
+        </View>
+        <Text style={styles.xpDelta}>+20 XP</Text>
+      </View>
+    </View>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// Slide 2 — Daily Challenge with hint UI mockup
+// ─────────────────────────────────────────────────────────────
+//
+// Two attempted guess rows (filled pegs + B/W feedback dots) plus one
+// empty next-guess row, then two stylized hint buttons that mirror
+// `DailyMatchScreen`'s real `HintButton` styling (violet-tinted REVEAL,
+// warning-tinted PROBE).
+//
+// Feedback dots: black = exact match, white = right-color-wrong-place,
+// gray-empty = no match. Classic Mastermind feedback — diverges from
+// production's Wordle-style tile color but matches the spec's "small
+// black/white dots" language.
+
+interface MockGuessRow {
+  readonly pegs: readonly string[];
+  readonly feedback: readonly ('exact' | 'present' | 'absent')[];
+}
+
+const MOCKUP_GUESS_ROWS: readonly MockGuessRow[] = [
+  {
+    pegs: [MOCKUP_PEG_COLORS[0], MOCKUP_PEG_COLORS[2], MOCKUP_PEG_COLORS[1], MOCKUP_PEG_COLORS[3]],
+    feedback: ['exact', 'absent', 'present', 'absent'],
+  },
+  {
+    pegs: [MOCKUP_PEG_COLORS[0], MOCKUP_PEG_COLORS[1], MOCKUP_PEG_COLORS[2], MOCKUP_PEG_COLORS[3]],
+    feedback: ['exact', 'exact', 'present', 'absent'],
+  },
+];
+
+function DailyHintMockup(): React.JSX.Element {
+  return (
+    <View style={styles.hintMockupRoot} testID="daily-hint-mockup">
+      <View style={styles.miniBoard}>
+        {MOCKUP_GUESS_ROWS.map((row, i) => (
+          <View key={i} style={styles.miniBoardRow}>
+            <View style={styles.miniPegRow}>
+              {row.pegs.map((color, j) => (
+                <View key={j} style={[styles.miniPeg, { backgroundColor: color }]} />
+              ))}
+            </View>
+            <View style={styles.feedbackCluster}>
+              {row.feedback.map((f, j) => (
+                <View key={j} style={[styles.feedbackDot, FEEDBACK_DOT_STYLES[f]]} />
+              ))}
+            </View>
+          </View>
+        ))}
+        <View style={styles.miniBoardRow}>
+          <View style={styles.miniPegRow}>
+            {Array.from({ length: 4 }, (_, j) => (
+              <View key={j} style={[styles.miniPeg, styles.miniPegEmpty]} />
+            ))}
+          </View>
+          <View style={styles.feedbackCluster} />
+        </View>
+      </View>
+
+      <View style={styles.hintButtonRow}>
+        <View style={[styles.hintButton, styles.hintButtonReveal]}>
+          <Text style={styles.hintButtonGlyph}>💡</Text>
+          <Text style={styles.hintButtonLabel}>REVEAL</Text>
+          <View style={styles.priceChip}>
+            <TokenCoin size={11} />
+            <Text style={styles.priceChipText}>100</Text>
+          </View>
+        </View>
+        <View style={[styles.hintButton, styles.hintButtonProbe]}>
+          <Text style={styles.hintButtonGlyph}>🔍</Text>
+          <Text style={styles.hintButtonLabel}>PROBE</Text>
+          <View style={styles.priceChip}>
+            <TokenCoin size={11} />
+            <Text style={styles.priceChipText}>50</Text>
+          </View>
+        </View>
+      </View>
+    </View>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// Slide 3 — Daily streak reward mockup
+// ─────────────────────────────────────────────────────────────
+//
+// Flame focal point + "7 DAY STREAK" dark pill + "+1 FREE HINT" gold
+// chip + "COMES BACK TOMORROW" muted teaser. The 7-dot row from CP4 is
+// dropped — the streak badge already conveys the day count explicitly,
+// and dots competed with the flame for focal attention.
+
+function StreakRewardMockup(): React.JSX.Element {
+  return (
+    <View style={styles.streakMockupRoot} testID="streak-reward-mockup">
+      <Flame size={84} />
+      <View style={styles.streakBadge}>
+        <Text style={styles.streakBadgeText}>7 DAY STREAK</Text>
+      </View>
+      <View style={styles.freeHintChip}>
+        <Text style={styles.freeHintSparkle}>✨</Text>
+        <Text style={styles.freeHintText}>+1 FREE HINT</Text>
+      </View>
+      <Text style={styles.tomorrowTeaser}>COMES BACK TOMORROW</Text>
     </View>
   );
 }
@@ -436,89 +512,242 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  earnRoot: {
+  // Slide 1 — Match win mockup
+  matchMockupRoot: {
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 14,
+    paddingHorizontal: 20,
   },
-  coinWrap: {
-    position: 'relative',
+  victoryPill: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-  },
-  earnBadge: {
-    position: 'absolute',
-    top: -10,
-    right: -28,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
     borderRadius: 999,
-    backgroundColor: withAlpha('#000000', 0.6),
+    backgroundColor: withAlpha(colors.gold, 0.18),
+    borderWidth: 1,
+    borderColor: withAlpha(colors.gold, 0.55),
+  },
+  victoryCheck: {
+    fontFamily: fonts.bodySemibold,
+    fontSize: 11,
+    color: colors.gold,
+  },
+  victoryLabel: {
+    fontFamily: fonts.bodySemibold,
+    fontSize: 11,
+    letterSpacing: 1.6,
+    color: colors.gold,
+  },
+  pegRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  peg: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: withAlpha('#000000', 0.35),
+  },
+  tokenChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: withAlpha('#000000', 0.55),
     borderWidth: 1,
     borderColor: colors.gold,
   },
-  earnBadgeText: {
+  tokenChipValue: {
     fontFamily: fonts.display,
     fontSize: 18,
     color: colors.gold,
-    letterSpacing: 0.4,
+    letterSpacing: -0.2,
   },
-  spendRoot: {
+  tokenChipLabel: {
+    fontFamily: fonts.bodySemibold,
+    fontSize: 9,
+    letterSpacing: 1.2,
+    color: withAlpha(colors.gold, 0.75),
+  },
+  xpRow: {
     flexDirection: 'row',
-    gap: 18,
+    alignItems: 'center',
+    gap: 8,
+    width: '100%',
+    paddingTop: 4,
+  },
+  xpLabel: {
+    fontFamily: fonts.bodySemibold,
+    fontSize: 9,
+    letterSpacing: 1.4,
+    color: '#ffffff',
+    opacity: 0.85,
+  },
+  xpTrack: {
+    flex: 1,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: withAlpha('#000000', 0.4),
+    overflow: 'hidden',
+  },
+  xpFill: {
+    height: '100%',
+    width: '55%',
+    backgroundColor: colors.gold,
+    borderRadius: 3,
+  },
+  xpDelta: {
+    fontFamily: fonts.bodySemibold,
+    fontSize: 9,
+    letterSpacing: 1.2,
+    color: '#ffffff',
+    opacity: 0.85,
+  },
+
+  // Slide 2 — Daily hint UI mockup
+  hintMockupRoot: {
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 14,
+    paddingHorizontal: 16,
+    width: '100%',
   },
-  spendTile: {
-    width: 110,
-    paddingVertical: 18,
-    paddingHorizontal: 14,
-    borderRadius: 18,
-    backgroundColor: withAlpha('#000000', 0.32),
+  miniBoard: {
+    gap: 6,
+  },
+  miniBoardRow: {
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: 8,
+  },
+  miniPegRow: {
+    flexDirection: 'row',
     gap: 4,
   },
-  spendEmoji: {
-    fontSize: 36,
+  miniPeg: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    borderWidth: 1,
+    borderColor: withAlpha('#000000', 0.35),
   },
-  spendPrice: {
-    fontFamily: fonts.display,
-    fontSize: 28,
+  miniPegEmpty: {
+    backgroundColor: withAlpha('#ffffff', 0.18),
+    borderStyle: 'dashed',
+    borderColor: withAlpha('#ffffff', 0.5),
+  },
+  feedbackCluster: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    width: 18,
+    gap: 2,
+  },
+  feedbackDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    borderWidth: 0.6,
+  },
+  hintButtonRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  hintButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  hintButtonReveal: {
+    backgroundColor: withAlpha(colors.violet, 0.22),
+    borderColor: withAlpha(colors.violet, 0.55),
+  },
+  hintButtonProbe: {
+    backgroundColor: withAlpha(colors.warning, 0.22),
+    borderColor: withAlpha(colors.warning, 0.55),
+  },
+  hintButtonGlyph: {
+    fontSize: 16,
+  },
+  hintButtonLabel: {
+    fontFamily: fonts.bodySemibold,
+    fontSize: 11,
+    letterSpacing: 1.2,
     color: '#ffffff',
-    letterSpacing: -0.4,
-    marginTop: 4,
   },
-  spendLabel: {
+  priceChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 999,
+    backgroundColor: withAlpha('#000000', 0.45),
+  },
+  priceChipText: {
     fontFamily: fonts.bodySemibold,
     fontSize: 10,
-    letterSpacing: 1.6,
-    color: '#ffffff',
-    opacity: 0.85,
-    textTransform: 'uppercase',
+    color: colors.gold,
+    letterSpacing: 0.2,
   },
-  streakRoot: {
+
+  // Slide 3 — Streak reward mockup
+  streakMockupRoot: {
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 18,
+    gap: 12,
+    paddingHorizontal: 20,
   },
-  streakDots: {
+  streakBadge: {
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: withAlpha('#000000', 0.55),
+    borderWidth: 1,
+    borderColor: withAlpha('#ffffff', 0.25),
+  },
+  streakBadgeText: {
+    fontFamily: fonts.display,
+    fontSize: 14,
+    letterSpacing: 1.6,
+    color: '#ffffff',
+  },
+  freeHintChip: {
     flexDirection: 'row',
-    gap: 8,
     alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 999,
+    backgroundColor: withAlpha(colors.gold, 0.2),
+    borderWidth: 1,
+    borderColor: withAlpha(colors.gold, 0.6),
   },
-  streakDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: '#ffffff',
-    opacity: 0.85,
+  freeHintSparkle: {
+    fontSize: 12,
   },
-  streakFinalDot: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    backgroundColor: '#fb923c',
-    borderWidth: 1.5,
-    borderColor: '#9a3412',
+  freeHintText: {
+    fontFamily: fonts.bodySemibold,
+    fontSize: 11,
+    letterSpacing: 1.4,
+    color: colors.gold,
+  },
+  tomorrowTeaser: {
+    marginTop: 6,
+    fontFamily: fonts.bodySemibold,
+    fontSize: 9,
+    letterSpacing: 1.6,
+    color: '#ffffff',
+    opacity: 0.6,
   },
   copy: {
     paddingTop: 28,
