@@ -306,8 +306,35 @@ export interface UserStoreActions {
    * `today` follows the 'YYYY-MM-DD' injection pattern used by
    * `watchAdAction` and `recordMissedDay` for deterministic tests.
    * CP1 ships the action; call sites land in later CPs.
+   *
+   * Use cases (post-CP7.1):
+   *   - CP2 Skip ("rahat bırak" — silence everything)
+   *   - CP4 Skip (same)
+   * NOT used by linear-completion paths — see
+   * `stampOnboardingComplete` for the "I walked the flow normally,
+   * keep CP5/CP6 trigger gates open" path.
    */
   completeOnboarding(today: string): void;
+  /**
+   * Phase 7A.6 CP7.1 — minimal "I finished onboarding linearly"
+   * stamp. Flips top-level `hasOnboarded` and `onboarding.completedAt`
+   * only; the 6 per-step flags (introSeen / tutorialMatchCompleted /
+   * tokenWalkthroughSeen / blitzTeaserSeen / mirrorTeaserSeen /
+   * notificationOptInAsked) are left untouched so trigger-based
+   * post-onboarding nudges (CP5 mode teasers, CP6 push opt-in) can
+   * still fire when the user reaches their respective milestones.
+   *
+   * Idempotent on `completedAt` — same pattern as
+   * `completeOnboarding` so a re-render race during the screen-side
+   * navigation can't double-stamp.
+   *
+   * Per-step flags remain the responsibility of `mark*Seen` /
+   * `mark*Completed` actions called immediately before this stamp
+   * by the screen handler (CP4 Start Playing:
+   * `markTokenWalkthroughSeen()` then
+   * `stampOnboardingComplete(today)`).
+   */
+  stampOnboardingComplete(today: string): void;
   /**
    * Phase 7A.6 CP1 — bump the post-onboarding Mode 1–7 match
    * counter that drives the variety teasers (3 matches → Blitz,
@@ -808,6 +835,19 @@ export const useUserStore = create<UserStoreState & UserStoreActions>()(
           // call would corrupt cohort analysis keyed off that stamp.
           if (s.onboarding.completedAt !== null) return {};
           return { onboarding: { ...ONBOARDING_ALL_SEEN, completedAt: today } };
+        });
+      },
+
+      stampOnboardingComplete: (today) => {
+        set((s) => {
+          // Same idempotency guard as `completeOnboarding` —
+          // completedAt is the canonical timestamp; a second call
+          // (e.g. screen re-render race) must not overwrite it.
+          if (s.onboarding.completedAt !== null) return {};
+          return {
+            hasOnboarded: true,
+            onboarding: { ...s.onboarding, completedAt: today },
+          };
         });
       },
 

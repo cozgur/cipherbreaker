@@ -1062,6 +1062,96 @@ describe('useUserStore', () => {
       });
     });
 
+    describe('stampOnboardingComplete (Phase 7A.6 CP7.1)', () => {
+      it('flips hasOnboarded + completedAt only — leaves all 6 step flags untouched', () => {
+        useUserStore.setState({
+          hasOnboarded: false,
+          onboarding: { ...ONBOARDING_DEFAULTS },
+        });
+        useUserStore.getState().stampOnboardingComplete('2026-05-05');
+
+        const state = useUserStore.getState();
+        expect(state.hasOnboarded).toBe(true);
+        expect(state.onboarding.completedAt).toBe('2026-05-05');
+        // CP7.1 invariant: trigger gates for CP5 / CP6 nudges stay
+        // open after linear completion.
+        expect(state.onboarding.introSeen).toBe(false);
+        expect(state.onboarding.tutorialMatchCompleted).toBe(false);
+        expect(state.onboarding.tokenWalkthroughSeen).toBe(false);
+        expect(state.onboarding.blitzTeaserSeen).toBe(false);
+        expect(state.onboarding.mirrorTeaserSeen).toBe(false);
+        expect(state.onboarding.notificationOptInAsked).toBe(false);
+      });
+
+      it('preserves per-step flags that were already true (linear-walk scenario)', () => {
+        // Realistic scenario: user walked CP2 → CP3 → CP4, so by
+        // the time `stampOnboardingComplete` fires the relevant
+        // step flags are already true via their `mark*Seen` calls.
+        useUserStore.setState({
+          hasOnboarded: false,
+          onboarding: {
+            ...ONBOARDING_DEFAULTS,
+            introSeen: true,
+            tutorialMatchCompleted: true,
+            tokenWalkthroughSeen: true,
+          },
+        });
+        useUserStore.getState().stampOnboardingComplete('2026-05-05');
+
+        const { onboarding, hasOnboarded } = useUserStore.getState();
+        expect(hasOnboarded).toBe(true);
+        expect(onboarding.completedAt).toBe('2026-05-05');
+        expect(onboarding.introSeen).toBe(true);
+        expect(onboarding.tutorialMatchCompleted).toBe(true);
+        expect(onboarding.tokenWalkthroughSeen).toBe(true);
+        // Trigger gates still untouched (this is the whole point).
+        expect(onboarding.blitzTeaserSeen).toBe(false);
+        expect(onboarding.mirrorTeaserSeen).toBe(false);
+        expect(onboarding.notificationOptInAsked).toBe(false);
+      });
+
+      it('is idempotent — second call is a no-op (matches completeOnboarding semantics)', () => {
+        useUserStore.setState({
+          hasOnboarded: false,
+          onboarding: { ...ONBOARDING_DEFAULTS },
+        });
+        useUserStore.getState().stampOnboardingComplete('2026-05-05');
+        // Different date proves the guard fires, not a same-day
+        // coincidence.
+        useUserStore.getState().stampOnboardingComplete('2026-05-06');
+        expect(useUserStore.getState().onboarding.completedAt).toBe('2026-05-05');
+      });
+
+      it('semantic divergence from completeOnboarding pinned by name (CP7.1 invariant)', () => {
+        // Two-action regression guard: future drift that lets
+        // `stampOnboardingComplete` flip teaser/notification flags
+        // would silently undo CP7.1's fix and remove CP5 / CP6 from
+        // the linear-completion path.
+        useUserStore.setState({
+          hasOnboarded: false,
+          onboarding: { ...ONBOARDING_DEFAULTS },
+        });
+        useUserStore.getState().stampOnboardingComplete('2026-05-05');
+        const stamped = useUserStore.getState().onboarding;
+
+        useUserStore.setState({
+          hasOnboarded: false,
+          onboarding: { ...ONBOARDING_DEFAULTS },
+        });
+        useUserStore.getState().completeOnboarding('2026-05-05');
+        const completed = useUserStore.getState().onboarding;
+
+        // Both stamp completedAt.
+        expect(stamped.completedAt).toBe('2026-05-05');
+        expect(completed.completedAt).toBe('2026-05-05');
+        // But only `completeOnboarding` flips the trigger flags.
+        expect(stamped.blitzTeaserSeen).toBe(false);
+        expect(completed.blitzTeaserSeen).toBe(true);
+        expect(stamped.notificationOptInAsked).toBe(false);
+        expect(completed.notificationOptInAsked).toBe(true);
+      });
+    });
+
     it('incrementMatchesSinceOnboarding bumps the counter by 1 each call', () => {
       useUserStore.setState({ matchesCompletedSinceOnboarding: 0 });
       useUserStore.getState().incrementMatchesSinceOnboarding();

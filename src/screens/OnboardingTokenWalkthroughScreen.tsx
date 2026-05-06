@@ -16,9 +16,13 @@
  *
  * Two exit paths:
  *   - Skip (any slide) → `completeOnboarding(today)` → Home (matches
- *     CP2 OnboardingIntro semantics: Skip = full skip).
- *   - Start playing (slide 3) → `completeOnboarding(today)` → Home
- *     (CP7 wiring: linear completion stamps the full flow done).
+ *     CP2 OnboardingIntro semantics: Skip = full skip — silences
+ *     CP5 teasers and CP6 push opt-in too).
+ *   - Start playing (slide 3) → `markTokenWalkthroughSeen()` +
+ *     `stampOnboardingComplete(today)` → Home (CP7.1: linear
+ *     completion stamps onboarding done but keeps CP5/CP6 trigger
+ *     gates OPEN — those are post-onboarding contextual nudges,
+ *     not part of the core flow).
  */
 
 import { useCallback, useMemo, useRef, useState } from 'react';
@@ -93,6 +97,8 @@ export function OnboardingTokenWalkthroughScreen(): React.JSX.Element {
   const navigation = useNavigation<Nav>();
   const insets = useSafeAreaInsets();
   const completeOnboarding = useUserStore((s) => s.completeOnboarding);
+  const markTokenWalkthroughSeen = useUserStore((s) => s.markTokenWalkthroughSeen);
+  const stampOnboardingComplete = useUserStore((s) => s.stampOnboardingComplete);
 
   const flatListRef = useRef<FlatList<WalkthroughSlide>>(null);
   // Lazy-init Animated.Value via useState — same pattern as
@@ -116,23 +122,24 @@ export function OnboardingTokenWalkthroughScreen(): React.JSX.Element {
   }, [currentSlide]);
 
   const handleStartPlaying = useCallback((): void => {
-    // Phase 7A.6 CP7 — linear-completion endpoint. CP4 is the last
-    // pre-Home onboarding step, so finishing it stamps the full
-    // `completedAt` flag (via `completeOnboarding`) and forwards
-    // to Home. `completeOnboarding` is idempotent on the
-    // already-stamped path, so a re-render race can't double-flip.
+    // Phase 7A.6 CP7.1 — linear-completion endpoint. Two-step:
+    //   1. `markTokenWalkthroughSeen()` records that this CP4
+    //      surface specifically has been seen (the per-step flag).
+    //   2. `stampOnboardingComplete(today)` flips the master gate
+    //      (`hasOnboarded` + `completedAt`) so RootNavigator routes
+    //      future launches straight to Home via the master gate.
     //
-    // Side-effect note (CP7 pre-impl finding): `completeOnboarding`
-    // flips ALL onboarding flags including `blitzTeaserSeen`,
-    // `mirrorTeaserSeen`, `notificationOptInAsked`. Linearly-
-    // completing users will not see CP5 teasers or CP6 push opt-in
-    // — accepted asymmetry: CP4 already covered tokens / hints /
-    // streaks at length, so the further nudges would be redundant.
-    // Existing v4 upgrade users (hasOnboarded=true via migration
-    // without `completedAt`) still get the CP5/CP6 nudges.
-    completeOnboarding(formatDailyDate(new Date()));
+    // Critically does NOT call `completeOnboarding` — that action
+    // flips every flag including the CP5 teaser gates and CP6 push
+    // opt-in flag, silencing post-onboarding nudges for the most
+    // common user path. CP7's literal interpretation made that
+    // mistake; CP7.1 fixes it. Skip handlers (CP2, CP4) still call
+    // `completeOnboarding` — Skip is the explicit "rahat bırak"
+    // intent and silencing nudges is correct there.
+    markTokenWalkthroughSeen();
+    stampOnboardingComplete(formatDailyDate(new Date()));
     navigation.replace('Home');
-  }, [completeOnboarding, navigation]);
+  }, [markTokenWalkthroughSeen, stampOnboardingComplete, navigation]);
 
   const handleMomentumScrollEnd = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>): void => {

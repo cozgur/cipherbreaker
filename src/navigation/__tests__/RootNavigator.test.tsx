@@ -150,6 +150,36 @@ describe('RootNavigator — onboarding flow routing (Phase 7A.6 CP7)', () => {
     });
   });
 
+  describe('Linear-completion routing (Phase 7A.6 CP7.1)', () => {
+    it('post-CP4 Start Playing state (hasOnboarded=true + teaser flags false) routes to Home via master gate', () => {
+      // Models the exact post-CP7.1 linear-completion state:
+      //   hasOnboarded=true, completedAt set, intro/tutorial/token
+      //   step flags true, but teaser/notification flags STILL FALSE.
+      // The master gate (`hasOnboarded === true`) wins → Home.
+      // Distinct from the "all flags true + hasOnboarded false"
+      // failsafe path used by Skip handlers.
+      __resetMockUserForTests();
+      useUserStore.setState({
+        ...USER_STORE_DEFAULTS,
+        hasOnboarded: true,
+        onboarding: {
+          ...ONBOARDING_DEFAULTS,
+          introSeen: true,
+          tutorialMatchCompleted: true,
+          tokenWalkthroughSeen: true,
+          completedAt: '2026-05-05',
+          // CP5 / CP6 trigger gates remain open — this is the
+          // whole point of the CP7.1 hotfix.
+          blitzTeaserSeen: false,
+          mirrorTeaserSeen: false,
+          notificationOptInAsked: false,
+        },
+      });
+      const utils = renderRoot();
+      expect(utils.getByText('CipherBreaker')).toBeTruthy();
+    });
+  });
+
   describe('Legacy Onboarding route — Phase 7A.6 CP7 cleanup', () => {
     it('does NOT render the legacy Phase-1B Onboarding screen on fresh install', () => {
       // The legacy OnboardingScreen was removed in CP7 (CP3.1

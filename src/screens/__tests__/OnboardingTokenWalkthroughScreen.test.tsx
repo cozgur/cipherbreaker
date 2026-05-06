@@ -122,17 +122,15 @@ describe('OnboardingTokenWalkthroughScreen', () => {
     ).toBe(true);
   });
 
-  it('Start playing on slide 3 stamps completeOnboarding(today) and replaces the stack with Home', () => {
-    // Phase 7A.6 CP7 — linear-completion endpoint. CP4 is the last
-    // pre-Home onboarding step, so finishing it stamps the full
-    // `completedAt` flag (via `completeOnboarding`), which also
-    // flips every onboarding boolean to true. The downstream
-    // effect: linearly-completing users will not see CP5 teasers
-    // or CP6 push opt-in (accepted asymmetry — CP4 already
-    // explained tokens / hints / streaks, so further nudges are
-    // redundant for this cohort).
+  it('Start playing on slide 3 stamps onboarding done but keeps CP5/CP6 gates open (CP7.1)', () => {
+    // Phase 7A.6 CP7.1 — linear-completion endpoint:
+    //   markTokenWalkthroughSeen() + stampOnboardingComplete(today)
+    // (NOT completeOnboarding, which would also silence the
+    // teaser/notification flags). The intent: linearly-completing
+    // users still see CP5 mode teasers (matches #3 / #5) and CP6
+    // push opt-in on first Daily win — those are post-onboarding
+    // contextual nudges, not part of the core walkthrough.
     const utils = mountWalkthrough();
-    // Walk to the last slide.
     act(() => {
       fireEvent.press(utils.getByText('Continue →'));
     });
@@ -140,21 +138,31 @@ describe('OnboardingTokenWalkthroughScreen', () => {
       fireEvent.press(utils.getByText('Continue →'));
     });
 
-    expect(useUserStore.getState().onboarding.tokenWalkthroughSeen).toBe(false);
+    const before = useUserStore.getState();
+    expect(before.onboarding.tokenWalkthroughSeen).toBe(false);
+    expect(before.hasOnboarded).toBe(false);
 
     act(() => {
       fireEvent.press(utils.getByText('Start playing →'));
     });
 
     const post = useUserStore.getState();
-    // completeOnboarding flips every flag and stamps completedAt.
+    // Master gate engaged: hasOnboarded + completedAt set.
+    expect(post.hasOnboarded).toBe(true);
     expect(post.onboarding.completedAt).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    // Walkthrough's own flag flipped.
     expect(post.onboarding.tokenWalkthroughSeen).toBe(true);
-    expect(post.onboarding.introSeen).toBe(true);
-    expect(post.onboarding.tutorialMatchCompleted).toBe(true);
-    expect(post.onboarding.blitzTeaserSeen).toBe(true);
-    expect(post.onboarding.mirrorTeaserSeen).toBe(true);
-    expect(post.onboarding.notificationOptInAsked).toBe(true);
+    // Other walked-step flags untouched (this test starts at the
+    // CP4 screen with prior steps' flags at default false; the
+    // markTokenWalkthroughSeen call only touches the CP4 flag).
+    expect(post.onboarding.introSeen).toBe(false);
+    expect(post.onboarding.tutorialMatchCompleted).toBe(false);
+    // CRITICAL: CP5 / CP6 trigger gates stay OPEN. This is the
+    // CP7.1 fix — linear completion no longer silences future
+    // teasers and push opt-in.
+    expect(post.onboarding.blitzTeaserSeen).toBe(false);
+    expect(post.onboarding.mirrorTeaserSeen).toBe(false);
+    expect(post.onboarding.notificationOptInAsked).toBe(false);
     expect(utils.navRef.current?.getCurrentRoute()?.name).toBe('Home');
   });
 
