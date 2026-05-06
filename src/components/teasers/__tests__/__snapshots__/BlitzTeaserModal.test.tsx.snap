@@ -1,0 +1,1004 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`BlitzTeaserModal matches the visible-state snapshot 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": null,
+          "props": {
+            "accessibilityState": {
+              "busy": undefined,
+              "checked": undefined,
+              "disabled": undefined,
+              "expanded": undefined,
+              "selected": undefined,
+            },
+            "accessibilityValue": {
+              "max": undefined,
+              "min": undefined,
+              "now": undefined,
+              "text": undefined,
+            },
+            "accessible": false,
+            "collapsable": false,
+            "focusable": true,
+            "importantForAccessibility": "no-hide-descendants",
+            "onBlur": [Function],
+            "onClick": [Function],
+            "onFocus": [Function],
+            "onResponderGrant": [Function],
+            "onResponderMove": [Function],
+            "onResponderRelease": [Function],
+            "onResponderTerminate": [Function],
+            "onResponderTerminationRequest": [Function],
+            "onStartShouldSetResponder": [Function],
+            "style": {
+              "backgroundColor": "rgba(0,0,0,0.78)",
+              "bottom": 0,
+              "left": 0,
+              "position": "absolute",
+              "right": 0,
+              "top": 0,
+            },
+          },
+          "type": "View",
+        },
+        {
+          "children": [
+            {
+              "children": [
+                {
+                  "children": [
+                    {
+                      "children": [
+                        {
+                          "children": [
+                            "00:42",
+                          ],
+                          "props": {
+                            "style": {
+                              "color": "#ffffff",
+                              "fontFamily": "JetBrainsMono-Bold",
+                              "fontSize": 36,
+                              "letterSpacing": 1.6,
+                              "textShadowColor": "rgba(245,158,11,0.5)",
+                              "textShadowOffset": {
+                                "height": 0,
+                                "width": 0,
+                              },
+                              "textShadowRadius": 12,
+                            },
+                          },
+                          "type": "Text",
+                        },
+                        {
+                          "children": [
+                            {
+                              "children": null,
+                              "props": {
+                                "style": {
+                                  "backgroundColor": "#f59e0b",
+                                  "borderRadius": 3,
+                                  "height": "100%",
+                                  "width": "30%",
+                                },
+                              },
+                              "type": "View",
+                            },
+                          ],
+                          "props": {
+                            "style": {
+                              "backgroundColor": "rgba(0,0,0,0.35)",
+                              "borderRadius": 3,
+                              "height": 6,
+                              "overflow": "hidden",
+                              "width": "70%",
+                            },
+                          },
+                          "type": "View",
+                        },
+                        {
+                          "children": [
+                            {
+                              "children": [
+                                {
+                                  "children": [
+                                    {
+                                      "children": null,
+                                      "props": {
+                                        "style": [
+                                          {
+                                            "borderColor": "rgba(0,0,0,0.35)",
+                                            "borderRadius": 9,
+                                            "borderWidth": 1,
+                                            "height": 18,
+                                            "width": 18,
+                                          },
+                                          {
+                                            "backgroundColor": "#06b6d4",
+                                          },
+                                        ],
+                                      },
+                                      "type": "View",
+                                    },
+                                    {
+                                      "children": null,
+                                      "props": {
+                                        "style": [
+                                          {
+                                            "borderColor": "rgba(0,0,0,0.35)",
+                                            "borderRadius": 9,
+                                            "borderWidth": 1,
+                                            "height": 18,
+                                            "width": 18,
+                                          },
+                                          {
+                                            "backgroundColor": "#f59e0b",
+                                          },
+                                        ],
+                                      },
+                                      "type": "View",
+                                    },
+                                    {
+                                      "children": null,
+                                      "props": {
+                                        "style": [
+                                          {
+                                            "borderColor": "rgba(0,0,0,0.35)",
+                                            "borderRadius": 9,
+                                            "borderWidth": 1,
+                                            "height": 18,
+                                            "width": 18,
+                                          },
+                                          {
+                                            "backgroundColor": "#10b981",
+                                          },
+                                        ],
+                                      },
+                                      "type": "View",
+                                    },
+                                    {
+                                      "children": null,
+                                      "props": {
+                                        "style": [
+                                          {
+                                            "borderColor": "rgba(0,0,0,0.35)",
+                                            "borderRadius": 9,
+                                            "borderWidth": 1,
+                                            "height": 18,
+                                            "width": 18,
+                                          },
+                                          {
+                                            "backgroundColor": "#ec4899",
+                                          },
+                                        ],
+                                      },
+                                      "type": "View",
+                                    },
+                                  ],
+                                  "props": {
+                                    "style": {
+                                      "flexDirection": "row",
+                                      "gap": 4,
+                                    },
+                                  },
+                                  "type": "View",
+                                },
+                                {
+                                  "children": [
+                                    {
+                                      "children": null,
+                                      "props": {
+                                        "style": [
+                                          {
+                                            "borderRadius": 3.5,
+                                            "borderWidth": 0.6,
+                                            "height": 7,
+                                            "width": 7,
+                                          },
+                                          {
+                                            "backgroundColor": "transparent",
+                                            "borderColor": "rgba(255,255,255,0.4)",
+                                          },
+                                        ],
+                                      },
+                                      "type": "View",
+                                    },
+                                    {
+                                      "children": null,
+                                      "props": {
+                                        "style": [
+                                          {
+                                            "borderRadius": 3.5,
+                                            "borderWidth": 0.6,
+                                            "height": 7,
+                                            "width": 7,
+                                          },
+                                          {
+                                            "backgroundColor": "#ffffff",
+                                            "borderColor": "#000000",
+                                          },
+                                        ],
+                                      },
+                                      "type": "View",
+                                    },
+                                    {
+                                      "children": null,
+                                      "props": {
+                                        "style": [
+                                          {
+                                            "borderRadius": 3.5,
+                                            "borderWidth": 0.6,
+                                            "height": 7,
+                                            "width": 7,
+                                          },
+                                          {
+                                            "backgroundColor": "transparent",
+                                            "borderColor": "rgba(255,255,255,0.4)",
+                                          },
+                                        ],
+                                      },
+                                      "type": "View",
+                                    },
+                                    {
+                                      "children": null,
+                                      "props": {
+                                        "style": [
+                                          {
+                                            "borderRadius": 3.5,
+                                            "borderWidth": 0.6,
+                                            "height": 7,
+                                            "width": 7,
+                                          },
+                                          {
+                                            "backgroundColor": "transparent",
+                                            "borderColor": "rgba(255,255,255,0.4)",
+                                          },
+                                        ],
+                                      },
+                                      "type": "View",
+                                    },
+                                  ],
+                                  "props": {
+                                    "style": {
+                                      "flexDirection": "row",
+                                      "flexWrap": "wrap",
+                                      "gap": 2,
+                                      "width": 18,
+                                    },
+                                  },
+                                  "type": "View",
+                                },
+                              ],
+                              "props": {
+                                "style": {
+                                  "alignItems": "center",
+                                  "flexDirection": "row",
+                                  "gap": 8,
+                                },
+                              },
+                              "type": "View",
+                            },
+                            {
+                              "children": [
+                                {
+                                  "children": [
+                                    {
+                                      "children": null,
+                                      "props": {
+                                        "style": [
+                                          {
+                                            "borderColor": "rgba(0,0,0,0.35)",
+                                            "borderRadius": 9,
+                                            "borderWidth": 1,
+                                            "height": 18,
+                                            "width": 18,
+                                          },
+                                          {
+                                            "backgroundColor": "#10b981",
+                                          },
+                                        ],
+                                      },
+                                      "type": "View",
+                                    },
+                                    {
+                                      "children": null,
+                                      "props": {
+                                        "style": [
+                                          {
+                                            "borderColor": "rgba(0,0,0,0.35)",
+                                            "borderRadius": 9,
+                                            "borderWidth": 1,
+                                            "height": 18,
+                                            "width": 18,
+                                          },
+                                          {
+                                            "backgroundColor": "#ec4899",
+                                          },
+                                        ],
+                                      },
+                                      "type": "View",
+                                    },
+                                    {
+                                      "children": null,
+                                      "props": {
+                                        "style": [
+                                          {
+                                            "borderColor": "rgba(0,0,0,0.35)",
+                                            "borderRadius": 9,
+                                            "borderWidth": 1,
+                                            "height": 18,
+                                            "width": 18,
+                                          },
+                                          {
+                                            "backgroundColor": "#f59e0b",
+                                          },
+                                        ],
+                                      },
+                                      "type": "View",
+                                    },
+                                    {
+                                      "children": null,
+                                      "props": {
+                                        "style": [
+                                          {
+                                            "borderColor": "rgba(0,0,0,0.35)",
+                                            "borderRadius": 9,
+                                            "borderWidth": 1,
+                                            "height": 18,
+                                            "width": 18,
+                                          },
+                                          {
+                                            "backgroundColor": "#06b6d4",
+                                          },
+                                        ],
+                                      },
+                                      "type": "View",
+                                    },
+                                  ],
+                                  "props": {
+                                    "style": {
+                                      "flexDirection": "row",
+                                      "gap": 4,
+                                    },
+                                  },
+                                  "type": "View",
+                                },
+                                {
+                                  "children": [
+                                    {
+                                      "children": null,
+                                      "props": {
+                                        "style": [
+                                          {
+                                            "borderRadius": 3.5,
+                                            "borderWidth": 0.6,
+                                            "height": 7,
+                                            "width": 7,
+                                          },
+                                          {
+                                            "backgroundColor": "#000000",
+                                            "borderColor": "#000000",
+                                          },
+                                        ],
+                                      },
+                                      "type": "View",
+                                    },
+                                    {
+                                      "children": null,
+                                      "props": {
+                                        "style": [
+                                          {
+                                            "borderRadius": 3.5,
+                                            "borderWidth": 0.6,
+                                            "height": 7,
+                                            "width": 7,
+                                          },
+                                          {
+                                            "backgroundColor": "transparent",
+                                            "borderColor": "rgba(255,255,255,0.4)",
+                                          },
+                                        ],
+                                      },
+                                      "type": "View",
+                                    },
+                                    {
+                                      "children": null,
+                                      "props": {
+                                        "style": [
+                                          {
+                                            "borderRadius": 3.5,
+                                            "borderWidth": 0.6,
+                                            "height": 7,
+                                            "width": 7,
+                                          },
+                                          {
+                                            "backgroundColor": "#ffffff",
+                                            "borderColor": "#000000",
+                                          },
+                                        ],
+                                      },
+                                      "type": "View",
+                                    },
+                                    {
+                                      "children": null,
+                                      "props": {
+                                        "style": [
+                                          {
+                                            "borderRadius": 3.5,
+                                            "borderWidth": 0.6,
+                                            "height": 7,
+                                            "width": 7,
+                                          },
+                                          {
+                                            "backgroundColor": "transparent",
+                                            "borderColor": "rgba(255,255,255,0.4)",
+                                          },
+                                        ],
+                                      },
+                                      "type": "View",
+                                    },
+                                  ],
+                                  "props": {
+                                    "style": {
+                                      "flexDirection": "row",
+                                      "flexWrap": "wrap",
+                                      "gap": 2,
+                                      "width": 18,
+                                    },
+                                  },
+                                  "type": "View",
+                                },
+                              ],
+                              "props": {
+                                "style": {
+                                  "alignItems": "center",
+                                  "flexDirection": "row",
+                                  "gap": 8,
+                                },
+                              },
+                              "type": "View",
+                            },
+                            {
+                              "children": [
+                                {
+                                  "children": [
+                                    {
+                                      "children": null,
+                                      "props": {
+                                        "style": [
+                                          {
+                                            "borderColor": "rgba(0,0,0,0.35)",
+                                            "borderRadius": 9,
+                                            "borderWidth": 1,
+                                            "height": 18,
+                                            "width": 18,
+                                          },
+                                          {
+                                            "backgroundColor": "#10b981",
+                                          },
+                                        ],
+                                      },
+                                      "type": "View",
+                                    },
+                                    {
+                                      "children": null,
+                                      "props": {
+                                        "style": [
+                                          {
+                                            "borderColor": "rgba(0,0,0,0.35)",
+                                            "borderRadius": 9,
+                                            "borderWidth": 1,
+                                            "height": 18,
+                                            "width": 18,
+                                          },
+                                          {
+                                            "backgroundColor": "#f59e0b",
+                                          },
+                                        ],
+                                      },
+                                      "type": "View",
+                                    },
+                                    {
+                                      "children": null,
+                                      "props": {
+                                        "style": [
+                                          {
+                                            "borderColor": "rgba(0,0,0,0.35)",
+                                            "borderRadius": 9,
+                                            "borderWidth": 1,
+                                            "height": 18,
+                                            "width": 18,
+                                          },
+                                          {
+                                            "backgroundColor": "#ec4899",
+                                          },
+                                        ],
+                                      },
+                                      "type": "View",
+                                    },
+                                    {
+                                      "children": null,
+                                      "props": {
+                                        "style": [
+                                          {
+                                            "borderColor": "rgba(0,0,0,0.35)",
+                                            "borderRadius": 9,
+                                            "borderWidth": 1,
+                                            "height": 18,
+                                            "width": 18,
+                                          },
+                                          {
+                                            "backgroundColor": "#06b6d4",
+                                          },
+                                        ],
+                                      },
+                                      "type": "View",
+                                    },
+                                  ],
+                                  "props": {
+                                    "style": {
+                                      "flexDirection": "row",
+                                      "gap": 4,
+                                    },
+                                  },
+                                  "type": "View",
+                                },
+                                {
+                                  "children": [
+                                    {
+                                      "children": null,
+                                      "props": {
+                                        "style": [
+                                          {
+                                            "borderRadius": 3.5,
+                                            "borderWidth": 0.6,
+                                            "height": 7,
+                                            "width": 7,
+                                          },
+                                          {
+                                            "backgroundColor": "#000000",
+                                            "borderColor": "#000000",
+                                          },
+                                        ],
+                                      },
+                                      "type": "View",
+                                    },
+                                    {
+                                      "children": null,
+                                      "props": {
+                                        "style": [
+                                          {
+                                            "borderRadius": 3.5,
+                                            "borderWidth": 0.6,
+                                            "height": 7,
+                                            "width": 7,
+                                          },
+                                          {
+                                            "backgroundColor": "#000000",
+                                            "borderColor": "#000000",
+                                          },
+                                        ],
+                                      },
+                                      "type": "View",
+                                    },
+                                    {
+                                      "children": null,
+                                      "props": {
+                                        "style": [
+                                          {
+                                            "borderRadius": 3.5,
+                                            "borderWidth": 0.6,
+                                            "height": 7,
+                                            "width": 7,
+                                          },
+                                          {
+                                            "backgroundColor": "#ffffff",
+                                            "borderColor": "#000000",
+                                          },
+                                        ],
+                                      },
+                                      "type": "View",
+                                    },
+                                    {
+                                      "children": null,
+                                      "props": {
+                                        "style": [
+                                          {
+                                            "borderRadius": 3.5,
+                                            "borderWidth": 0.6,
+                                            "height": 7,
+                                            "width": 7,
+                                          },
+                                          {
+                                            "backgroundColor": "transparent",
+                                            "borderColor": "rgba(255,255,255,0.4)",
+                                          },
+                                        ],
+                                      },
+                                      "type": "View",
+                                    },
+                                  ],
+                                  "props": {
+                                    "style": {
+                                      "flexDirection": "row",
+                                      "flexWrap": "wrap",
+                                      "gap": 2,
+                                      "width": 18,
+                                    },
+                                  },
+                                  "type": "View",
+                                },
+                              ],
+                              "props": {
+                                "style": {
+                                  "alignItems": "center",
+                                  "flexDirection": "row",
+                                  "gap": 8,
+                                },
+                              },
+                              "type": "View",
+                            },
+                          ],
+                          "props": {
+                            "style": {
+                              "gap": 6,
+                              "marginTop": 6,
+                            },
+                          },
+                          "type": "View",
+                        },
+                      ],
+                      "props": {
+                        "style": {
+                          "alignItems": "center",
+                          "gap": 12,
+                          "width": "100%",
+                        },
+                        "testID": "blitz-mockup",
+                      },
+                      "type": "View",
+                    },
+                  ],
+                  "props": {
+                    "colors": [
+                      4293870660,
+                      4294538006,
+                    ],
+                    "dither": undefined,
+                    "endPoint": [
+                      1,
+                      1,
+                    ],
+                    "locations": undefined,
+                    "startPoint": [
+                      0,
+                      0,
+                    ],
+                    "style": {
+                      "alignItems": "center",
+                      "justifyContent": "center",
+                      "paddingHorizontal": 18,
+                      "paddingVertical": 26,
+                      "width": "100%",
+                    },
+                  },
+                  "type": "ViewManagerAdapter_ExpoLinearGradient",
+                },
+                {
+                  "children": [
+                    {
+                      "children": [
+                        "Beat the clock",
+                      ],
+                      "props": {
+                        "accessibilityRole": "header",
+                        "style": {
+                          "color": "#f5f5f7",
+                          "fontFamily": "ChakraPetch-Bold",
+                          "fontSize": 26,
+                          "letterSpacing": -0.4,
+                          "textAlign": "center",
+                        },
+                      },
+                      "type": "Text",
+                    },
+                    {
+                      "children": [
+                        "60 seconds. Crack the code before time runs out.",
+                      ],
+                      "props": {
+                        "style": {
+                          "color": "#a1a1b5",
+                          "fontFamily": "Inter-Regular",
+                          "fontSize": 14,
+                          "lineHeight": 20,
+                          "marginTop": 10,
+                          "textAlign": "center",
+                        },
+                      },
+                      "type": "Text",
+                    },
+                    {
+                      "children": [
+                        "Try it now — we'll cover your first stake.",
+                      ],
+                      "props": {
+                        "style": {
+                          "color": "#fbbf24",
+                          "fontFamily": "Inter-SemiBold",
+                          "fontSize": 11,
+                          "letterSpacing": 1.2,
+                          "marginTop": 12,
+                          "textAlign": "center",
+                          "textTransform": "uppercase",
+                        },
+                      },
+                      "type": "Text",
+                    },
+                  ],
+                  "props": {
+                    "style": {
+                      "alignItems": "center",
+                      "paddingHorizontal": 22,
+                      "paddingTop": 22,
+                    },
+                  },
+                  "type": "View",
+                },
+                {
+                  "children": [
+                    {
+                      "children": [
+                        {
+                          "children": [
+                            {
+                              "children": [
+                                "Try Blitz →",
+                              ],
+                              "props": {
+                                "numberOfLines": 1,
+                                "style": [
+                                  {
+                                    "fontFamily": "Inter-SemiBold",
+                                    "fontWeight": "600",
+                                    "letterSpacing": 1.12,
+                                    "textTransform": "uppercase",
+                                  },
+                                  {
+                                    "color": "#ffffff",
+                                    "fontSize": 15,
+                                  },
+                                ],
+                              },
+                              "type": "Text",
+                            },
+                          ],
+                          "props": {
+                            "style": {
+                              "alignItems": "center",
+                              "flexDirection": "row",
+                              "gap": 8,
+                            },
+                          },
+                          "type": "View",
+                        },
+                      ],
+                      "props": {
+                        "colors": [
+                          4287323382,
+                          4285343961,
+                        ],
+                        "dither": undefined,
+                        "endPoint": [
+                          0.5,
+                          1,
+                        ],
+                        "locations": undefined,
+                        "startPoint": [
+                          0.5,
+                          0,
+                        ],
+                        "style": [
+                          {
+                            "alignItems": "center",
+                            "borderRadius": 16,
+                            "justifyContent": "center",
+                            "overflow": "hidden",
+                          },
+                          {
+                            "borderColor": "rgba(139,92,246,0.8)",
+                            "borderWidth": 1,
+                            "height": 56,
+                            "paddingHorizontal": 24,
+                          },
+                        ],
+                      },
+                      "type": "ViewManagerAdapter_ExpoLinearGradient",
+                    },
+                  ],
+                  "props": {
+                    "accessibilityRole": "button",
+                    "accessibilityState": {
+                      "busy": undefined,
+                      "checked": undefined,
+                      "disabled": false,
+                      "expanded": undefined,
+                      "selected": undefined,
+                    },
+                    "accessibilityValue": {
+                      "max": undefined,
+                      "min": undefined,
+                      "now": undefined,
+                      "text": undefined,
+                    },
+                    "accessible": true,
+                    "collapsable": false,
+                    "focusable": true,
+                    "onBlur": [Function],
+                    "onClick": [Function],
+                    "onFocus": [Function],
+                    "onResponderGrant": [Function],
+                    "onResponderMove": [Function],
+                    "onResponderRelease": [Function],
+                    "onResponderTerminate": [Function],
+                    "onResponderTerminationRequest": [Function],
+                    "onStartShouldSetResponder": [Function],
+                    "style": [
+                      {
+                        "alignSelf": "stretch",
+                        "borderRadius": 16,
+                        "overflow": "visible",
+                      },
+                      {
+                        "shadowColor": "rgba(139,92,246,0.45)",
+                        "shadowOffset": {
+                          "height": 4,
+                          "width": 0,
+                        },
+                        "shadowOpacity": 1,
+                        "shadowRadius": 20,
+                      },
+                      {
+                        "width": "100%",
+                      },
+                      null,
+                      null,
+                      {
+                        "marginHorizontal": 18,
+                        "marginTop": 18,
+                      },
+                    ],
+                  },
+                  "type": "View",
+                },
+              ],
+              "props": {
+                "accessibilityLabel": "Beat the clock. 60 seconds. Crack the code before time runs out.",
+                "accessibilityViewIsModal": true,
+                "accessible": true,
+                "style": {
+                  "backgroundColor": "#15172e",
+                  "borderColor": "#2a2c54",
+                  "borderRadius": 24,
+                  "borderWidth": 1,
+                  "overflow": "hidden",
+                  "paddingBottom": 18,
+                  "width": "100%",
+                },
+              },
+              "type": "View",
+            },
+          ],
+          "props": {
+            "pointerEvents": "box-none",
+            "style": [
+              {
+                "flex": 1,
+                "justifyContent": "center",
+                "paddingHorizontal": 24,
+              },
+              {
+                "paddingBottom": 58,
+                "paddingTop": 104,
+              },
+            ],
+          },
+          "type": "View",
+        },
+        {
+          "children": [
+            {
+              "children": [
+                "Skip",
+              ],
+              "props": {
+                "style": {
+                  "color": "#ffffff",
+                  "fontFamily": "Inter-SemiBold",
+                  "fontSize": 12,
+                  "letterSpacing": 1.1,
+                  "opacity": 0.85,
+                  "textTransform": "uppercase",
+                },
+              },
+              "type": "Text",
+            },
+          ],
+          "props": {
+            "accessibilityLabel": "Skip Blitz teaser",
+            "accessibilityRole": "button",
+            "accessibilityState": {
+              "busy": undefined,
+              "checked": undefined,
+              "disabled": undefined,
+              "expanded": undefined,
+              "selected": undefined,
+            },
+            "accessibilityValue": {
+              "max": undefined,
+              "min": undefined,
+              "now": undefined,
+              "text": undefined,
+            },
+            "accessible": true,
+            "collapsable": false,
+            "focusable": true,
+            "onBlur": [Function],
+            "onClick": [Function],
+            "onFocus": [Function],
+            "onResponderGrant": [Function],
+            "onResponderMove": [Function],
+            "onResponderRelease": [Function],
+            "onResponderTerminate": [Function],
+            "onResponderTerminationRequest": [Function],
+            "onStartShouldSetResponder": [Function],
+            "style": [
+              {
+                "borderRadius": 10,
+                "elevation": 12,
+                "paddingHorizontal": 12,
+                "paddingVertical": 6,
+                "position": "absolute",
+                "right": 12,
+                "zIndex": 100,
+              },
+              {
+                "top": 58,
+              },
+              false,
+            ],
+            "testID": "blitz-teaser-skip",
+          },
+          "type": "View",
+        },
+      ],
+      "props": {
+        "accessibilityRole": "alert",
+        "pointerEvents": "box-none",
+        "style": {
+          "bottom": 0,
+          "left": 0,
+          "position": "absolute",
+          "right": 0,
+          "top": 0,
+        },
+        "testID": "blitz-teaser-modal",
+      },
+      "type": "View",
+    },
+  ],
+  "props": {
+    "onInsetsChange": [Function],
+    "style": [
+      {
+        "flex": 1,
+      },
+      undefined,
+    ],
+  },
+  "type": "RNCSafeAreaProvider",
+}
+`;

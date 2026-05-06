@@ -19,6 +19,8 @@ import { LowBalanceToast } from '@components/LowBalanceToast';
 import { ModeCard } from '@components/ModeCard';
 import { Screen } from '@components/Screen';
 import { SectionLabel } from '@components/SectionLabel';
+import { BlitzTeaserModal } from '@components/teasers/BlitzTeaserModal';
+import { MirrorTeaserModal } from '@components/teasers/MirrorTeaserModal';
 import { TokenBadge } from '@components/TokenBadge';
 import { modeCatalog } from '@data/modeCatalog';
 import { useMockUser } from '@data/mockUser';
@@ -43,6 +45,27 @@ export function HomeScreen(): React.JSX.Element {
   const user = useMockUser();
   const insets = useSafeAreaInsets();
   const dailyState = useUserStore((s) => s.dailyChallenge);
+
+  // Phase 7A.6 CP5 — mode-variety teaser gates. Each teaser is a
+  // strict-equality trigger on the post-onboarding match counter:
+  //   counter === 3 && !blitzTeaserSeen → Blitz teaser visible
+  //   counter === 5 && !mirrorTeaserSeen → Mirror teaser visible
+  // Strict equality (not `>=`) means the teaser fires once at the
+  // exact threshold; the seen flag handles the "don't refire" case.
+  // Counter monotonicity guarantees the two booleans can never be
+  // true at the same time (counter can't be both 3 and 5).
+  const matchesCount = useUserStore((s) => s.matchesCompletedSinceOnboarding);
+  const blitzTeaserSeen = useUserStore((s) => s.onboarding.blitzTeaserSeen);
+  const mirrorTeaserSeen = useUserStore((s) => s.onboarding.mirrorTeaserSeen);
+  const showBlitzTeaser = matchesCount === 3 && !blitzTeaserSeen;
+  const showMirrorTeaser = matchesCount === 5 && !mirrorTeaserSeen;
+  // No-op onClose: the modal's CTA / Skip handlers flip the
+  // corresponding seen flag inside userStore, which makes the
+  // derived boolean above flip to false, which makes the modal
+  // unmount on next render. The `onClose` callback is kept for
+  // future flexibility (e.g. CP8 polish: highlight the Mode 4 card
+  // after the Blitz teaser dismisses).
+  const handleTeaserClose = useCallback(() => {}, []);
 
   // Phase 7A.5 Codex finding 3 fix — `today` is now mutable. The
   // pre-fix code captured the date once at mount, so a player who
@@ -235,6 +258,9 @@ export function HomeScreen(): React.JSX.Element {
           <LevelBar level={user.level} currentXP={user.currentXP} targetXP={user.targetXP} />
         </View>
       </ScrollView>
+
+      <BlitzTeaserModal visible={showBlitzTeaser} onClose={handleTeaserClose} />
+      <MirrorTeaserModal visible={showMirrorTeaser} onClose={handleTeaserClose} />
     </Screen>
   );
 }

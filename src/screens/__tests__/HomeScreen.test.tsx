@@ -356,4 +356,90 @@ describe('HomeScreen', () => {
       expect(utils.queryByLabelText('Low balance')).toBeNull();
     });
   });
+
+  describe('Mode variety teasers — Phase 7A.6 CP5', () => {
+    it('Blitz teaser opens at matchesCompletedSinceOnboarding === 3 when blitzTeaserSeen === false', () => {
+      useUserStore.setState({ matchesCompletedSinceOnboarding: 3 });
+      const utils = renderWithNavigation('Home', { Home: HomeScreen });
+      expect(utils.queryByTestId('blitz-teaser-modal')).toBeTruthy();
+      expect(utils.queryByText('Beat the clock')).toBeTruthy();
+    });
+
+    it('Blitz teaser does NOT open at counter === 2 (strict equality on the threshold)', () => {
+      useUserStore.setState({ matchesCompletedSinceOnboarding: 2 });
+      const utils = renderWithNavigation('Home', { Home: HomeScreen });
+      expect(utils.queryByTestId('blitz-teaser-modal')).toBeNull();
+    });
+
+    it('Blitz teaser does NOT open at counter === 4 (strict equality, missed window)', () => {
+      // Edge case: data import / migration leaves counter at 4 with
+      // blitzTeaserSeen still false. Strict-equality trigger means
+      // the teaser is skipped — alternative `>=` would re-fire
+      // every Home mount and drive users away.
+      useUserStore.setState({ matchesCompletedSinceOnboarding: 4 });
+      const utils = renderWithNavigation('Home', { Home: HomeScreen });
+      expect(utils.queryByTestId('blitz-teaser-modal')).toBeNull();
+    });
+
+    it('Blitz teaser does NOT open when blitzTeaserSeen === true', () => {
+      useUserStore.setState((s) => ({
+        matchesCompletedSinceOnboarding: 3,
+        onboarding: { ...s.onboarding, blitzTeaserSeen: true },
+      }));
+      const utils = renderWithNavigation('Home', { Home: HomeScreen });
+      expect(utils.queryByTestId('blitz-teaser-modal')).toBeNull();
+    });
+
+    it('Mirror teaser opens at counter === 5 when mirrorTeaserSeen === false', () => {
+      useUserStore.setState({ matchesCompletedSinceOnboarding: 5 });
+      const utils = renderWithNavigation('Home', { Home: HomeScreen });
+      expect(utils.queryByTestId('mirror-teaser-modal')).toBeTruthy();
+      expect(utils.queryByText('Same code. Solo race.')).toBeTruthy();
+    });
+
+    it('Mirror teaser does NOT open at counter === 4', () => {
+      useUserStore.setState({ matchesCompletedSinceOnboarding: 4 });
+      const utils = renderWithNavigation('Home', { Home: HomeScreen });
+      expect(utils.queryByTestId('mirror-teaser-modal')).toBeNull();
+    });
+
+    it('Mirror teaser does NOT open when mirrorTeaserSeen === true', () => {
+      useUserStore.setState((s) => ({
+        matchesCompletedSinceOnboarding: 5,
+        onboarding: { ...s.onboarding, mirrorTeaserSeen: true },
+      }));
+      const utils = renderWithNavigation('Home', { Home: HomeScreen });
+      expect(utils.queryByTestId('mirror-teaser-modal')).toBeNull();
+    });
+
+    it('Blitz teaser CTA grants 50 tokens and unmounts via the seen-flag flip', () => {
+      useUserStore.setState({ matchesCompletedSinceOnboarding: 3, tokens: 100 });
+      const utils = renderWithNavigation('Home', { Home: HomeScreen });
+      expect(utils.queryByTestId('blitz-teaser-modal')).toBeTruthy();
+
+      act(() => {
+        fireEvent.press(utils.getByText('Try Blitz →'));
+      });
+
+      // Flag flip → derived `showBlitzTeaser` is now false → modal
+      // unmounts on next render. Tokens credited.
+      const after = useUserStore.getState();
+      expect(after.tokens).toBe(150);
+      expect(after.onboarding.blitzTeaserSeen).toBe(true);
+      expect(utils.queryByTestId('blitz-teaser-modal')).toBeNull();
+    });
+
+    it('counter === 5 with blitzTeaserSeen === false does NOT stack both teasers (strict equality on counter)', () => {
+      // Edge case: user somehow reaches 5 without dismissing Blitz at 3
+      // (e.g., dev seeded state). Strict-equality on counter means
+      // Blitz `=== 3` is false at counter=5, so only Mirror fires.
+      // Counter monotonicity in normal play guarantees this is unreachable
+      // organically — Blitz fires AT 3 and is dismissed before counter
+      // ticks to 4.
+      useUserStore.setState({ matchesCompletedSinceOnboarding: 5 });
+      const utils = renderWithNavigation('Home', { Home: HomeScreen });
+      expect(utils.queryByTestId('blitz-teaser-modal')).toBeNull();
+      expect(utils.queryByTestId('mirror-teaser-modal')).toBeTruthy();
+    });
+  });
 });

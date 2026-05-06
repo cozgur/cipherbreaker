@@ -190,6 +190,17 @@ export function MatchResultScreen(): React.JSX.Element {
     // just at the action boundary.
     useUserStore.getState().incrementMatchCounter();
 
+    // Phase 7A.6 CP5 — bump the post-onboarding match counter that
+    // drives the variety teasers (3 matches → Blitz teaser,
+    // 5 matches → Mirror teaser). Same engine-path-only seam as
+    // `incrementMatchCounter`: Daily Challenge / tutorial never
+    // route through MatchResultScreen, so neither bumps the counter
+    // and the teasers stay pinned to Mode 1-7 production play. CP1
+    // shipped the action but explicitly deferred the call site
+    // ("Wired by the match-completion seam in a later CP"); CP5 is
+    // that CP because the teasers depend on this counter.
+    useUserStore.getState().incrementMatchesSinceOnboarding();
+
     // Re-read state AFTER the increment so the gate sees the new
     // counter value. canShowInterstitial composes adsRemoved + ad
     // cap with the threshold — if the player has Remove Ads, the
