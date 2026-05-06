@@ -106,11 +106,13 @@ export function OnboardingIntroScreen(): React.JSX.Element {
   }, [currentSlide]);
 
   const handleStartPlaying = useCallback((): void => {
-    // Soft completion — only the intro is marked seen. Tutorial /
-    // token walkthrough / teasers / push opt-in stay false so
-    // their CP-driven milestones can still fire post-intro.
+    // Phase 7A.6 CP7 — soft completion + linear forward to the
+    // tutorial match (CP3). Only `introSeen` is marked; the rest
+    // of the onboarding flags stay false so the next step's gate
+    // engages as the user lands on TutorialMatch. CP7 wiring
+    // replaces the prior CP2-shipped `'Home'` placeholder.
     markIntroSeen();
-    navigation.replace('Home');
+    navigation.replace('TutorialMatch');
   }, [markIntroSeen, navigation]);
 
   const handleMomentumScrollEnd = useCallback(

@@ -122,7 +122,15 @@ describe('OnboardingTokenWalkthroughScreen', () => {
     ).toBe(true);
   });
 
-  it('Start playing on slide 3 calls markTokenWalkthroughSeen and replaces the stack with Home', () => {
+  it('Start playing on slide 3 stamps completeOnboarding(today) and replaces the stack with Home', () => {
+    // Phase 7A.6 CP7 — linear-completion endpoint. CP4 is the last
+    // pre-Home onboarding step, so finishing it stamps the full
+    // `completedAt` flag (via `completeOnboarding`), which also
+    // flips every onboarding boolean to true. The downstream
+    // effect: linearly-completing users will not see CP5 teasers
+    // or CP6 push opt-in (accepted asymmetry — CP4 already
+    // explained tokens / hints / streaks, so further nudges are
+    // redundant for this cohort).
     const utils = mountWalkthrough();
     // Walk to the last slide.
     act(() => {
@@ -139,14 +147,14 @@ describe('OnboardingTokenWalkthroughScreen', () => {
     });
 
     const post = useUserStore.getState();
-    // markTokenWalkthroughSeen flips ONLY tokenWalkthroughSeen — the
-    // other onboarding flags stay false so subsequent CP milestones
-    // (mode-variety teasers, push opt-in) can still fire.
+    // completeOnboarding flips every flag and stamps completedAt.
+    expect(post.onboarding.completedAt).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     expect(post.onboarding.tokenWalkthroughSeen).toBe(true);
-    expect(post.onboarding.introSeen).toBe(false);
-    expect(post.onboarding.tutorialMatchCompleted).toBe(false);
-    expect(post.onboarding.notificationOptInAsked).toBe(false);
-    expect(post.onboarding.completedAt).toBeNull();
+    expect(post.onboarding.introSeen).toBe(true);
+    expect(post.onboarding.tutorialMatchCompleted).toBe(true);
+    expect(post.onboarding.blitzTeaserSeen).toBe(true);
+    expect(post.onboarding.mirrorTeaserSeen).toBe(true);
+    expect(post.onboarding.notificationOptInAsked).toBe(true);
     expect(utils.navRef.current?.getCurrentRoute()?.name).toBe('Home');
   });
 

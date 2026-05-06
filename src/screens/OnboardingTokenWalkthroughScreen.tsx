@@ -17,13 +17,8 @@
  * Two exit paths:
  *   - Skip (any slide) → `completeOnboarding(today)` → Home (matches
  *     CP2 OnboardingIntro semantics: Skip = full skip).
- *   - Start playing (slide 3) → `markTokenWalkthroughSeen()` → Home
- *     so subsequent CPs (mode-variety teasers, push opt-in) can
- *     still fire at their milestones. CP7 swaps Home for the next
- *     onboarding step.
- *
- * CP4 ships the screen + route registration only; RootNavigator
- * still gates initial route on `mockUser.hasOnboarded`.
+ *   - Start playing (slide 3) → `completeOnboarding(today)` → Home
+ *     (CP7 wiring: linear completion stamps the full flow done).
  */
 
 import { useCallback, useMemo, useRef, useState } from 'react';
@@ -98,7 +93,6 @@ export function OnboardingTokenWalkthroughScreen(): React.JSX.Element {
   const navigation = useNavigation<Nav>();
   const insets = useSafeAreaInsets();
   const completeOnboarding = useUserStore((s) => s.completeOnboarding);
-  const markTokenWalkthroughSeen = useUserStore((s) => s.markTokenWalkthroughSeen);
 
   const flatListRef = useRef<FlatList<WalkthroughSlide>>(null);
   // Lazy-init Animated.Value via useState — same pattern as
@@ -122,12 +116,23 @@ export function OnboardingTokenWalkthroughScreen(): React.JSX.Element {
   }, [currentSlide]);
 
   const handleStartPlaying = useCallback((): void => {
-    // Soft completion — only the token walkthrough is marked seen.
-    // Mode-variety teasers / push opt-in stay false so their CP-driven
-    // milestones fire post-walkthrough.
-    markTokenWalkthroughSeen();
+    // Phase 7A.6 CP7 — linear-completion endpoint. CP4 is the last
+    // pre-Home onboarding step, so finishing it stamps the full
+    // `completedAt` flag (via `completeOnboarding`) and forwards
+    // to Home. `completeOnboarding` is idempotent on the
+    // already-stamped path, so a re-render race can't double-flip.
+    //
+    // Side-effect note (CP7 pre-impl finding): `completeOnboarding`
+    // flips ALL onboarding flags including `blitzTeaserSeen`,
+    // `mirrorTeaserSeen`, `notificationOptInAsked`. Linearly-
+    // completing users will not see CP5 teasers or CP6 push opt-in
+    // — accepted asymmetry: CP4 already covered tokens / hints /
+    // streaks at length, so the further nudges would be redundant.
+    // Existing v4 upgrade users (hasOnboarded=true via migration
+    // without `completedAt`) still get the CP5/CP6 nudges.
+    completeOnboarding(formatDailyDate(new Date()));
     navigation.replace('Home');
-  }, [markTokenWalkthroughSeen, navigation]);
+  }, [completeOnboarding, navigation]);
 
   const handleMomentumScrollEnd = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>): void => {

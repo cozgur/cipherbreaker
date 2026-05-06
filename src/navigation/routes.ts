@@ -7,12 +7,13 @@
 export type MatchResultOutcome = 'victory' | 'defeat' | 'draw' | 'stalemate';
 
 export type RootStackParamList = {
-  Onboarding: undefined;
   /**
    * Phase 7A.6 CP2 — 3-slide intro carousel (Daily / Modes / Tokens).
-   * Skip → completeOnboarding; Start Playing → markIntroSeen + Home.
-   * CP2 only registers the route; CP7 wires conditional entry from
-   * RootNavigator based on `onboarding.introSeen` / `completedAt`.
+   * CP7 wired the conditional flow:
+   *   Skip → completeOnboarding(today) → Home
+   *   Start Playing → markIntroSeen → TutorialMatch
+   * The legacy `Onboarding` route (Phase 1B) was removed in CP7;
+   * fresh-install routing now starts here.
    */
   OnboardingIntro: undefined;
   /**

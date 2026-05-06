@@ -4,6 +4,7 @@ import { act, fireEvent } from '@testing-library/react-native';
 import { HomeScreen } from '../HomeScreen';
 import { OnboardingIntroScreen } from '../OnboardingIntroScreen';
 import { ONBOARDING_DEFAULTS, USER_STORE_DEFAULTS, useUserStore } from '@state/userStore';
+import { RouteStubScreen } from '@/test-utils/RouteStubScreen';
 import { renderWithNavigation, stableTreeForSnapshot } from '@/test-utils/renderWithNavigation';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
@@ -116,9 +117,11 @@ describe('OnboardingIntroScreen', () => {
     expect(utils.getByTestId('onboarding-intro-dot-2').props.accessibilityState.selected).toBe(true);
   });
 
-  it('Start Playing on slide 3 calls markIntroSeen and replaces the stack with Home', () => {
+  it('Start Playing on slide 3 calls markIntroSeen and forwards to TutorialMatch', () => {
+    // Phase 7A.6 CP7 — linear flow: Intro → TutorialMatch.
     const utils = renderWithNavigation('OnboardingIntro', {
       OnboardingIntro: OnboardingIntroScreen,
+      TutorialMatch: RouteStubScreen,
       Home: HomeScreen,
     });
     // Walk to the last slide.
@@ -137,14 +140,14 @@ describe('OnboardingIntroScreen', () => {
 
     const post = useUserStore.getState();
     // markIntroSeen flips ONLY introSeen — the other onboarding
-    // flags stay false so subsequent CP milestones (tutorial,
-    // walkthrough, teasers, push opt-in) can still fire.
+    // flags stay false so subsequent steps (tutorial, walkthrough,
+    // teasers, push opt-in) can still fire / engage.
     expect(post.onboarding.introSeen).toBe(true);
     expect(post.onboarding.tutorialMatchCompleted).toBe(false);
     expect(post.onboarding.tokenWalkthroughSeen).toBe(false);
     expect(post.onboarding.notificationOptInAsked).toBe(false);
     expect(post.onboarding.completedAt).toBeNull();
-    expect(utils.navRef.current?.getCurrentRoute()?.name).toBe('Home');
+    expect(utils.navRef.current?.getCurrentRoute()?.name).toBe('TutorialMatch');
   });
 
   it('snapshots the initial slide-1 layout', () => {

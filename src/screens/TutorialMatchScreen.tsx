@@ -287,8 +287,13 @@ export function TutorialMatchScreen(): React.JSX.Element {
   }, []);
 
   const finishAndExit = useCallback(() => {
+    // Phase 7A.6 CP7 — single exit funnel for all three paths
+    // (Win Continue, Lose Skip-and-continue, Mid-match Skip
+    // confirm). Marks the tutorial step seen and forwards to the
+    // token economy walkthrough (CP4). Replaces the CP3-shipped
+    // `'Home'` placeholder.
     markTutorialMatchCompleted();
-    navigation.replace('Home');
+    navigation.replace('OnboardingTokenWalkthrough');
   }, [markTutorialMatchCompleted, navigation]);
 
   const onWinContinue = useCallback(() => {
