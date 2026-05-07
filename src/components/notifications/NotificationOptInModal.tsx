@@ -192,7 +192,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.borderSubtle,
     overflow: 'hidden',
-    paddingBottom: 18,
+    // Phase 7A.6 CP8 polish — bumped from 18 → 24 so the CTA gets
+    // breathing room from the card's bottom edge. Same direction
+    // as the marginTop / marginHorizontal nudges below.
+    paddingBottom: 24,
   },
   hero: {
     width: '100%',
@@ -222,8 +225,15 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   cta: {
-    marginTop: 18,
-    marginHorizontal: 18,
+    // Phase 7A.6 CP8 polish — was 18 / 18; CTA visibly cramped
+    // against body text and card edges on iOS Simulator manual
+    // sanity. Bumped to 28 vertical / 22 horizontal so the CTA
+    // sits with at least 22px inset from card edges and 28px
+    // from body text above. Layout shape preserved (CTA stays
+    // inside the card; CP4-style "button outside card" is a
+    // separate design decision, deferred).
+    marginTop: 28,
+    marginHorizontal: 22,
   },
   skipFloater: {
     position: 'absolute',

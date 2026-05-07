@@ -1427,3 +1427,240 @@ Phase 7A.5 is programmatic-green at `1240/1240` tests, `0` known bugs in the tes
 - The iOS notification permission prompt for the Daily 09:00 reminder rides the Onboarding flow. Phase 7A.4 CP5 deferred push notification with a note that the permission UX consolidates here. Phase 7A.5 added no friction to that handoff.
 - The first onboarding slide is Daily Challenge (Phase 7A — Revised Roadmap rationale). Phase 7A.5 did not change Daily — the slide can ship as planned.
 - The economy gradient + low-balance recovery + ad-free Daily are now production-shape, so Onboarding can demonstrate the wallet behaviour with confidence (no half-built primitives to dance around).
+
+---
+
+## Phase 7A.6 — Onboarding flow (delta)
+
+### CP timeline + commits
+
+| CP | Topic | Commit |
+|---|---|---|
+| CP1 | OnboardingState schema + 6 flags + actions | `c35777f` |
+| CP2 | OnboardingIntroScreen (3-slide carousel) | `58f5c51` |
+| CP3 | TutorialMatchScreen (guided first match) | `1762762` |
+| CP3.1 | USER_STORE_DEFAULTS sweep + tutorial reward calibration | `8703777` |
+| CP4 | OnboardingTokenWalkthroughScreen (3-slide) | `720bf6c` |
+| CP4.1 | Walkthrough hero mockup rework (Match Win / Daily Hint / Streak Reward) | `ee6e690` |
+| CP5 | BlitzTeaser + MirrorTeaser (matchesCompletedSinceOnboarding triggers) | `f93e194` |
+| CP6 | NotificationOptInModal (post-Daily-win soft-ask) | `8419888` |
+| CP7 | RootNavigator conditional flow + legacy OnboardingScreen removal | `f0f75bb` |
+| CP7.1 | `stampOnboardingComplete` action — preserve CP5/CP6 trigger gates | `9ac1442` |
+| CP7.2 | Persist-rehydration regression test + HMR caveat doc | `f8308d6` |
+| CP8 | NotificationOptInModal padding polish + sealing | this commit |
+
+8 CPs (1, 2, 3, 4, 5, 6, 7, 8) plus 4 hotfixes (3.1, 4.1, 7.1, 7.2). Test surface: `1192 → 1360` (+168 net). Zero changes to production Mode 1-7 code.
+
+### Tutorial isolation (CP3)
+
+The CP3 tutorial match runs on an isolated `useState` path inside `TutorialMatchScreen`, NOT through `matchStore` / `MatchScreen` / `MatchResultScreen`. The decoupling is deliberate: threading an `isTutorial` flag through the production reward + DDA + perMode + gamesPlayed + recentMatches + addXp + interstitial pipeline would have been invasive, and the tutorial is one-time-only (gated by `tutorialMatchCompleted`) so the production Mode 1 surface keeps evolving without dragging tutorial concerns along.
+
+What the tutorial reuses from production:
+- Mode 1's pure `evaluateColorMatch` evaluator (`@game/modes/mode1/evaluate`).
+- `DigitTile` / `DigitKeypad` UI primitives.
+- The shared `Screen` chrome.
+
+What the tutorial owns and production doesn't:
+- 10-turn cap (production Mode 1 has no `maxGuessesPerPlayer`). Without a cap the lose flow ("Not this time" / Try again / Skip and continue) would be unreachable, so the cap is tutorial-only.
+- Auto-hint at end of player turn 6 — locks one un-won position with the secret's digit and surfaces a `TutorialToast` showing the revealed peg colour. Production Mode 1 has no hint UI (hints are Daily-only); the tutorial invents the auto-hint to teach the mechanic. The CP3 spec called for a manual Hint A/B disable; CP3 implemented the auto-hint gracefully via this divergence.
+- Token grant via `addTokens(50, 'tutorial_match_complete')` directly — does NOT call `recordMatchResult`. This bypasses DDA (because `recentMatches` IS the DDA window in this codebase, the spec's "DDA bypass + included in match history" was internally contradictory; CP3 chose DDA bypass and accepted the trade-off that tutorial wins don't appear in Profile recent matches and don't credit `totalTokensEarned`).
+
+Trade-off accepted: tutorial UI may drift from production Mode 1 if Mode 1 changes. Mitigated by the one-shot nature of the tutorial (never re-shown unless a Settings "Replay tutorial" entry lands — see Phase 9 backlog) and by manual review during major Mode 1 UI changes.
+
+### Walkthrough mockup pattern (CP4.1, CP5)
+
+CP4 originally shipped slide hero visuals as abstract icon arrangements (large coin + emoji tiles + dot-row). iOS Simulator manual sanity surfaced the disconnect: those visuals don't match what a player will encounter in production. CP4.1 reworked them as **stylized mockups of the production screens the user will actually see**:
+
+- **Slide 1 (Earn)**: match-victory mockup with `VICTORY` pill (TinyTag-style gold), 4 colored cracked-code pegs, `+120` token chip with real `TokenCoin` SVG, mini XP bar.
+- **Slide 2 (Spend)**: Daily Challenge with hint UI mockup — 2 attempted guess rows + 1 empty next-guess row, then `REVEAL`/`PROBE` buttons with token price chips. Tinted-pill formula matches `DailyMatchScreen`'s real `HintButton`.
+- **Slide 3 (Streak)**: daily streak reward mockup — flame + `7 DAY STREAK` dark pill + `+1 FREE HINT` gold chip + `COMES BACK TOMORROW` muted teaser.
+
+The same pattern carried into CP5 teasers (Blitz chess clock + mini board, Mirror split-board "YOU vs RIVAL") and CP6 push opt-in (stylized iOS notification banner with app icon + title + body).
+
+Pattern conventions:
+1. **Inline components, props-less, statically composed**. Each mockup lives inside the screen file as a private function. No new files; no shared mockup library.
+2. **Visual parity by replication, not import**. Read the production styles (peg / feedback / button / chip / progress bar), inline the equivalents. Do NOT import production components — the mockups must be free of state pollution risk and free of integration coupling.
+3. **Stylized divergence is allowed where it serves the user mental model better than strict parity**. Examples:
+   - Pegs in mockups are colored circles (Mastermind metaphor); production uses digit tiles (Wordle-style).
+   - Mirror split-column "YOU vs RIVAL" mockup; production uses a single-perspective `SoloRaceBanner` with an opponent-count badge.
+   - "7 DAY STREAK" pill in CP4.1 / CP5 streak visuals; production has no equivalent badge component.
+
+Drift between mockup and production is acceptable. **Manual review is recommended during major UI changes** — the mockups don't break anything if production diverges, but they stop being faithful previews. A sealing-time visual sweep against production screenshots is the lightweight way to keep them honest.
+
+### Onboarding state machine (CP1, CP7, CP7.1)
+
+`OnboardingState` shape (inside `userStore.ts`):
+
+```
+{
+  introSeen: boolean,
+  tutorialMatchCompleted: boolean,
+  tokenWalkthroughSeen: boolean,
+  blitzTeaserSeen: boolean,
+  mirrorTeaserSeen: boolean,
+  notificationOptInAsked: boolean,
+  completedAt: string | null,  // 'YYYY-MM-DD' once stamped
+}
+```
+
+Plus the top-level `hasOnboarded: boolean` (master gate).
+
+Six atomic mark-actions, one per step flag. Plus two completion-stamp actions:
+
+- **`completeOnboarding(today)`** flips all 6 step flags + `completedAt`. Does NOT touch `hasOnboarded` (CP7.1 side-finding; documented as known quirk — see Phase 9 backlog cleanup options). Used by the **Skip** paths on CP2 / CP4 / CP3-mid-match-confirm-cancel-by-Skip-All-style flows. Idempotent on `completedAt`.
+- **`stampOnboardingComplete(today)`** flips `hasOnboarded` + `completedAt` only (CP7.1 addition). Used by the CP4 **linear-completion** path. Preserves `blitzTeaserSeen` / `mirrorTeaserSeen` / `notificationOptInAsked` so the post-onboarding nudges (CP5 teasers, CP6 push opt-in) remain triggerable. Idempotent on `completedAt`.
+
+The dual-action design is the central CP7.1 lesson. CP7's literal interpretation of the spec ("CP4 Start Playing → completeOnboarding") silenced CP5/CP6 nudges for the most common user path because `completeOnboarding` flips the trigger flags too. Adding `stampOnboardingComplete` as a discrete minimal action — pinned by a regression test that asserts the two actions DIVERGE in their flag effects — lets the linear path stamp "done" without quenching the future nudges.
+
+App launch routing (`pickInitialRoute()` in `RootNavigator.tsx`):
+
+```
+hasOnboarded === true        → Home              (master gate)
+!introSeen                   → OnboardingIntro   (CP2)
+!tutorialMatchCompleted      → TutorialMatch     (CP3)
+!tokenWalkthroughSeen        → OnboardingTokenWalkthrough (CP4)
+otherwise                    → Home              (failsafe)
+```
+
+The failsafe branch is load-bearing for Skip users: `completeOnboarding` flips all step flags but leaves `hasOnboarded === false`, so Skip users land at "all flags true + hasOnboarded false" and route through this branch. Cleanup options documented in Phase 9 backlog (either make `completeOnboarding` flip `hasOnboarded` explicitly, or document the failsafe more thoroughly). Either is acceptable; current state works correctly.
+
+Skip semantics differ per CP — `RootNavigator` does NOT enforce; each screen owns its flag logic:
+
+| Surface | Skip action | Effect |
+|---|---|---|
+| CP2 OnboardingIntro Skip | `completeOnboarding(today)` | Full skip — silences CP5/CP6 nudges too |
+| CP3 TutorialMatch Skip (mid-match confirm OR Lose Skip-and-continue) | `markTutorialMatchCompleted()` | Atomic step skip — onboarding continues to CP4 |
+| CP4 OnboardingTokenWalkthrough Skip | `completeOnboarding(today)` | Full skip — same as CP2 |
+| CP5 BlitzTeaser/MirrorTeaser Skip | `markBlitzTeaserSeen` / `markMirrorTeaserSeen` | Per-teaser independent decision |
+| CP6 NotificationOptInModal "Not now" | `markNotificationOptInAsked()` | Single-dismiss soft-ask |
+
+The asymmetry is intentional. CP3 mid-match Skip is the only "atomic step skip" — every other Skip is "skip all" (CP2/CP4) or "skip this specific surface" (CP5 per-teaser, CP6 single-shot).
+
+Force-quit recovery is implicit in the early-exit chain: a user who quit at CP3 has `introSeen=true, tutorialMatchCompleted=false` on disk → next launch lands on TutorialMatch, not back at the start. CP3.1 zeroed the fresh-install defaults so this gate engages cleanly on first install (pre-CP3.1 a Phase-1B fixture set `hasOnboarded: true` / `introSeen: true` and the master gate skipped onboarding entirely — that bug almost shipped silently).
+
+### Token economy calibration (CP3.1)
+
+CP3.1's reconnaissance pass on `USER_STORE_DEFAULTS` surfaced 13 fixture leftovers from Phase 1B development (sample username, level 12, 1840 tokens, 247 games played, 68% win rate, etc.). Most material: `hasOnboarded: true` — every fresh install would have skipped onboarding entirely, making the entire CP1-CP7 work unreachable.
+
+Post-CP3.1 fresh-install defaults:
+- `username`: random `player_<hex4>` via `generateUsername()` (production); fixed `'nova_code'` via `jest.setup.js` mock for snapshot stability.
+- `tokens: 100` — covers exactly 2× lowest competitive stake (Mode 1/2/3/4/6) OR 1× Mode 5 stake OR 1× Hint A.
+- `level: 1`, `currentXP: 0`, `targetXP: 100` (placeholder; level-up curve doesn't exist yet — see Phase 9).
+- `hasOnboarded: false` — so the conditional flow engages.
+- All `stats.*` zeroed; all `perMode[1..7].winRate` zeroed.
+
+Tutorial reward (CP3.1 recalibration): **50 tokens** via `addTokens(50, 'tutorial_match_complete')`. Pre-CP3.1 the tutorial granted 10 — below every spend threshold in the economy, functionally inert. 50 covers exactly one Mode 1/2/3/4/6 stake or one Hint B, giving the post-tutorial user a concrete first action.
+
+Mode catalog reward shape (`@data/modeCatalog.ts`):
+
+| Mode | Stake | rewardWin | rewardDraw |
+|---|---|---|---|
+| 1 Color Match | 50 | 100 | 50 |
+| 2 High & Low | 50 | 100 | 50 |
+| 3 Precision | 50 | 100 | 50 |
+| 4 Blitz | 50 | 150 | 50 |
+| 5 Blackout | 100 | 250 | 100 |
+| 6 Sudden Death | 50 | 120 | 50 |
+| 7 Mirror | 75 | 180 | 75 |
+
+DDA multipliers (`@game/economy/constants.ts`):
+- `easy: 1.0×` (rolling-10 wins ≤ 2)
+- `normal: 1.2×` (3–7 wins)
+- `hard: 1.5×` (8–10 wins)
+
+`Math.floor(reward × multiplier)` applied at `MatchResultScreen` reward time. Stalemate refunds raw stake (no multiplier); defeat is 0.
+
+Daily Challenge token reward: **none**. Reward is the earned-hint pool — streak crossings at 7 / 14 / 21 grant +1 free hint each (cap 3); `Hint A` (Reveal) costs 100 tokens or 1 earned, `Hint B` (Probe) costs 50 / 1. The "pure skill" framing is intentional; revisiting requires strong observed-behavior data (Phase 7B). Hint UI is Daily-only — Mode 1-7 have no in-match hint affordance (CP3 reconnaissance finding; deferred to a separate post-7A.6 design conversation).
+
+Watch ad to double: **×2 multiplier**, victory/draw outcomes only, never on Daily (Daily routes through `DailyResultScreen`, which has no Double affordance). `applyRewardedDouble` (Phase 7A.5 CP6) computes the doubled amount authoritatively from `matchState` — the Codex finding 1 fix prevents user-supplied amounts from minting tokens.
+
+Remove Ads IAP ($2.99): only removes forced periodic interstitials. Watch ad to double + need-driven AdWatch +50 stay available for paid users (Q11 reading). No token grant on purchase (Q12).
+
+### CP5/CP6 trigger pattern (CP5, CP6)
+
+Both teaser modals (Blitz, Mirror) and the push opt-in modal share an inline-overlay pattern:
+
+```
+<View style={StyleSheet.absoluteFill} pointerEvents="box-none">
+  <Pressable style={styles.backdrop} onPress={() => {}} />
+  <View style={styles.card} accessibilityViewIsModal accessibilityLabel="...">
+    {/* hero card with mockup + copy + CTA */}
+  </View>
+  <Pressable style={styles.skipFloater}>{Skip / Not now}</Pressable>
+</View>
+```
+
+Pattern conventions:
+1. **State-driven trigger, NOT user-initiated navigation.** The modals fire when a counter or flag transitions, not when the user navigates to them. So they're inline overlays mounted from their host screen (HomeScreen for CP5, DailyResultScreen for CP6) — NOT Stack.Screen routes.
+2. **Self-contained, no RootNavigator wiring.** CP5 and CP6 deliberately do NOT participate in `pickInitialRoute()`. They mount unconditionally; their `visible` prop is computed from store state. CP7's onboarding flow integration ignored them entirely.
+3. **`accessibilityViewIsModal` on the inner card, NOT the outer wrapper.** This is the CP3 lesson: marking the outer absolute-fill View as modal makes sibling chrome (the floating Skip / Not now button) unreachable in `@testing-library/react-native` queries (and screen readers). Putting it on the inner sheet keeps the Skip floater queryable + reachable.
+4. **Skip rendered last in the JSX tree.** zIndex via stacking order so the overlay backdrop never absorbs a Skip tap. CP3 `TutorialMatchScreen`, CP5 modals, and CP6 modal all follow this.
+
+Trigger gates (the source of "first" for each):
+
+- **BlitzTeaser**: `matchesCompletedSinceOnboarding === 3 && !blitzTeaserSeen`
+- **MirrorTeaser**: `matchesCompletedSinceOnboarding === 5 && !mirrorTeaserSeen`
+- **NotificationOptInModal**: `lastResult.success === true && !notificationOptInAsked` (any Daily win where the flag is false; flag-as-gate doubles as the first-win detector)
+
+Strict-equality on the counter (not `>=`) is intentional — `>=` would re-fire on every HomeScreen mount until the seen flag flips, which breaks the edge case where data import / migration leaves the counter past the threshold with the flag still false. Strict equality cleanly skips that window.
+
+`incrementMatchesSinceOnboarding` is wired in `MatchResultScreen`'s engine-path useEffect (CP5 added the call site; CP1 deferred it with the comment "Wired by the match-completion seam in a later CP"). Daily Challenge / tutorial never reach `MatchResultScreen`, so the ad-free / tutorial-isolated invariants hold at the call site, not just at the action boundary.
+
+### HMR stale store risk (CP7.2)
+
+Zustand `create()` returns a module-singleton instantiated at module-load time. React Native's Fast Refresh swaps modules but doesn't re-instantiate state held by closures of the old module. Adding a new action to a Zustand store (e.g. `stampOnboardingComplete` in CP7.1) and triggering Fast Refresh on the userStore module: the new bundle has the action, but the in-memory store instance from BEFORE the swap doesn't.
+
+Symptom on iOS Simulator: `[TypeError: stampOnboardingComplete is not a function (it is undefined)]` at the call site, even though:
+- Source code has the action implementation.
+- Bundle (verified via `curl http://localhost:8081/index.bundle?platform=ios | grep`) contains the action.
+- All tests pass — Jest workers create the store ONCE per worker; there's no Fast Refresh equivalent in test, so the failure mode is unreachable from `npm test`.
+
+Workaround: `npx expo start --clear` nukes Metro caches and forces a clean store re-instantiation. The persisted AsyncStorage state is preserved (different layer; not flushed by `--clear`), so the user's onboarding progress is intact across the cache clear.
+
+CP7.2 documented the caveat inline on `stampOnboardingComplete`'s JSDoc and added `cp72PersistRehydration.test.ts` as a regression guard for the OTHER failure mode that produces the same symptom: a future refactor where the persist middleware genuinely strips actions during rehydration (e.g. a custom `merge` that drops function values, or an over-eager `partialize` that includes action keys with `undefined` values). The test exercises the full persist cycle that unit tests with `useUserStore.setState({...defaults})` shortcut around.
+
+### Lessons learned (process notes)
+
+**Pre-impl check structure.** Every CP and hotfix in Phase 7A.6 began with a pre-impl findings report (a-h items), surfaced before any code changes. Multiple times this caught design contradictions before they shipped:
+- CP3 (b) found `MatchResultScreen` is too side-effect-heavy to thread an `isTutorial` flag through cleanly → tutorial isolated entirely instead.
+- CP3 (c) found there's no separate `LoseScreen.tsx` to extend → the tutorial lose UI lives inline in `TutorialMatchScreen`.
+- CP3 (f) found `addTokens` API doesn't support a `skipDda` flag, and "DDA bypass + included in match history" is internally contradictory in this codebase → tutorial wins don't appear in Profile recent matches.
+- CP4 (b)-(g) found 7+ production styles that needed replication, none with clean component reuse path → inline mockup pattern.
+- CP6 (a) found the action is `markNotificationOptInAsked`, not the spec's proposed `Seen` — CP3.1 had a similar discrepancy on `markTutorialMatchCompleted`.
+- CP7.1 surfaced the `completeOnboarding` scope mistake in CP7's literal spec interpretation.
+
+The pattern: **diagnosis before treatment**. Several CPs had their scope adjusted after pre-impl findings.
+
+**Tests green ≠ runtime works.** CP7 → CP7.1 → CP7.2 sequence is the load-bearing example. CP7.1 added `stampOnboardingComplete`, all tests passed, but the iOS Simulator manual sanity caught the Fast Refresh stale store issue at runtime. Manual sanity must precede sealing — programmatic green is necessary but not sufficient.
+
+**Visual parity vs invented UI.** From CP4.1 onward, walkthrough mockups can deliberately diverge from production to serve user mental model better than strict mirror would. Examples in this phase: Mastermind-style colored pegs (production uses Wordle-style digit tiles), Mirror split-column "YOU vs RIVAL" mockup (production uses single-perspective banner), "7 DAY STREAK" badge (production has no equivalent component). The distinction isn't "lazy approximation vs careful copy" — it's "mockup serves illustration, production serves play". Both intentional.
+
+**Two-action regression guard pattern (CP7.1 / CP7.2).** When two userStore actions have semantically opposite effects but similar names, pin the divergence with a regression test asserting both DIVERGE in their flag/state effects. Future drift that "consolidates" them silently is caught at CI time. `userStore.test.ts` has the `completeOnboarding` vs `stampOnboardingComplete` divergence test as the load-bearing example.
+
+### Test surface — 1240 → 1360 (+120 net)
+
+| Surface | Tests added (cumulative across phase) | Notes |
+|---|---|---|
+| `src/screens/__tests__/OnboardingIntroScreen.test.tsx` | ~12 | CP2 — render / pagination / skip / continue / start playing / a11y / snapshot. |
+| `src/screens/__tests__/TutorialMatchScreen.test.tsx` | ~17 | CP3 — overlays / first peg tap / feedback teaching / auto-hint timing / win flow / skip dialog / lose flow / try-again / a11y. |
+| `src/screens/__tests__/OnboardingTokenWalkthroughScreen.test.tsx` | ~8 | CP4 — render / pagination / skip / continue / start playing / a11y / snapshot. |
+| `src/components/teasers/__tests__/{Blitz,Mirror}TeaserModal.test.tsx` | ~16 | CP5 — render / mockup / skip / CTA token grant / a11y / snapshot per modal. |
+| `src/components/notifications/__tests__/NotificationOptInModal.test.tsx` | 9 | CP6 — render / Not now / CTA granted / CTA denied / CTA throw / a11y / snapshot. |
+| `src/screens/__tests__/HomeScreen.test.tsx` | +8 | CP5 trigger logic — strict-equality on counter, both teasers respect their seen flags. |
+| `src/screens/__tests__/DailyResultScreen.test.tsx` | +5 | CP6 trigger — win-only / asked / no-result / dismiss flow. |
+| `src/navigation/__tests__/RootNavigator.test.tsx` | ~10 | CP7 / CP7.1 — master gate / fresh-install chain / force-quit recovery / linear-completion preserves trigger gates / legacy removal. |
+| `src/state/__tests__/userStore.test.ts` | ~25 | CP1 schema + 6 mark-actions + completeOnboarding / stampOnboardingComplete divergence guard / counter increments / Daily ad-free invariants. |
+| `src/state/__tests__/cp72PersistRehydration.test.ts` | 4 | CP7.2 — full persist cycle, all onboarding actions callable post-rehydrate. |
+| `src/lib/__tests__/usernameGen.test.ts` | 4 | CP3.1 — random username helper. |
+| Existing tests touched | per-screen | CP3.1 zero-fixture sweep updated 10+ assertions across ProfileScreen / HomeScreen / MatchResult / cp4Flows / mockUser / ChangeUsername. |
+
+Net: `1240 → 1360` (+120) across the phase (+24 directly counted above, plus the per-screen update churn from CP3.1's defaults sweep, plus CP3.1's own +4 username generator tests, plus the CP6 expo-notifications mock infrastructure setup). Detailed breakdown in commit messages.
+
+### Phase 7A.6 sealed — Phase 7A.7 (UX polish + per-mode tutorials) handoff
+
+Phase 7A.6 is programmatic-green at `1360/1360` tests, manual-sanity verified end-to-end on iOS Simulator (fresh install → CP2 → CP3 → CP4 → Home, with CP5 BlitzTeaser at match #3, MirrorTeaser at match #5, and NotificationOptInModal on first Daily win all confirmed firing). The CP8 padding polish closes the visual debt; no other manual-sanity findings outstanding.
+
+**Phase 7A.7 (UX details + per-mode tutorials) inherits a working flow:**
+- Per-mode first-time tutorials (Mode 2 High/Low, Mode 3 Precision, Mode 4 Blitz, Mode 5 Blackout, Mode 6 Sudden Death, Mode 7 Mirror) were tabled until 7A.6 sealed; they can now slot into the post-onboarding surface space (after the CP4 walkthrough has explained tokens, but before the user has played each mode for the first time).
+- Mode 1-7 in-match hint UI integration is the larger downstream design conversation. Currently hints are Daily-only; if Phase 7A.7 wants to extend, the surface is sized in the Phase 9 backlog.
+- Settings entries to re-enable individual onboarding surfaces ("Replay tutorial", "Re-enable notifications") are post-launch polish; Phase 7A.7 may take them or defer to Phase 8.
