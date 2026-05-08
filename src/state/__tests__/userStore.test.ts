@@ -355,7 +355,7 @@ describe('useUserStore', () => {
     });
   });
 
-  describe('migration — chained v1 → v2 → v3 → v4 → v5', () => {
+  describe('migration — chained v1 → v2 → v3 → v4 → v5 → v6', () => {
     // Phase 7A.4 CP3 + Phase 7A.5 CP1: chained migration pattern.
     // A v1 blob hydrates through every upgrade step to land at v4;
     // a v3 blob takes the v3 → v4 step alone; v4 is identity. Each
@@ -457,8 +457,8 @@ describe('useUserStore', () => {
       expect(next.dailyChallenge.lastResult).toBeNull();
     });
 
-    it('v5 is idempotent — current-version state passes through unchanged', () => {
-      const next = __migrateUserStoreForTests(USER_STORE_DEFAULTS, 5);
+    it('v6 is idempotent — current-version state passes through unchanged', () => {
+      const next = __migrateUserStoreForTests(USER_STORE_DEFAULTS, 6);
       expect(next).toBe(USER_STORE_DEFAULTS);
     });
 
@@ -551,7 +551,14 @@ describe('useUserStore', () => {
       expect(next.onboarding.tutorialMatchCompleted).toBe(false);
       expect(next.onboarding.completedAt).toBeNull();
       expect(next.matchesCompletedSinceOnboarding).toBe(0);
-      // Identity preservation across all four steps.
+      // v5 → v6 step (Phase 7A.7 CP3) — same paternalistic-skip
+      // heuristic as v4→v5: this v1State has gamesPlayed=100, so
+      // all Mode 2-7 should be marked seen on upgrade. Mode 1
+      // intentionally absent from the map.
+      expect(next.modeTutorialsSeen).toEqual({
+        2: true, 3: true, 4: true, 5: true, 6: true, 7: true,
+      });
+      // Identity preservation across all five steps.
       expect(next.username).toBe('ancient_user');
       expect(next.tokens).toBe(800);
     });
@@ -642,6 +649,68 @@ describe('useUserStore', () => {
       const next = __migrateUserStoreForTests(v4Corrupt, 4);
       expect(next.onboarding.introSeen).toBe(false);
       expect(next.matchesCompletedSinceOnboarding).toBe(0);
+    });
+
+    it('v5 → v6: existing player with gamesPlayed > 0 gets all Mode 2-7 marked seen (paternalistic skip)', () => {
+      // A realistic v5 blob — player has been around, played
+      // matches, completed onboarding. On upgrade to v6 they
+      // should NOT get hit with per-mode tutorials for modes
+      // they already understand from playing.
+      const v5State = {
+        ...USER_STORE_DEFAULTS,
+        stats: { ...USER_STORE_DEFAULTS.stats, gamesPlayed: 50 },
+        // Strip the v6-specific field to mimic an actual v5 blob.
+      } as unknown as Record<string, unknown>;
+      delete v5State.modeTutorialsSeen;
+
+      const next = __migrateUserStoreForTests(v5State, 5);
+      expect(next.modeTutorialsSeen).toEqual({
+        2: true, 3: true, 4: true, 5: true, 6: true, 7: true,
+      });
+      // Mode 1 deliberately not in the map — it's
+      // `onboarding.tutorialMatchCompleted` instead.
+      expect(next.modeTutorialsSeen[1]).toBeUndefined();
+    });
+
+    it('v5 → v6: fresh-install / reset user (gamesPlayed === 0) gets empty map', () => {
+      // Mirrors the v4→v5 behaviour: a player with zero games
+      // played is treated as a fresh start, sees full onboarding
+      // surfaces. CP4-CP7 per-mode tutorials fire at their natural
+      // moments (first ModeCard tap).
+      const v5State = {
+        ...USER_STORE_DEFAULTS,
+        stats: { ...USER_STORE_DEFAULTS.stats, gamesPlayed: 0 },
+      } as unknown as Record<string, unknown>;
+      delete v5State.modeTutorialsSeen;
+
+      const next = __migrateUserStoreForTests(v5State, 5);
+      expect(next.modeTutorialsSeen).toEqual({});
+    });
+
+    it('v5 → v6: missing stats (defensive — corrupt v5 blob) → empty map', () => {
+      // Mirrors the v4→v5 defensive bias: corrupt blob defaults
+      // to "show tutorials" (empty map) rather than "skip"
+      // (paternalistic-skip applied without grounds).
+      const v5Corrupt = { username: 'broken', tokens: 100 };
+      const next = __migrateUserStoreForTests(v5Corrupt, 5);
+      expect(next.modeTutorialsSeen).toEqual({});
+    });
+
+    it('v5 → v6: preserves every v5 field byte-for-byte', () => {
+      // The new field lands on top via a spread; nothing else
+      // should mutate.
+      const v5State = {
+        ...USER_STORE_DEFAULTS,
+        stats: { ...USER_STORE_DEFAULTS.stats, gamesPlayed: 50 },
+        username: 'streak_seven',
+        tokens: 500,
+      } as unknown as Record<string, unknown>;
+      delete v5State.modeTutorialsSeen;
+
+      const next = __migrateUserStoreForTests(v5State, 5);
+      expect(next.username).toBe('streak_seven');
+      expect(next.tokens).toBe(500);
+      expect(next.stats.gamesPlayed).toBe(50);
     });
 
     it('falls back to defaults for an unknown (future) version stamp', () => {
@@ -1158,6 +1227,49 @@ describe('useUserStore', () => {
       expect(useUserStore.getState().matchesCompletedSinceOnboarding).toBe(1);
       useUserStore.getState().incrementMatchesSinceOnboarding();
       expect(useUserStore.getState().matchesCompletedSinceOnboarding).toBe(2);
+    });
+
+    describe('markModeTutorialSeen (Phase 7A.7 CP3)', () => {
+      it('fresh install starts with an empty modeTutorialsSeen map', () => {
+        // Pinning the schema default — fresh installs (no prior
+        // engagement) reach the per-mode tutorials at their
+        // natural moment.
+        expect(USER_STORE_DEFAULTS.modeTutorialsSeen).toEqual({});
+      });
+
+      it('flips modeTutorialsSeen[modeId] to true', () => {
+        useUserStore.setState({ modeTutorialsSeen: {} });
+        useUserStore.getState().markModeTutorialSeen(2);
+        expect(useUserStore.getState().modeTutorialsSeen).toEqual({ 2: true });
+      });
+
+      it('is idempotent — calling twice is a no-op on the second call', () => {
+        useUserStore.setState({ modeTutorialsSeen: {} });
+        useUserStore.getState().markModeTutorialSeen(3);
+        useUserStore.getState().markModeTutorialSeen(3);
+        expect(useUserStore.getState().modeTutorialsSeen).toEqual({ 3: true });
+      });
+
+      it('preserves prior modeIds when marking a new one', () => {
+        useUserStore.setState({ modeTutorialsSeen: { 2: true, 3: true } });
+        useUserStore.getState().markModeTutorialSeen(4);
+        expect(useUserStore.getState().modeTutorialsSeen).toEqual({
+          2: true,
+          3: true,
+          4: true,
+        });
+      });
+
+      it('accepts any modeId without validation (caller responsibility)', () => {
+        // CP7 HomeScreen ModeCard tap interception only passes 2-7
+        // from real production paths. The action does not gate
+        // — validation cost not worth it. Pinned so a future
+        // attempt to add gating in the action surfaces the
+        // intent here.
+        useUserStore.setState({ modeTutorialsSeen: {} });
+        useUserStore.getState().markModeTutorialSeen(99);
+        expect(useUserStore.getState().modeTutorialsSeen[99]).toBe(true);
+      });
     });
   });
 

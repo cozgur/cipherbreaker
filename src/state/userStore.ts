@@ -120,6 +120,29 @@ export interface UserStoreState {
    * never mutate this field.
    */
   readonly matchesCompletedSinceOnboarding: number;
+  /**
+   * Phase 7A.7 CP3 — per-mode tutorial seen flags. CP4-CP7 will
+   * gate first-time mode tutorials on this map (e.g.
+   * `!modeTutorialsSeen[2]` triggers the Mode 2 High/Low tutorial
+   * the first time a player taps the Mode 2 ModeCard from
+   * HomeScreen). Sparse `Record<number, boolean>` — entries are
+   * only set to `true` once the tutorial fires; absent keys read
+   * as `undefined` under `noUncheckedIndexedAccess` and the
+   * caller treats `undefined` as "not seen".
+   *
+   * Mode 1 is intentionally NOT in this map — its tutorial
+   * (Phase 7A.6 CP3 `TutorialMatchScreen`) is owned by
+   * `onboarding.tutorialMatchCompleted` instead. Two sources of
+   * truth for the same boolean would invite drift.
+   *
+   * v5 → v6 migration applies a paternalistic-skip heuristic
+   * (see `migrateV5ToV6`): existing players with
+   * `stats.gamesPlayed > 0` get all Mode 2-7 marked seen on
+   * upgrade — they've earned the right to skip tutorials by
+   * having actually played matches. Fresh installs and admin-
+   * reset users land on an empty map.
+   */
+  readonly modeTutorialsSeen: Readonly<Record<number, boolean>>;
 }
 
 export interface OnboardingState {
@@ -355,6 +378,15 @@ export interface UserStoreActions {
    * invariant. Pinned by regression tests.
    */
   incrementMatchesSinceOnboarding(): void;
+  /**
+   * Phase 7A.7 CP3 — flip `modeTutorialsSeen[modeId]` to `true`.
+   * Idempotent (`true` once is `true`; subsequent calls don't
+   * mutate). No `modeId` validation — caller (CP7's HomeScreen
+   * ModeCard tap interception) only passes 2-7 from real
+   * production paths. CP3 ships the action only; trigger sites
+   * land in CP7.
+   */
+  markModeTutorialSeen(modeId: number): void;
 }
 
 export const DAILY_CHALLENGE_DEFAULTS: DailyChallengeState = {
@@ -452,9 +484,14 @@ export const USER_STORE_DEFAULTS: UserStoreState = {
   adsRemoved: false,
   onboarding: ONBOARDING_DEFAULTS,
   matchesCompletedSinceOnboarding: 0,
+  // Phase 7A.7 CP3 — fresh-install: no Mode 2-7 tutorials seen.
+  // Sparse Record; absent keys read as `undefined` and CP4-CP7
+  // gating treats undefined as "not seen". Mode 1 deliberately
+  // not in the map (covered by `onboarding.tutorialMatchCompleted`).
+  modeTutorialsSeen: {},
 };
 
-const STORE_VERSION = 5;
+const STORE_VERSION = 6;
 
 /**
  * Migrate persisted state across `STORE_VERSION` bumps. The persist
@@ -504,18 +541,22 @@ type V1Stats = Omit<UserStats, 'totalTokensEarned' | 'recentMatches'> & {
 };
 type V7A5Fields = 'adsWatchedToday' | 'adsWatchedLastDate' | 'matchesSinceLastInterstitial' | 'adsRemoved';
 type V7A6Fields = 'onboarding' | 'matchesCompletedSinceOnboarding';
-type V1State = Omit<UserStoreState, 'stats' | 'dailyChallenge' | V7A5Fields | V7A6Fields> & {
+type V7A7Fields = 'modeTutorialsSeen';
+type V1State = Omit<UserStoreState, 'stats' | 'dailyChallenge' | V7A5Fields | V7A6Fields | V7A7Fields> & {
   readonly stats?: V1Stats;
 };
 
 // v2 shape — UserStoreState minus dailyChallenge + every later-phase field.
-type V2State = Omit<UserStoreState, 'dailyChallenge' | V7A5Fields | V7A6Fields>;
+type V2State = Omit<UserStoreState, 'dailyChallenge' | V7A5Fields | V7A6Fields | V7A7Fields>;
 
-// v3 shape — UserStoreState minus the Phase 7A.5 + 7A.6 fields.
-type V3State = Omit<UserStoreState, V7A5Fields | V7A6Fields>;
+// v3 shape — UserStoreState minus the Phase 7A.5 / 7A.6 / 7A.7 fields.
+type V3State = Omit<UserStoreState, V7A5Fields | V7A6Fields | V7A7Fields>;
 
-// v4 shape — UserStoreState minus the Phase 7A.6 fields.
-type V4State = Omit<UserStoreState, V7A6Fields>;
+// v4 shape — UserStoreState minus the Phase 7A.6 / 7A.7 fields.
+type V4State = Omit<UserStoreState, V7A6Fields | V7A7Fields>;
+
+// v5 shape — UserStoreState minus the Phase 7A.7 fields.
+type V5State = Omit<UserStoreState, V7A7Fields>;
 
 function migrateV1ToV2(persisted: unknown): V2State {
   const v1 = (persisted ?? {}) as V1State;
@@ -554,7 +595,7 @@ function migrateV3ToV4(persisted: unknown): V4State {
   };
 }
 
-function migrateV4ToV5(persisted: unknown): UserStoreState {
+function migrateV4ToV5(persisted: unknown): V5State {
   const v4 = (persisted ?? {}) as V4State;
   // Existing-user heuristic: gamesPlayed > 0 means the player
   // has actually engaged (not just installed and bounced).
@@ -572,6 +613,37 @@ function migrateV4ToV5(persisted: unknown): UserStoreState {
       introSeen: playedAtLeastOnce,
     },
     matchesCompletedSinceOnboarding: 0,
+  };
+}
+
+/**
+ * Phase 7A.7 CP3 — v5 → v6: seed `modeTutorialsSeen` with a
+ * paternalistic-skip heuristic. Mirrors the v4→v5 introSeen
+ * heuristic (same `gamesPlayed > 0` signal):
+ *
+ *   gamesPlayed > 0  → all Mode 2-7 marked seen. The player has
+ *                      actually played matches, knows the modes,
+ *                      and would find tutorials patronising.
+ *   gamesPlayed === 0 → empty map. A fresh-install / reset user
+ *                      reaches the per-mode tutorials at their
+ *                      natural moment.
+ *   missing stats     → empty map (defensive — corrupt blob
+ *                      defaults to "show tutorials" rather than
+ *                      "skip", matches v4→v5's defensive bias).
+ *
+ * Mode 1 deliberately not in the map — covered by
+ * `onboarding.tutorialMatchCompleted` (Phase 7A.6 CP3). Two
+ * sources of truth would invite drift.
+ */
+function migrateV5ToV6(persisted: unknown): UserStoreState {
+  const v5 = (persisted ?? {}) as V5State;
+  const playedAtLeastOnce = (v5.stats?.gamesPlayed ?? 0) > 0;
+  const modeTutorialsSeen: Record<number, boolean> = playedAtLeastOnce
+    ? { 2: true, 3: true, 4: true, 5: true, 6: true, 7: true }
+    : {};
+  return {
+    ...v5,
+    modeTutorialsSeen,
   };
 }
 
@@ -602,6 +674,9 @@ function migrateUserStore(persisted: unknown, version: number): UserStoreState {
     } else if (v === 4) {
       current = migrateV4ToV5(current);
       v = 5;
+    } else if (v === 5) {
+      current = migrateV5ToV6(current);
+      v = 6;
     } else {
       // Defensive — the bounds check above should prevent reaching
       // this branch, but it keeps the loop total in case the bound
@@ -864,6 +939,12 @@ export const useUserStore = create<UserStoreState & UserStoreActions>()(
       incrementMatchesSinceOnboarding: () => {
         set((s) => ({
           matchesCompletedSinceOnboarding: s.matchesCompletedSinceOnboarding + 1,
+        }));
+      },
+
+      markModeTutorialSeen: (modeId) => {
+        set((s) => ({
+          modeTutorialsSeen: { ...s.modeTutorialsSeen, [modeId]: true },
         }));
       },
 
