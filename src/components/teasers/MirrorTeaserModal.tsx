@@ -31,10 +31,12 @@
  * absorbs its tap.
  */
 
+import { useEffect } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 
+import * as haptics from '@/lib/haptics';
 import { Button } from '@components/Button';
 import { useUserStore } from '@state/userStore';
 import { colors, fonts, withAlpha } from '@theme/tokens';
@@ -55,14 +57,21 @@ export function MirrorTeaserModal({
   const addTokens = useUserStore((s) => s.addTokens);
   const markMirrorTeaserSeen = useUserStore((s) => s.markMirrorTeaserSeen);
 
+  // Phase 7A.7 CP1 — open haptic, same pattern as BlitzTeaser.
+  useEffect(() => {
+    if (visible) haptics.impact('light');
+  }, [visible]);
+
   if (!visible) return null;
 
   const handleSkip = (): void => {
+    haptics.selection();
     markMirrorTeaserSeen();
     onClose();
   };
 
   const handleTry = (): void => {
+    haptics.impact('medium');
     addTokens(MIRROR_TEASER_GIFT_TOKENS, 'mirror_teaser_gift');
     markMirrorTeaserSeen();
     onClose();

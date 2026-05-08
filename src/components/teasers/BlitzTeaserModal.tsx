@@ -30,10 +30,12 @@
  * TutorialMatchScreen uses.
  */
 
+import { useEffect } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 
+import * as haptics from '@/lib/haptics';
 import { Button } from '@components/Button';
 import { useUserStore } from '@state/userStore';
 import { colors, fonts, withAlpha } from '@theme/tokens';
@@ -53,14 +55,24 @@ export function BlitzTeaserModal({
   const addTokens = useUserStore((s) => s.addTokens);
   const markBlitzTeaserSeen = useUserStore((s) => s.markBlitzTeaserSeen);
 
+  // Phase 7A.7 CP1 — open haptic. Fires when the modal becomes
+  // visible. The dep array re-fires only on visible flipping
+  // false → true (and on initial mount when visible already true);
+  // never fires when other props change.
+  useEffect(() => {
+    if (visible) haptics.impact('light');
+  }, [visible]);
+
   if (!visible) return null;
 
   const handleSkip = (): void => {
+    haptics.selection();
     markBlitzTeaserSeen();
     onClose();
   };
 
   const handleTry = (): void => {
+    haptics.impact('medium');
     addTokens(BLITZ_TEASER_GIFT_TOKENS, 'blitz_teaser_gift');
     markBlitzTeaserSeen();
     onClose();

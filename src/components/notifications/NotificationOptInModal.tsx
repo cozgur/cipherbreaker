@@ -30,11 +30,13 @@
  * iOS-Notification-Center vernacular.
  */
 
+import { useEffect } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Notifications from 'expo-notifications';
 
+import * as haptics from '@/lib/haptics';
 import { Button } from '@components/Button';
 import { useUserStore } from '@state/userStore';
 import { colors, fonts, withAlpha } from '@theme/tokens';
@@ -51,14 +53,21 @@ export function NotificationOptInModal({
   const insets = useSafeAreaInsets();
   const markNotificationOptInAsked = useUserStore((s) => s.markNotificationOptInAsked);
 
+  // Phase 7A.7 CP1 — open haptic, same pattern as CP5 teasers.
+  useEffect(() => {
+    if (visible) haptics.impact('light');
+  }, [visible]);
+
   if (!visible) return null;
 
   const handleNotNow = (): void => {
+    haptics.selection();
     markNotificationOptInAsked();
     onClose();
   };
 
   const handleTurnOn = async (): Promise<void> => {
+    haptics.impact('medium');
     // Fire the native permission request. iOS displays its system
     // prompt; this promise resolves only after the user taps
     // "Allow" or "Don't Allow" (or, on subsequent calls past a

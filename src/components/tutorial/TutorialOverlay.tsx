@@ -13,6 +13,7 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import * as haptics from '@/lib/haptics';
 import { Button } from '@components/Button';
 import { colors, fonts, withAlpha } from '@theme/tokens';
 
@@ -71,7 +72,14 @@ export function TutorialOverlay({
           {title}
         </Text>
         <Text style={styles.body}>{body}</Text>
-        <Button onPress={onDismiss} size="lg" style={styles.cta}>
+        <Button
+          onPress={() => {
+            haptics.selection();
+            onDismiss();
+          }}
+          size="lg"
+          style={styles.cta}
+        >
           {ctaLabel}
         </Button>
       </View>

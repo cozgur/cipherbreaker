@@ -37,12 +37,13 @@
  *   - Lose view → Try again does NOT mark complete (unlimited retries)
  */
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
+import * as haptics from '@/lib/haptics';
 import { Button } from '@components/Button';
 import { DigitKeypad } from '@components/DigitKeypad';
 import { DigitTile } from '@components/DigitTile';
@@ -199,6 +200,7 @@ export function TutorialMatchScreen(): React.JSX.Element {
   }, []);
 
   const submitGuess = useCallback(() => {
+    haptics.impact('medium');
     setState((s) => {
       if (s.hasWon || s.hasLost || s.overlay !== null) return s;
       if (s.draftDigits.some((d) => d == null)) return s;
@@ -285,6 +287,17 @@ export function TutorialMatchScreen(): React.JSX.Element {
   const dismissAutoHint = useCallback(() => {
     setState((s) => ({ ...s, showAutoHintToast: false }));
   }, []);
+
+  // Phase 7A.7 CP1 — outcome haptics. Win/Lose are state-driven
+  // transitions inside `submitGuess`'s setState callback, so we
+  // can't fire haptics there cleanly. Instead, useEffect on
+  // hasWon / hasLost: fires once when the flag flips.
+  useEffect(() => {
+    if (state.hasWon) haptics.notify('success');
+  }, [state.hasWon]);
+  useEffect(() => {
+    if (state.hasLost) haptics.notify('error');
+  }, [state.hasLost]);
 
   const finishAndExit = useCallback(() => {
     // Phase 7A.6 CP7 — single exit funnel for all three paths

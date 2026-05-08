@@ -22,12 +22,13 @@
  * modal via navigation pop) re-renders the body in real time.
  */
 
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Svg, { Defs, Path, RadialGradient, Stop } from 'react-native-svg';
 import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
+import * as haptics from '@/lib/haptics';
 import { Button } from '@components/Button';
 import { GlassCard } from '@components/GlassCard';
 import { Screen } from '@components/Screen';
@@ -48,6 +49,13 @@ export function InsufficientTokensModal(): React.JSX.Element {
 
   const stake = useMemo(() => findMode(modeId)?.meta.stake ?? 50, [modeId]);
   const tokens = useUserStore((s) => s.tokens);
+
+  // Phase 7A.7 CP1 — modal-mount warning haptic. Fires once when
+  // the player lands on this surface (low-balance friction
+  // moment).
+  useEffect(() => {
+    haptics.notify('warning');
+  }, []);
   const adsWatchedToday = useUserStore((s) => s.adsWatchedToday);
   const adsWatchedLastDate = useUserStore((s) => s.adsWatchedLastDate);
 

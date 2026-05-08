@@ -37,6 +37,7 @@ import { findMode } from '@data/modeCatalog';
 import { secretFor } from '@data/mockSecrets';
 import { findOpponent } from '@data/mockOpponents';
 import { grantTokens, useMockUser } from '@data/mockUser';
+import * as haptics from '@/lib/haptics';
 import { formatDailyDate } from '@game/daily/dailyDate';
 import { canWatchAd } from '@game/economy/adCap';
 import { canShowInterstitial } from '@game/economy/iap';
@@ -167,7 +168,17 @@ export function MatchResultScreen(): React.JSX.Element {
   useEffect(() => {
     if (grantedRef.current) return;
     grantedRef.current = true;
-    if (reward > 0) grantTokens(reward);
+    // Phase 7A.7 CP1 — outcome haptic + token-earn haptic.
+    // Outcome fires on every path; the impact-light token pulse
+    // fires only when reward > 0 (defeat / zero-stake-stalemate
+    // get only the outcome haptic).
+    if (outcome === 'victory') haptics.notify('success');
+    else if (outcome === 'defeat') haptics.notify('error');
+    else haptics.notify('warning'); // draw / stalemate
+    if (reward > 0) {
+      haptics.impact('light');
+      grantTokens(reward);
+    }
     // Stats + XP + interstitial counter only fire on the engine
     // path. The mock dev-picker path is a synthetic outcome —
     // recording it would inflate gamesPlayed every time the

@@ -82,6 +82,33 @@ jest.mock('@lib/usernameGen', () => ({
   generateUsername: jest.fn(() => 'nova_code'),
 }));
 
+// Phase 7A.7 CP1 — expo-haptics wraps the iOS Taptic Engine via
+// native bindings unreachable from Node. We stub the three
+// async methods the helper module calls (selectionAsync,
+// impactAsync, notificationAsync) plus the enum members it
+// references. Tests that need to verify haptic calls explicitly
+// can spy on these mocks via `jest.spyOn`.
+jest.mock('expo-haptics', () => ({
+  selectionAsync: jest.fn(async () => undefined),
+  impactAsync: jest.fn(async () => undefined),
+  notificationAsync: jest.fn(async () => undefined),
+  ImpactFeedbackStyle: { Light: 'light', Medium: 'medium', Heavy: 'heavy' },
+  NotificationFeedbackType: { Success: 'success', Warning: 'warning', Error: 'error' },
+}));
+
+// Phase 7A.7 CP1 — `@/lib/haptics` is mocked globally as no-ops
+// so component / screen tests don't need to know about haptics
+// (they're sprinkled across ~20 trigger points; mocking each
+// per-test would be noisy). The helper's own test file
+// (`haptics.test.ts`) calls `jest.unmock('@/lib/haptics')` to
+// exercise the real implementation against the mocked
+// expo-haptics bindings above.
+jest.mock('@/lib/haptics', () => ({
+  selection: jest.fn(),
+  impact: jest.fn(),
+  notify: jest.fn(),
+}));
+
 // Phase 7A.6 CP6 — expo-notifications wraps native APNs / Android
 // notification surfaces that aren't reachable in Node. We stub the
 // two methods CP6 actually calls (getPermissionsAsync,

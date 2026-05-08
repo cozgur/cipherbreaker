@@ -43,6 +43,7 @@ import Svg, { Path } from 'react-native-svg';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
+import * as haptics from '@/lib/haptics';
 import { DigitKeypad, type DigitKeypadIndicator } from '@components/DigitKeypad';
 import { DigitTile } from '@components/DigitTile';
 import { Mode3Row } from '@components/game/rows/Mode3Row';
@@ -117,6 +118,7 @@ export function DailyMatchScreen(): React.JSX.Element {
       setError(`Enter ${remaining} more digit${remaining === 1 ? '' : 's'}.`);
       return;
     }
+    haptics.impact('medium');
     const guess = fullDraft.join('');
     const result = submitGuess(guess);
     if (result.error !== null) {
@@ -127,6 +129,10 @@ export function DailyMatchScreen(): React.JSX.Element {
     setError(null);
     if (result.summary !== null) {
       navigation.replace('DailyResult');
+    } else {
+      // Phase 7A.7 CP1 — feedback-rendered pulse for non-final
+      // guesses (the row appears in the timeline; no navigation).
+      haptics.impact('light');
     }
   }, [currentAttempt, config.digits, userInput, fullDraft, submitGuess, navigation]);
 
@@ -156,6 +162,7 @@ export function DailyMatchScreen(): React.JSX.Element {
 
   const onHintPress = useCallback(() => {
     if (currentAttempt === null) return;
+    haptics.impact('medium');
     const r = useDailyChallengeStore.getState().useHint();
     if (r.kind === 'no-attempt' || r.kind === 'unaffordable') {
       // Both should be UI-prevented; defensive no-op.
@@ -185,6 +192,7 @@ export function DailyMatchScreen(): React.JSX.Element {
 
   const onProbePress = useCallback(() => {
     if (currentAttempt === null || probeButton.disabled) return;
+    haptics.impact('medium');
     setIsPickingProbe(true);
   }, [currentAttempt, probeButton.disabled]);
 

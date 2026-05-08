@@ -1,6 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 
+import * as haptics from '@/lib/haptics';
 import { colors, fonts, withAlpha } from '@theme/tokens';
 
 /**
@@ -58,7 +59,10 @@ export function DigitKeypad({
             <DigitKey
               key={digit}
               label={String(digit)}
-              onPress={() => onDigit(digit)}
+              onPress={() => {
+                haptics.selection();
+                onDigit(digit);
+              }}
               disabled={disabled}
               indicator={indicators?.[digit]}
             />
@@ -69,12 +73,18 @@ export function DigitKeypad({
         <View style={styles.keySlot} />
         <DigitKey
           label="0"
-          onPress={() => onDigit(0)}
+          onPress={() => {
+            haptics.selection();
+            onDigit(0);
+          }}
           disabled={disabled}
           indicator={indicators?.[0]}
         />
         <DigitKey
-          onPress={onBackspace}
+          onPress={() => {
+            haptics.selection();
+            onBackspace();
+          }}
           disabled={disabled}
           icon={
             <Svg width="22" height="16" viewBox="0 0 22 16">

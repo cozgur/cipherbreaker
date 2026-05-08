@@ -44,6 +44,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path } from 'react-native-svg';
 
+import * as haptics from '@/lib/haptics';
 import { Button } from '@components/Button';
 import { Screen } from '@components/Screen';
 import { TokenCoin } from '@components/TokenCoin';
@@ -110,6 +111,7 @@ export function OnboardingTokenWalkthroughScreen(): React.JSX.Element {
   const isLast = currentSlide === SLIDE_COUNT - 1;
 
   const handleSkip = useCallback((): void => {
+    haptics.selection();
     completeOnboarding(formatDailyDate(new Date()));
     navigation.replace('Home');
   }, [completeOnboarding, navigation]);
@@ -117,6 +119,7 @@ export function OnboardingTokenWalkthroughScreen(): React.JSX.Element {
   const handleContinue = useCallback((): void => {
     const next = currentSlide + 1;
     if (next >= SLIDE_COUNT) return;
+    haptics.impact('light');
     setCurrentSlide(next);
     flatListRef.current?.scrollToIndex({ index: next, animated: true });
   }, [currentSlide]);
@@ -136,6 +139,7 @@ export function OnboardingTokenWalkthroughScreen(): React.JSX.Element {
     // mistake; CP7.1 fixes it. Skip handlers (CP2, CP4) still call
     // `completeOnboarding` — Skip is the explicit "rahat bırak"
     // intent and silencing nudges is correct there.
+    haptics.impact('light');
     markTokenWalkthroughSeen();
     stampOnboardingComplete(formatDailyDate(new Date()));
     navigation.replace('Home');
@@ -145,7 +149,10 @@ export function OnboardingTokenWalkthroughScreen(): React.JSX.Element {
     (e: NativeSyntheticEvent<NativeScrollEvent>): void => {
       const idx = Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH);
       const clamped = Math.max(0, Math.min(SLIDE_COUNT - 1, idx));
-      setCurrentSlide(clamped);
+      setCurrentSlide((prev) => {
+        if (prev !== clamped) haptics.selection();
+        return clamped;
+      });
     },
     [],
   );

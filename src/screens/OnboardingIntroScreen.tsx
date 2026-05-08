@@ -32,6 +32,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Circle, Path } from 'react-native-svg';
 
+import * as haptics from '@/lib/haptics';
 import { Button } from '@components/Button';
 import { ModeIcon } from '@components/ModeIcon';
 import { Screen } from '@components/Screen';
@@ -90,6 +91,7 @@ export function OnboardingIntroScreen(): React.JSX.Element {
   const isLast = currentSlide === SLIDE_COUNT - 1;
 
   const handleSkip = useCallback((): void => {
+    haptics.selection();
     completeOnboarding(formatDailyDate(new Date()));
     navigation.replace('Home');
   }, [completeOnboarding, navigation]);
@@ -97,6 +99,7 @@ export function OnboardingIntroScreen(): React.JSX.Element {
   const handleContinue = useCallback((): void => {
     const next = currentSlide + 1;
     if (next >= SLIDE_COUNT) return;
+    haptics.impact('light');
     // Update state immediately so the footer label + dot selection
     // change on press, even before the FlatList momentum settles.
     // `onMomentumScrollEnd` is idempotent — if the user swipes
@@ -111,6 +114,7 @@ export function OnboardingIntroScreen(): React.JSX.Element {
     // of the onboarding flags stay false so the next step's gate
     // engages as the user lands on TutorialMatch. CP7 wiring
     // replaces the prior CP2-shipped `'Home'` placeholder.
+    haptics.impact('light');
     markIntroSeen();
     navigation.replace('TutorialMatch');
   }, [markIntroSeen, navigation]);
@@ -119,7 +123,10 @@ export function OnboardingIntroScreen(): React.JSX.Element {
     (e: NativeSyntheticEvent<NativeScrollEvent>): void => {
       const idx = Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH);
       const clamped = Math.max(0, Math.min(SLIDE_COUNT - 1, idx));
-      setCurrentSlide(clamped);
+      setCurrentSlide((prev) => {
+        if (prev !== clamped) haptics.selection();
+        return clamped;
+      });
     },
     [],
   );

@@ -60,6 +60,7 @@ import type {
   GuessRowAdaptorContext,
   ModeCatalogEntry,
 } from '@game/types';
+import * as haptics from '@/lib/haptics';
 import { createRNG } from '@/lib/random';
 import type { MatchResultOutcome, RootStackParamList } from '@navigation/routes';
 import { useLiveMatchStore } from '@state/liveMatchStore';
@@ -228,6 +229,7 @@ export function MatchScreen(): React.JSX.Element {
 
   const submitGuess = useCallback((): void => {
     if (!isComplete) return;
+    haptics.impact('medium');
     if (isEngineMode) {
       if (!isPlayerTurn) return;
       const guessStr = draftDigits.map((d) => String(d ?? 0)).join('');
@@ -243,6 +245,11 @@ export function MatchScreen(): React.JSX.Element {
           }
           setValidationError(null);
           setDraftDigits([null, null, null, null]);
+          // Phase 7A.7 CP1 — feedback-rendered pulse. Submit's
+          // 'medium' fires on intent; 'light' fires on the
+          // engine accepting the guess (visible feedback row
+          // appears in the timeline).
+          haptics.impact('light');
         });
       return;
     }

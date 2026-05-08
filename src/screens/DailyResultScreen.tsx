@@ -14,12 +14,13 @@
  * the HomeScreen state-aware guard.
  */
 
-import { useCallback } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { Pressable, Share, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
+import * as haptics from '@/lib/haptics';
 import { NotificationOptInModal } from '@components/notifications/NotificationOptInModal';
 import { Screen } from '@components/Screen';
 import { calendarDayIndex } from '@game/daily/dailyConfig';
@@ -54,6 +55,18 @@ export function DailyResultScreen(): React.JSX.Element {
   // the next render → modal unmounts. The callback is kept for
   // future analytics hooks (Phase 7B).
   const handleOptInClose = useCallback(() => {}, []);
+
+  // Phase 7A.7 CP1 — outcome haptic on mount. Single-fire guard
+  // via useRef so a re-render (e.g. after the
+  // NotificationOptInModal flag flips post-CTA) doesn't re-pulse.
+  const outcomeHapticFiredRef = useRef<boolean>(false);
+  useEffect(() => {
+    if (outcomeHapticFiredRef.current) return;
+    if (lastResult === null) return;
+    outcomeHapticFiredRef.current = true;
+    if (lastResult.success) haptics.notify('success');
+    else haptics.notify('error');
+  }, [lastResult]);
 
   const goHome = useCallback(() => navigation.navigate('Home'), [navigation]);
   const onShare = useCallback(async () => {
