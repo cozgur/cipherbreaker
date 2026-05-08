@@ -55,6 +55,8 @@ import * as haptics from '@/lib/haptics';
 import { Button } from '@components/Button';
 import { Screen } from '@components/Screen';
 import { slides as mode2Slides, type ModeTutorialSlide } from '@components/modeTutorial/mode2';
+import { slides as mode3Slides } from '@components/modeTutorial/mode3';
+import { slides as mode4Slides } from '@components/modeTutorial/mode4';
 import { findMode } from '@data/modeCatalog';
 import type { RootStackParamList } from '@navigation/routes';
 import { useUserStore } from '@state/userStore';
@@ -66,14 +68,18 @@ type Route = RouteProp<RootStackParamList, 'ModeTutorial'>;
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 /**
- * CP4 ships Mode 2 only. Switch grows in CP5 (Modes 3+4) and
- * CP6 (Modes 5+6+7). Returns `null` for unsupported modes so the
+ * CP4 shipped Mode 2; CP5 adds Modes 3 + 4; CP6 will add Modes
+ * 5 + 6 + 7. Returns `null` for unsupported modes so the
  * mount-time guard can route past us without rendering empty.
  */
 function slidesForMode(modeId: number): readonly ModeTutorialSlide[] | null {
   switch (modeId) {
     case 2:
       return mode2Slides;
+    case 3:
+      return mode3Slides;
+    case 4:
+      return mode4Slides;
     default:
       return null;
   }

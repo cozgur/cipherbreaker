@@ -150,17 +150,72 @@ describe('ModeTutorialScreen', () => {
     expect(utils.getByLabelText(/^Bisect to crack it\./)).toBeTruthy();
   });
 
-  it('redirects to Matchmaking when an unsupported modeId is passed (CP4: only Mode 2 has content)', () => {
+  it('redirects to Matchmaking when an unsupported modeId is passed (CP5: Modes 5+6+7 still unsupported)', () => {
     // Mode 1 has its own bespoke tutorial (Phase 7A.6 CP3
     // TutorialMatchScreen) — the per-mode scaffold should never
-    // render for it. Mode 3 has no content yet (CP5 backfills);
-    // same defense.
+    // render for it. Modes 5-7 have no content yet (CP6 backfills);
+    // same defense. Use Mode 5 (Blackout) here since CP5 added
+    // Modes 3 + 4 content and they no longer trigger the
+    // defensive redirect.
+    const utils = mountScreen(5);
+    const route = utils.navRef.current?.getCurrentRoute();
+    expect(route?.name).toBe('Matchmaking');
+    expect((route?.params as { modeId: number }).modeId).toBe(5);
+    // Defensive does NOT mark the unseen tutorial as seen — we
+    // didn't show the user anything.
+    expect(useUserStore.getState().modeTutorialsSeen[5]).toBeUndefined();
+  });
+
+  it('routes Mode 3 (Precision) — renders mode3 slide 1 with the corrected +/− mechanic copy', () => {
     const utils = mountScreen(3);
+    expect(utils.getByText('PRECISION')).toBeTruthy();
+    expect(utils.getByText('Score over speed')).toBeTruthy();
+    // Locks the spec correction in place at the routing level
+    // too (the dedicated mode3.test.tsx pins it on the slides
+    // export; this asserts the scaffold actually mounts the
+    // right module).
+    expect(utils.getByText('Continue →')).toBeTruthy();
+  });
+
+  it('Skip on Mode 3 flips modeTutorialsSeen[3] and replaces into Matchmaking', () => {
+    const utils = mountScreen(3);
+    expect(useUserStore.getState().modeTutorialsSeen[3]).toBeUndefined();
+
+    act(() => {
+      fireEvent.press(utils.getByTestId('mode-tutorial-skip'));
+    });
+
+    expect(useUserStore.getState().modeTutorialsSeen[3]).toBe(true);
     const route = utils.navRef.current?.getCurrentRoute();
     expect(route?.name).toBe('Matchmaking');
     expect((route?.params as { modeId: number }).modeId).toBe(3);
-    // Defensive does NOT mark the unseen tutorial as seen — we
-    // didn't show the user anything.
-    expect(useUserStore.getState().modeTutorialsSeen[3]).toBeUndefined();
+  });
+
+  it('routes Mode 4 (Blitz) — renders mode4 slide 1 with the corrected chess-clock copy', () => {
+    const utils = mountScreen(4);
+    expect(utils.getByText('BLITZ')).toBeTruthy();
+    expect(utils.getByText('Beat the clock')).toBeTruthy();
+    expect(utils.getByText('Continue →')).toBeTruthy();
+  });
+
+  it('Start match on Mode 4 (after walking 3 slides) flips modeTutorialsSeen[4] and replaces into Matchmaking', () => {
+    const utils = mountScreen(4);
+    act(() => {
+      fireEvent.press(utils.getByText('Continue →'));
+    });
+    act(() => {
+      fireEvent.press(utils.getByText('Continue →'));
+    });
+
+    expect(useUserStore.getState().modeTutorialsSeen[4]).toBeUndefined();
+
+    act(() => {
+      fireEvent.press(utils.getByText('Start match →'));
+    });
+
+    expect(useUserStore.getState().modeTutorialsSeen[4]).toBe(true);
+    const route = utils.navRef.current?.getCurrentRoute();
+    expect(route?.name).toBe('Matchmaking');
+    expect((route?.params as { modeId: number }).modeId).toBe(4);
   });
 });
