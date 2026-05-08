@@ -109,6 +109,37 @@ jest.mock('@/lib/haptics', () => ({
   notify: jest.fn(),
 }));
 
+// Phase 7A.7 CP2 — `expo-audio` wraps the iOS / Android audio
+// session via native bindings unreachable from Node. Stub the
+// `Audio.createAudioPlayer` factory + the player surface the
+// helper uses (`isLoaded`, `volume`, `play`, `seekTo`). Tests
+// that need to verify sound calls explicitly can spy on these
+// mocks via `jest.spyOn`.
+jest.mock('expo-audio', () => ({
+  createAudioPlayer: jest.fn(() => ({
+    isLoaded: true,
+    volume: 0,
+    play: jest.fn(),
+    pause: jest.fn(),
+    seekTo: jest.fn(async () => undefined),
+    remove: jest.fn(),
+    replace: jest.fn(),
+  })),
+}));
+
+// Phase 7A.7 CP2 — `@/lib/sound` is mocked globally as no-ops,
+// same option-α strategy CP1 applied to haptics. The helper's
+// own test file (`sound.test.ts`) calls
+// `jest.unmock('@/lib/sound')` to exercise the real impl
+// against the expo-audio mock above.
+jest.mock('@/lib/sound', () => ({
+  win: jest.fn(),
+  lose: jest.fn(),
+  draw: jest.fn(),
+  earn: jest.fn(),
+  dailyUnlock: jest.fn(),
+}));
+
 // Phase 7A.6 CP6 — expo-notifications wraps native APNs / Android
 // notification surfaces that aren't reachable in Node. We stub the
 // two methods CP6 actually calls (getPermissionsAsync,

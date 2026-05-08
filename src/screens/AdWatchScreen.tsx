@@ -31,6 +31,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
+import * as sound from '@/lib/sound';
 import { Screen } from '@components/Screen';
 import { TokenCoin } from '@components/TokenCoin';
 import { formatDailyDate } from '@game/daily/dailyDate';
@@ -86,6 +87,8 @@ export function AdWatchScreen(): React.JSX.Element {
         // skip on a reject.
         const result = useUserStore.getState().applyRewardedDouble(matchId);
         if (result.success) {
+          // Phase 7A.7 CP2 — earn sound on successful double credit.
+          sound.earn();
           useMatchStore.getState().setDoubledReward(true);
           console.log('[analytics] rewarded_double_taken', {
             reward: result.doubledAmount ?? 0,
@@ -109,6 +112,9 @@ export function AdWatchScreen(): React.JSX.Element {
         // is hit, so the false branch is purely defensive.
         const today = formatDailyDate(new Date());
         const result = useUserStore.getState().watchAdAction(today);
+        // Phase 7A.7 CP2 — earn sound on successful credit. Cap-
+        // reached / defensive false branch fires nothing.
+        if (result.success) sound.earn();
         console.log('[analytics] ad_watch_completed', {
           tokens: result.reward,
           reason,

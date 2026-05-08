@@ -21,6 +21,7 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import * as haptics from '@/lib/haptics';
+import * as sound from '@/lib/sound';
 import { NotificationOptInModal } from '@components/notifications/NotificationOptInModal';
 import { Screen } from '@components/Screen';
 import { calendarDayIndex } from '@game/daily/dailyConfig';
@@ -64,8 +65,13 @@ export function DailyResultScreen(): React.JSX.Element {
     if (outcomeHapticFiredRef.current) return;
     if (lastResult === null) return;
     outcomeHapticFiredRef.current = true;
-    if (lastResult.success) haptics.notify('success');
-    else haptics.notify('error');
+    if (lastResult.success) {
+      haptics.notify('success');
+      sound.win();
+    } else {
+      haptics.notify('error');
+      sound.lose();
+    }
   }, [lastResult]);
 
   const goHome = useCallback(() => navigation.navigate('Home'), [navigation]);

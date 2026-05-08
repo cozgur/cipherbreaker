@@ -44,6 +44,7 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import * as haptics from '@/lib/haptics';
+import * as sound from '@/lib/sound';
 import { Button } from '@components/Button';
 import { DigitKeypad } from '@components/DigitKeypad';
 import { DigitTile } from '@components/DigitTile';
@@ -293,10 +294,16 @@ export function TutorialMatchScreen(): React.JSX.Element {
   // can't fire haptics there cleanly. Instead, useEffect on
   // hasWon / hasLost: fires once when the flag flips.
   useEffect(() => {
-    if (state.hasWon) haptics.notify('success');
+    if (state.hasWon) {
+      haptics.notify('success');
+      sound.win();
+    }
   }, [state.hasWon]);
   useEffect(() => {
-    if (state.hasLost) haptics.notify('error');
+    if (state.hasLost) {
+      haptics.notify('error');
+      sound.lose();
+    }
   }, [state.hasLost]);
 
   const finishAndExit = useCallback(() => {
@@ -310,6 +317,7 @@ export function TutorialMatchScreen(): React.JSX.Element {
   }, [markTutorialMatchCompleted, navigation]);
 
   const onWinContinue = useCallback(() => {
+    sound.earn();
     addTokens(TUTORIAL_REWARD_TOKENS, 'tutorial_match_complete');
     finishAndExit();
   }, [addTokens, finishAndExit]);

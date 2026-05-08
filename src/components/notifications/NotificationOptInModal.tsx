@@ -37,6 +37,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as Notifications from 'expo-notifications';
 
 import * as haptics from '@/lib/haptics';
+import * as sound from '@/lib/sound';
 import { Button } from '@components/Button';
 import { useUserStore } from '@state/userStore';
 import { colors, fonts, withAlpha } from '@theme/tokens';
@@ -68,6 +69,10 @@ export function NotificationOptInModal({
 
   const handleTurnOn = async (): Promise<void> => {
     haptics.impact('medium');
+    // Phase 7A.7 CP2 — fires BEFORE the await so the audio
+    // plays even if iOS denies permission silently (cached
+    // "Don't Allow" returns immediately without UI).
+    sound.dailyUnlock();
     // Fire the native permission request. iOS displays its system
     // prompt; this promise resolves only after the user taps
     // "Allow" or "Don't Allow" (or, on subsequent calls past a

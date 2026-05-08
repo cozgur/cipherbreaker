@@ -38,6 +38,7 @@ import { secretFor } from '@data/mockSecrets';
 import { findOpponent } from '@data/mockOpponents';
 import { grantTokens, useMockUser } from '@data/mockUser';
 import * as haptics from '@/lib/haptics';
+import * as sound from '@/lib/sound';
 import { formatDailyDate } from '@game/daily/dailyDate';
 import { canWatchAd } from '@game/economy/adCap';
 import { canShowInterstitial } from '@game/economy/iap';
@@ -172,11 +173,24 @@ export function MatchResultScreen(): React.JSX.Element {
     // Outcome fires on every path; the impact-light token pulse
     // fires only when reward > 0 (defeat / zero-stake-stalemate
     // get only the outcome haptic).
-    if (outcome === 'victory') haptics.notify('success');
-    else if (outcome === 'defeat') haptics.notify('error');
-    else haptics.notify('warning'); // draw / stalemate
+    // Phase 7A.7 CP2 — outcome sound mirrors the haptic. Win /
+    // draw / lose / stalemate all paired with the matching
+    // haptic above; earn() fires alongside the token-pulse
+    // haptic when reward > 0.
+    if (outcome === 'victory') {
+      haptics.notify('success');
+      sound.win();
+    } else if (outcome === 'defeat') {
+      haptics.notify('error');
+      sound.lose();
+    } else {
+      // draw / stalemate
+      haptics.notify('warning');
+      sound.draw();
+    }
     if (reward > 0) {
       haptics.impact('light');
+      sound.earn();
       grantTokens(reward);
     }
     // Stats + XP + interstitial counter only fire on the engine

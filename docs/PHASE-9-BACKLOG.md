@@ -52,6 +52,18 @@ Each item lists: scope, why it was deferred, and (where applicable) what would u
 
 ---
 
+### Sound asset polish
+
+**Scope.** Replace CP2 procedural ffmpeg WAVs with curated/produced sounds. The five files in `assets/sounds/` (`win.wav`, `lose.wav`, `draw.wav`, `earn.wav`, `dailyUnlock.wav`) shipped during Phase 7A.7 CP2 as mathematically-synthesized placeholders (sine + amix + afade chains) — see `assets/sounds/ATTRIBUTION.md` for generation details.
+
+**Why deferred.** Procedural assets are functional and fully license-free, sufficient to ship a working sound surface. Production polish should source from a professional library (Mixkit / Pixabay CC0, or licensed pack) or commission custom sounds.
+
+**Asset swap is a 5-file drop-in.** New WAV / MP3 files at the same paths. `src/lib/sound.ts` `require()` references are filename-stable; no code changes needed. Update `assets/sounds/ATTRIBUTION.md` with the new source + license.
+
+**Adjacent: master volume slider.** CP2 hardcoded `volume: 0.7` per player. A user-facing master volume slider in Settings is also queued; both can land together if the Phase 9 polish pass takes audio seriously.
+
+---
+
 ## Cleanup / tech debt
 
 ### `completeOnboarding` does not flip `hasOnboarded`

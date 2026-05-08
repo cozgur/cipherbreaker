@@ -36,6 +36,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import * as haptics from '@/lib/haptics';
+import * as sound from '@/lib/sound';
 import { Button } from '@components/Button';
 import { useUserStore } from '@state/userStore';
 import { colors, fonts, withAlpha } from '@theme/tokens';
@@ -73,6 +74,7 @@ export function BlitzTeaserModal({
 
   const handleTry = (): void => {
     haptics.impact('medium');
+    sound.earn();
     addTokens(BLITZ_TEASER_GIFT_TOKENS, 'blitz_teaser_gift');
     markBlitzTeaserSeen();
     onClose();
