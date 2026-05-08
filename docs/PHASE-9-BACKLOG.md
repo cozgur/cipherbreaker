@@ -62,6 +62,16 @@ Each item lists: scope, why it was deferred, and (where applicable) what would u
 
 **Adjacent: master volume slider.** CP2 hardcoded `volume: 0.7` per player. A user-facing master volume slider in Settings is also queued; both can land together if the Phase 9 polish pass takes audio seriously.
 
+### Per-mode tutorial copy review
+
+**Scope.** Native-English / UX-writer pass over the slide titles and bodies in `src/components/modeTutorial/mode<2..7>.tsx`. Headlines and microcopy were authored by the Phase 7A.7 CP4-CP6 design conversation, not by a copywriter.
+
+**Why deferred.** CP4 surfaced one factual error mid-implementation: the spec's Mode 2 mechanic description claimed per-digit HIGHER/LOWER feedback, but the production evaluator (`evaluateHighLow`) compares the whole-number value of the guess and emits a single direction. CP4 shipped corrected copy after the user confirmed Option B (correct the mechanic, queue the polish). Other modes' copy was authored under similar unverified mental models — the polish pass should verify mechanic accuracy alongside language polish, not just style.
+
+**Verification protocol for the polish pass.** For each mode 2-7, locate the evaluator (`@game/modes/mode<id>/evaluate`) and the row renderer (`@components/game/rows/Mode<id>Row`), confirm the actual feedback semantics, then read the tutorial copy against that ground truth. Flag any contradictions before touching language. CP4-CP6 implementation discipline (added partway through Phase 7A.7) requires this verification at implementation time; the polish pass is the second-pass safety net.
+
+**Bundled with copy:** the `Start match →` / `Continue →` footer wording in `ModeTutorialScreen.tsx` and the per-mode CTA tone (e.g., "Bisect to crack it" intentionally hints at strategy — modes 5 Blackout / 7 Mirror should get a similar strategy hook on slide 3 if the language pass agrees with the framing).
+
 ---
 
 ## Cleanup / tech debt

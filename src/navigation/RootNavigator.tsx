@@ -11,6 +11,7 @@ import { InterstitialAdScreen } from '@screens/InterstitialAdScreen';
 import { MatchmakingScreen } from '@screens/MatchmakingScreen';
 import { MatchResultScreen } from '@screens/MatchResultScreen';
 import { MatchScreen } from '@screens/MatchScreen';
+import { ModeTutorialScreen } from '@screens/ModeTutorialScreen';
 import { OnboardingIntroScreen } from '@screens/OnboardingIntroScreen';
 import { OnboardingTokenWalkthroughScreen } from '@screens/OnboardingTokenWalkthroughScreen';
 import { ProfileScreen } from '@screens/ProfileScreen';
@@ -106,6 +107,15 @@ export function RootNavigator(): React.JSX.Element {
         <Stack.Screen
           name="OnboardingTokenWalkthrough"
           component={OnboardingTokenWalkthroughScreen}
+          options={{
+            presentation: 'fullScreenModal',
+            gestureEnabled: false,
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen
+          name="ModeTutorial"
+          component={ModeTutorialScreen}
           options={{
             presentation: 'fullScreenModal',
             gestureEnabled: false,

@@ -33,6 +33,26 @@ export type RootStackParamList = {
    * `onboarding.tokenWalkthroughSeen`.
    */
   OnboardingTokenWalkthrough: undefined;
+  /**
+   * Phase 7A.7 CP4 — per-mode tutorial. Generic 3-slide scaffold
+   * keyed by `modeId`. CP4 ships Mode 2 content only; CP5 adds
+   * Modes 3+4, CP6 adds Modes 5+6+7. Mode 1 is excluded — Phase
+   * 7A.6 CP3's `TutorialMatch` covers it.
+   *
+   * Skip and Start CTA both call `markModeTutorialSeen(modeId)`
+   * and replace into `Matchmaking` with the same modeId — the user
+   * tapped that mode on Home and we keep them on the path. Going
+   * to Home would feel like a regression of their tap. Skip and
+   * Start both flip the seen flag so the tutorial does not
+   * intercept again on next mode launch (matches CP3's
+   * "skip = don't show me again" semantic for Mode 1).
+   *
+   * CP7 will wire the interception: `MatchmakingScreen` (or the
+   * Home → mode tile press handler) consults
+   * `userStore.modeTutorialsSeen[modeId]` and routes here when
+   * unseen.
+   */
+  ModeTutorial: { modeId: number };
   Home: undefined;
   Matchmaking: { modeId: number };
   SecretSetup: { modeId: number; opponentId: string };
