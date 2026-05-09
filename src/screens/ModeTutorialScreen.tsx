@@ -57,6 +57,9 @@ import { Screen } from '@components/Screen';
 import { slides as mode2Slides, type ModeTutorialSlide } from '@components/modeTutorial/mode2';
 import { slides as mode3Slides } from '@components/modeTutorial/mode3';
 import { slides as mode4Slides } from '@components/modeTutorial/mode4';
+import { slides as mode5Slides } from '@components/modeTutorial/mode5';
+import { slides as mode6Slides } from '@components/modeTutorial/mode6';
+import { slides as mode7Slides } from '@components/modeTutorial/mode7';
 import { findMode } from '@data/modeCatalog';
 import type { RootStackParamList } from '@navigation/routes';
 import { useUserStore } from '@state/userStore';
@@ -68,9 +71,15 @@ type Route = RouteProp<RootStackParamList, 'ModeTutorial'>;
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 /**
- * CP4 shipped Mode 2; CP5 adds Modes 3 + 4; CP6 will add Modes
- * 5 + 6 + 7. Returns `null` for unsupported modes so the
+ * CP4 shipped Mode 2; CP5 added Modes 3 + 4; CP6 completes the
+ * set with Modes 5 + 6 + 7. Mode 1 stays on Phase 7A.6 CP3's
+ * bespoke `TutorialMatchScreen`. Returns `null` for unsupported
+ * modes (Mode 1 + any future modeId outside [2, 7]) so the
  * mount-time guard can route past us without rendering empty.
+ *
+ * Mode 6 is intentionally a 2-slide tutorial — the rest are 3
+ * slides. The scaffold reads `slides.length` everywhere, so the
+ * variable count works without any branching here.
  */
 function slidesForMode(modeId: number): readonly ModeTutorialSlide[] | null {
   switch (modeId) {
@@ -80,6 +89,12 @@ function slidesForMode(modeId: number): readonly ModeTutorialSlide[] | null {
       return mode3Slides;
     case 4:
       return mode4Slides;
+    case 5:
+      return mode5Slides;
+    case 6:
+      return mode6Slides;
+    case 7:
+      return mode7Slides;
     default:
       return null;
   }

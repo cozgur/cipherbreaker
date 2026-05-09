@@ -150,20 +150,28 @@ describe('ModeTutorialScreen', () => {
     expect(utils.getByLabelText(/^Bisect to crack it\./)).toBeTruthy();
   });
 
-  it('redirects to Matchmaking when an unsupported modeId is passed (CP5: Modes 5+6+7 still unsupported)', () => {
-    // Mode 1 has its own bespoke tutorial (Phase 7A.6 CP3
-    // TutorialMatchScreen) — the per-mode scaffold should never
-    // render for it. Modes 5-7 have no content yet (CP6 backfills);
-    // same defense. Use Mode 5 (Blackout) here since CP5 added
-    // Modes 3 + 4 content and they no longer trigger the
-    // defensive redirect.
-    const utils = mountScreen(5);
+  it('redirects to Matchmaking when an unsupported modeId is passed (CP6: all of [2..7] now supported, defense covers Mode 1 + future modeIds)', () => {
+    // After CP6 the per-mode scaffold supports modeIds 2-7
+    // inclusive. Mode 1 has its own bespoke tutorial
+    // (TutorialMatchScreen) and the scaffold should never
+    // render for it. The remaining defensive case is any
+    // out-of-range modeId — use Mode 8 (which doesn't exist)
+    // here as a stand-in for "future deep link / programmer
+    // error / corrupt route param."
+    const utils = mountScreen(8);
     const route = utils.navRef.current?.getCurrentRoute();
     expect(route?.name).toBe('Matchmaking');
-    expect((route?.params as { modeId: number }).modeId).toBe(5);
+    expect((route?.params as { modeId: number }).modeId).toBe(8);
     // Defensive does NOT mark the unseen tutorial as seen — we
     // didn't show the user anything.
-    expect(useUserStore.getState().modeTutorialsSeen[5]).toBeUndefined();
+    expect(useUserStore.getState().modeTutorialsSeen[8]).toBeUndefined();
+  });
+
+  it('redirects to Matchmaking when modeId=1 is passed (Mode 1 owned by TutorialMatchScreen)', () => {
+    const utils = mountScreen(1);
+    const route = utils.navRef.current?.getCurrentRoute();
+    expect(route?.name).toBe('Matchmaking');
+    expect((route?.params as { modeId: number }).modeId).toBe(1);
   });
 
   it('routes Mode 3 (Precision) — renders mode3 slide 1 with the corrected +/− mechanic copy', () => {
@@ -217,5 +225,98 @@ describe('ModeTutorialScreen', () => {
     const route = utils.navRef.current?.getCurrentRoute();
     expect(route?.name).toBe('Matchmaking');
     expect((route?.params as { modeId: number }).modeId).toBe(4);
+  });
+
+  // ── CP6 — Modes 5 + 6 + 7 routing ──────────────────────────
+
+  it('routes Mode 5 (Blackout) — renders the corrected pure-blackout-count slide 1', () => {
+    const utils = mountScreen(5);
+    expect(utils.getByText('BLACKOUT')).toBeTruthy();
+    expect(utils.getByText("Everything's blacked out")).toBeTruthy();
+    expect(utils.getByText('Continue →')).toBeTruthy();
+  });
+
+  it('Skip on Mode 5 flips modeTutorialsSeen[5] and replaces into Matchmaking', () => {
+    const utils = mountScreen(5);
+    expect(useUserStore.getState().modeTutorialsSeen[5]).toBeUndefined();
+
+    act(() => {
+      fireEvent.press(utils.getByTestId('mode-tutorial-skip'));
+    });
+
+    expect(useUserStore.getState().modeTutorialsSeen[5]).toBe(true);
+    const route = utils.navRef.current?.getCurrentRoute();
+    expect(route?.name).toBe('Matchmaking');
+    expect((route?.params as { modeId: number }).modeId).toBe(5);
+  });
+
+  it('routes Mode 6 (Sudden Death) — renders 2 slides with "Five chances" first', () => {
+    // Mode 6 is the only 2-slide tutorial in the set
+    // (Decision 2). The scaffold reads `slides.length`
+    // everywhere so this works without any branching, but
+    // pin the 2-vs-3 invariant at the routing level too.
+    const utils = mountScreen(6);
+    expect(utils.getByText('SUDDEN DEATH')).toBeTruthy();
+    expect(utils.getByText('Five chances')).toBeTruthy();
+  });
+
+  it('Mode 6 renders exactly 2 pagination dots (NOT 3)', () => {
+    const utils = mountScreen(6);
+    expect(utils.getByTestId('mode-tutorial-dot-0')).toBeTruthy();
+    expect(utils.getByTestId('mode-tutorial-dot-1')).toBeTruthy();
+    expect(utils.queryByTestId('mode-tutorial-dot-2')).toBeNull();
+  });
+
+  it('Mode 6 reaches "Start match →" after a single Continue (only 2 slides)', () => {
+    const utils = mountScreen(6);
+    expect(utils.getByText('Continue →')).toBeTruthy();
+    act(() => {
+      fireEvent.press(utils.getByText('Continue →'));
+    });
+    // Already at the last slide after one advance.
+    expect(utils.queryByText('Continue →')).toBeNull();
+    expect(utils.getByText('Start match →')).toBeTruthy();
+  });
+
+  it('Skip on Mode 6 flips modeTutorialsSeen[6] and replaces into Matchmaking', () => {
+    const utils = mountScreen(6);
+    expect(useUserStore.getState().modeTutorialsSeen[6]).toBeUndefined();
+
+    act(() => {
+      fireEvent.press(utils.getByTestId('mode-tutorial-skip'));
+    });
+
+    expect(useUserStore.getState().modeTutorialsSeen[6]).toBe(true);
+    const route = utils.navRef.current?.getCurrentRoute();
+    expect(route?.name).toBe('Matchmaking');
+    expect((route?.params as { modeId: number }).modeId).toBe(6);
+  });
+
+  it('routes Mode 7 (Mirror) — renders "Same code, two minds" + the static rival board', () => {
+    const utils = mountScreen(7);
+    expect(utils.getByText('MIRROR')).toBeTruthy();
+    expect(utils.getByText('Same code, two minds')).toBeTruthy();
+    expect(utils.getByText('Continue →')).toBeTruthy();
+  });
+
+  it('Start match on Mode 7 (after walking 3 slides) flips modeTutorialsSeen[7] and replaces into Matchmaking', () => {
+    const utils = mountScreen(7);
+    act(() => {
+      fireEvent.press(utils.getByText('Continue →'));
+    });
+    act(() => {
+      fireEvent.press(utils.getByText('Continue →'));
+    });
+
+    expect(useUserStore.getState().modeTutorialsSeen[7]).toBeUndefined();
+
+    act(() => {
+      fireEvent.press(utils.getByText('Start match →'));
+    });
+
+    expect(useUserStore.getState().modeTutorialsSeen[7]).toBe(true);
+    const route = utils.navRef.current?.getCurrentRoute();
+    expect(route?.name).toBe('Matchmaking');
+    expect((route?.params as { modeId: number }).modeId).toBe(7);
   });
 });
