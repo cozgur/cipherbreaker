@@ -196,7 +196,9 @@ export function DemoBoard(): React.JSX.Element {
     <View style={styles.demoRoot} testID="mode4-demo-board">
       <View style={styles.demoHistory}>
         {guesses.length === 0 ? (
-          <Text style={styles.captionMuted}>No timer here. Try a guess.</Text>
+          <Text style={styles.captionMuted}>
+            {"Timer's just for show. Try a guess."}
+          </Text>
         ) : (
           guesses.map((g, i) => (
             <View key={i} style={styles.guessRow}>
@@ -217,6 +219,26 @@ export function DemoBoard(): React.JSX.Element {
         <Text style={styles.demoWin}>Cracked it. Try a real match.</Text>
       ) : (
         <>
+          {/*
+            Phase 7A.7 CP7.1 — static decorative timer
+            placeholder. The CP6 spec (Decision 3) excluded
+            timer UI from the demo to avoid stress; manual
+            sanity then revealed a visual-parity gap (the
+            slides describe a 60-second clock but the
+            interactive demo had no clock at all). The
+            placeholder threads the needle: present enough to
+            signal "this mode has a clock," static enough to
+            never tick. Hardcoded "1:00" matches production's
+            `formatClock(60_000)` output (M:SS, NOT 0:60).
+            Neutral color set distinguishes it from Slide 2's
+            danger-red teaching clock, which shows production
+            mid-countdown.
+          */}
+          <View style={styles.staticTimerPill} testID="mode4-static-timer">
+            <Text style={styles.staticTimerIcon}>⏱</Text>
+            <Text style={styles.staticTimerLabel}>1:00</Text>
+          </View>
+
           <View style={styles.draftRow}>
             {draftDigits.map((d, i) => (
               <DigitTile
@@ -289,6 +311,31 @@ const styles = StyleSheet.create({
     fontSize: 10,
     letterSpacing: 1.6,
     color: colors.danger,
+  },
+
+  // Demo-only static timer placeholder (CP7.1). Neutral colors
+  // — deliberately NOT the danger-red of slide 2's teaching
+  // clock — to signal "this is a placeholder, not a live clock."
+  staticTimerPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: withAlpha('#ffffff', 0.18),
+    backgroundColor: withAlpha('#ffffff', 0.06),
+  },
+  staticTimerIcon: {
+    fontSize: 12,
+  },
+  staticTimerLabel: {
+    fontFamily: fonts.mono,
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.textSecondary,
+    letterSpacing: 1,
   },
 
   // Demo board styles

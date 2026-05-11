@@ -211,12 +211,21 @@ export function DemoBoard(): React.JSX.Element {
                 ))}
               </View>
               {/*
-                Suppress the chip on a winning row to mirror CP4
-                mode2's "no pill on winning row" idiom — the
+                Phase 7A.7 CP7.1 — fixed-width chip slot. Mode 3
+                suppresses the chip on a winning row to mirror
+                CP4 mode2's "no pill on winning row" idiom (the
                 "Cracked it" cue speaks for the win, and a
-                redundant +4 chip would compete for attention.
+                redundant +4 chip would compete for attention).
+                But suppression without a placeholder caused the
+                win row's tile column to drift right of the
+                non-win rows because parent `alignItems: 'center'`
+                centered each row by content width. Wrapping the
+                chip (or its absence) in a fixed-width slot keeps
+                the row total width constant.
               */}
-              {g.isWin ? null : <PrecisionChip plus={g.plus} minus={g.minus} />}
+              <View style={styles.chipSlot} testID={`mode3-chip-slot-${i}`}>
+                {g.isWin ? null : <PrecisionChip plus={g.plus} minus={g.minus} />}
+              </View>
             </View>
           ))
         )}
@@ -300,6 +309,15 @@ const styles = StyleSheet.create({
   chip: {
     flexDirection: 'row',
     gap: 6,
+  },
+  // Fixed-width chip slot — sized for the worst-case "+N −M"
+  // chip ("+4 −0" at mono 15px ≈ 50px content + 6px gap → 56px;
+  // 60 buys breathing room). The slot consumes the same
+  // horizontal space whether populated or empty (win row), so
+  // the tile column stays aligned across all history rows.
+  chipSlot: {
+    minWidth: 60,
+    alignItems: 'flex-start',
   },
   chipCount: {
     fontFamily: fonts.mono,

@@ -59,27 +59,42 @@ describe('mode4 tutorial — DemoBoard', () => {
     return utils.getByRole('button', { name: 'Guess' });
   }
 
-  it('renders the prompt copy before any guess (and confirms NO timer in demo)', () => {
+  it('renders the prompt copy before any guess', () => {
     const utils = render(<DemoBoard />);
-    expect(utils.getByText('No timer here. Try a guess.')).toBeTruthy();
+    expect(utils.getByText("Timer's just for show. Try a guess.")).toBeTruthy();
   });
 
-  it('does not render any clock / timer UI inside the DemoBoard', () => {
-    // Phase 7A.6 Decision 3: the tutorial does NOT impose time
-    // pressure. Demo must not surface a countdown clock face,
-    // a "00:43"-shaped readout, or a "YOUR CLOCK" badge.
-    // Slide 2's static visual *can* show those (it's a teaching
-    // illustration of production), but the DemoBoard must not.
+  it('renders the static decorative timer pill at "1:00" — production format, never ticks (CP7.1)', () => {
+    // Phase 7A.7 CP7.1: the original CP6 demo had no timer
+    // UI at all (Decision 3 — tutorial does not impose time
+    // pressure). Manual sanity then revealed a visual-parity
+    // gap: slides describe a 60-second clock but the demo
+    // showed nothing. The fix adds a STATIC placeholder —
+    // present enough to signal "this mode has a clock,"
+    // static enough to never tick. "1:00" mirrors
+    // production's `formatClock(60_000)` output (M:SS, not
+    // 0:60). Slide 2's separate teaching clock at "00:43"
+    // (danger-red) is unrelated to this demo placeholder.
     const utils = render(<DemoBoard />);
-    const board = utils.getByTestId('mode4-demo-board');
-    expect(() => utils.getByText('YOUR CLOCK')).toThrow();
-    // No mm:ss-shaped numeric readout inside the demo.
-    const allText = (board.children as unknown[])
-      .flat(Infinity)
-      .filter((c): c is { props: { children: unknown } } =>
-        typeof c === 'object' && c !== null && 'props' in c,
-      );
-    void allText; // structural exclusion — explicit assertion above is the load-bearing one.
+    const pill = utils.getByTestId('mode4-static-timer');
+    expect(pill).toBeTruthy();
+    expect(utils.getByText('1:00')).toBeTruthy();
+  });
+
+  it('the static timer pill does NOT change after submitting a guess', () => {
+    // The placeholder is decorative — no useState, no
+    // setInterval, no formatClock invocation. Submitting a
+    // guess must not cause the pill to disappear, advance,
+    // or otherwise mutate. (The pill DOES disappear in the
+    // post-win state when the entire input region collapses,
+    // but that's the win cue replacing the input UI, not
+    // the timer ticking.)
+    const utils = render(<DemoBoard />);
+    expect(utils.getByText('1:00')).toBeTruthy();
+    tapDigits(utils, [0, 0, 0, 0]);
+    fireEvent.press(getGuessButton(utils));
+    // After one non-winning guess, timer still reads "1:00".
+    expect(utils.getByText('1:00')).toBeTruthy();
   });
 
   it('renders all 10 digit keys + backspace (regression guard for keypad collapse)', () => {

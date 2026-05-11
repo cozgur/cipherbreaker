@@ -145,6 +145,32 @@ describe('mode3 tutorial — DemoBoard', () => {
     expect(utils.queryByRole('button', { name: 'Guess' })).toBeNull();
   });
 
+  it('every history row carries a fixed-width chip slot — including the (chip-suppressed) winning row (CP7.1)', () => {
+    // CP7.1 alignment hotfix: the original CP5 implementation
+    // suppressed the +/- chip on winning rows to mirror CP4
+    // mode2's "no pill on win" idiom. That left win rows
+    // visually shorter than non-win rows; with parent
+    // `alignItems: 'center'`, the win row's tile column
+    // drifted right of non-win rows. The fix wraps the chip
+    // (or its absence) in a fixed-minWidth slot so the row
+    // total width is constant. This test asserts every row
+    // has the slot — including the soft-rig forced-win row —
+    // so a future regression that drops the wrapper is caught.
+    const utils = render(<DemoBoard />);
+
+    // 3 attempts: first two get chips, third is forced-win.
+    tapDigits(utils, [0, 0, 0, 0]);
+    fireEvent.press(getGuessButton(utils));
+    tapDigits(utils, [1, 1, 1, 1]);
+    fireEvent.press(getGuessButton(utils));
+    tapDigits(utils, [2, 2, 2, 2]);
+    fireEvent.press(getGuessButton(utils));
+
+    expect(utils.getByTestId('mode3-chip-slot-0')).toBeTruthy();
+    expect(utils.getByTestId('mode3-chip-slot-1')).toBeTruthy();
+    expect(utils.getByTestId('mode3-chip-slot-2')).toBeTruthy();
+  });
+
   it('renders Guess as a full-width secondary outline button', () => {
     const utils = render(<DemoBoard />);
     const button = getGuessButton(utils);
