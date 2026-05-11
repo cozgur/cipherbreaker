@@ -8,6 +8,7 @@
 import { act, fireEvent } from '@testing-library/react-native';
 
 import { __resetMockUserForTests, mockUser } from '@data/mockUser';
+import { useUserStore } from '@state/userStore';
 import { AdWatchScreen } from '@screens/AdWatchScreen';
 import { HomeScreen } from '@screens/HomeScreen';
 import { InsufficientTokensModal } from '@screens/InsufficientTokensModal';
@@ -189,6 +190,12 @@ describe('CP2 flows', () => {
     // Mode 3 ships with `digitsUnique: true` as of Phase 4 — the catalog
     // is canonical, no per-test patch needed.
     mockUser.tokens = 1000;
+    // Phase 7A.7 CP7 — HomeScreen now intercepts Mode 2-7 taps
+    // when the per-mode tutorial hasn't been seen, routing to
+    // ModeTutorial first. This test predates that interception
+    // and isolates the SecretSetup unique-digit flow, so we
+    // pre-seed the seen flag to bypass the tutorial gate.
+    useUserStore.setState({ modeTutorialsSeen: { 3: true } });
     jest.useFakeTimers();
     jest.spyOn(Math, 'random').mockReturnValue(0.5);
 

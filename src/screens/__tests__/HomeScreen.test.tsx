@@ -88,6 +88,120 @@ describe('HomeScreen', () => {
     expect(current?.params).toEqual({ modeId: 5 });
   });
 
+  // ── Phase 7A.7 CP7 — per-mode tutorial interception ──────────
+
+  describe('per-mode tutorial interception (CP7)', () => {
+    type ModeFixture = {
+      readonly modeId: number;
+      readonly label: string;
+    };
+
+    const MODE_2_TO_7: readonly ModeFixture[] = [
+      { modeId: 2, label: 'HIGH & LOW — 50 tokens' },
+      { modeId: 3, label: 'PRECISION — 50 tokens' },
+      { modeId: 4, label: 'BLITZ — 50 tokens' },
+      { modeId: 5, label: 'BLACKOUT — 100 tokens' },
+      { modeId: 6, label: 'SUDDEN DEATH — 50 tokens' },
+      { modeId: 7, label: 'MIRROR — 75 tokens' },
+    ];
+
+    it('Mode 1 is exempt — taps Color Match always go to Matchmaking, even if modeTutorialsSeen[1] is somehow false', () => {
+      // Mode 1's mechanic is covered by Phase 7A.6 CP3
+      // `TutorialMatchScreen` during the linear onboarding
+      // flow. By the time the user reaches Home, Mode 1 is
+      // already taught. The CP7 interception explicitly
+      // skips Mode 1 so a user who never opens the per-mode
+      // tutorial system doesn't get re-taught.
+      mockUser.tokens = 1000;
+      // Defensive: even if the modeTutorialsSeen map were
+      // somehow set with `[1]: false`, the interception
+      // must NOT route Mode 1 to ModeTutorial.
+      useUserStore.setState({ modeTutorialsSeen: { 1: false } });
+
+      const utils = renderWithNavigation('Home', {
+        Home: HomeScreen,
+        Matchmaking: RouteStubScreen,
+        ModeTutorial: RouteStubScreen,
+      });
+
+      act(() => {
+        fireEvent.press(utils.getByLabelText('COLOR MATCH — 50 tokens'));
+      });
+
+      const current = utils.navRef.current?.getCurrentRoute();
+      expect(current?.name).toBe('Matchmaking');
+      expect(current?.params).toEqual({ modeId: 1 });
+    });
+
+    it.each(MODE_2_TO_7)(
+      'Mode $modeId first tap (modeTutorialsSeen[$modeId] unset) → ModeTutorial',
+      ({ modeId, label }) => {
+        mockUser.tokens = 1000;
+        useUserStore.setState({ modeTutorialsSeen: {} });
+
+        const utils = renderWithNavigation('Home', {
+          Home: HomeScreen,
+          Matchmaking: RouteStubScreen,
+          ModeTutorial: RouteStubScreen,
+        });
+
+        act(() => {
+          fireEvent.press(utils.getByLabelText(label));
+        });
+
+        const current = utils.navRef.current?.getCurrentRoute();
+        expect(current?.name).toBe('ModeTutorial');
+        expect(current?.params).toEqual({ modeId });
+      },
+    );
+
+    it.each(MODE_2_TO_7)(
+      'Mode $modeId post-tutorial tap (modeTutorialsSeen[$modeId] = true) → Matchmaking directly',
+      ({ modeId, label }) => {
+        mockUser.tokens = 1000;
+        useUserStore.setState({ modeTutorialsSeen: { [modeId]: true } });
+
+        const utils = renderWithNavigation('Home', {
+          Home: HomeScreen,
+          Matchmaking: RouteStubScreen,
+          ModeTutorial: RouteStubScreen,
+        });
+
+        act(() => {
+          fireEvent.press(utils.getByLabelText(label));
+        });
+
+        const current = utils.navRef.current?.getCurrentRoute();
+        expect(current?.name).toBe('Matchmaking');
+        expect(current?.params).toEqual({ modeId });
+      },
+    );
+
+    it('balance gate fires before tutorial gate — insufficient balance + unseen tutorial → InsufficientTokens (NOT ModeTutorial)', () => {
+      // Tutorial CTA at the end of ModeTutorial routes to
+      // Matchmaking, which would dead-end at InsufficientTokens
+      // anyway. Showing the modal first lets the user resolve
+      // balance; the next tap then takes the tutorial path.
+      mockUser.tokens = 0;
+      useUserStore.setState({ modeTutorialsSeen: {} });
+
+      const utils = renderWithNavigation('Home', {
+        Home: HomeScreen,
+        Matchmaking: RouteStubScreen,
+        ModeTutorial: RouteStubScreen,
+        InsufficientTokens: RouteStubScreen,
+      });
+
+      act(() => {
+        fireEvent.press(utils.getByLabelText('BLACKOUT — 100 tokens'));
+      });
+
+      const current = utils.navRef.current?.getCurrentRoute();
+      expect(current?.name).toBe('InsufficientTokens');
+      expect(current?.params).toEqual({ modeId: 5 });
+    });
+  });
+
   it('tapping the avatar opens Profile', () => {
     const utils = renderWithNavigation('Home', {
       Home: HomeScreen,

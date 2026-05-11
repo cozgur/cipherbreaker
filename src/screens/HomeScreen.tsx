@@ -57,6 +57,12 @@ export function HomeScreen(): React.JSX.Element {
   const matchesCount = useUserStore((s) => s.matchesCompletedSinceOnboarding);
   const blitzTeaserSeen = useUserStore((s) => s.onboarding.blitzTeaserSeen);
   const mirrorTeaserSeen = useUserStore((s) => s.onboarding.mirrorTeaserSeen);
+  // Phase 7A.7 CP7 — per-mode tutorial gate. `playMode` reads
+  // this on every tap so a freshly-completed tutorial (which
+  // sets the flag in `markModeTutorialSeen`) routes the next
+  // tap straight to Matchmaking instead of looping the user
+  // back through the tutorial.
+  const modeTutorialsSeen = useUserStore((s) => s.modeTutorialsSeen);
   const showBlitzTeaser = matchesCount === 3 && !blitzTeaserSeen;
   const showMirrorTeaser = matchesCount === 5 && !mirrorTeaserSeen;
   // No-op onClose: the modal's CTA / Skip handlers flip the
@@ -170,9 +176,34 @@ export function HomeScreen(): React.JSX.Element {
         navigation.navigate('InsufficientTokens', { modeId: entry.id });
         return;
       }
+      // Phase 7A.7 CP7 — per-mode tutorial interception.
+      //
+      // Mode 1 is intentionally exempt. Mode 1's mechanic is
+      // covered by Phase 7A.6 CP3 `TutorialMatchScreen`, which
+      // is part of the linear onboarding flow before the user
+      // ever reaches HomeScreen. By the time a user taps Mode 1
+      // on Home, they've already completed the Mode 1 tutorial
+      // (or skipped onboarding intentionally). Re-intercepting
+      // here would loop them through a different per-mode
+      // tutorial that doesn't exist, since `slidesForMode(1)`
+      // returns null and the scaffold defensively redirects to
+      // Matchmaking on mount. Skipping the check entirely is
+      // both clearer and avoids a flash of the empty
+      // ModeTutorial screen.
+      //
+      // Modes 2-7: route the first tap to ModeTutorial. The
+      // tutorial's Skip and Start CTAs both call
+      // `markModeTutorialSeen(modeId)` and replace into
+      // Matchmaking, so the user lands in the same place they
+      // would have without the interception — just with one
+      // teaching detour.
+      if (entry.id !== 1 && !modeTutorialsSeen[entry.id]) {
+        navigation.navigate('ModeTutorial', { modeId: entry.id });
+        return;
+      }
       navigation.navigate('Matchmaking', { modeId: entry.id });
     },
-    [navigation, user.tokens],
+    [navigation, user.tokens, modeTutorialsSeen],
   );
 
   const classicModes = modeCatalog.filter((entry) => entry.meta.section === 'CLASSIC');
