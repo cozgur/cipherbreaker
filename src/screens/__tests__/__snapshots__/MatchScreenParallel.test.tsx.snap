@@ -12881,6 +12881,18 @@ exports[`Mode 7 — RACING label + SoloRaceBanner integration snapshots the Mode
                                 {
                                   "children": [
                                     {
+                                      "children": null,
+                                      "props": {
+                                        "style": {
+                                          "backgroundColor": "#14b8a6",
+                                          "borderRadius": 4,
+                                          "height": 8,
+                                          "width": 8,
+                                        },
+                                      },
+                                      "type": "View",
+                                    },
+                                    {
                                       "children": [
                                         "shadowHunter47",
                                         ": ",
@@ -12892,22 +12904,33 @@ exports[`Mode 7 — RACING label + SoloRaceBanner integration snapshots the Mode
                                         "style": {
                                           "color": "#14b8a6",
                                           "fontFamily": "Inter-SemiBold",
-                                          "fontSize": 11,
-                                          "letterSpacing": 0.4,
+                                          "fontSize": 13,
+                                          "letterSpacing": 0.6,
                                         },
                                       },
                                       "type": "Text",
                                     },
                                   ],
                                   "props": {
+                                    "collapsable": false,
                                     "style": {
-                                      "backgroundColor": "rgba(20,184,166,0.12)",
-                                      "borderColor": "rgba(20,184,166,0.5)",
+                                      "alignItems": "center",
+                                      "backgroundColor": "rgba(20,184,166,0.16)",
+                                      "borderColor": "rgba(20,184,166,0.6)",
                                       "borderRadius": 999,
                                       "borderWidth": 1,
-                                      "paddingHorizontal": 10,
-                                      "paddingVertical": 4,
+                                      "flexDirection": "row",
+                                      "gap": 8,
+                                      "marginTop": 4,
+                                      "paddingHorizontal": 16,
+                                      "paddingVertical": 8,
+                                      "transform": [
+                                        {
+                                          "scale": 1,
+                                        },
+                                      ],
                                     },
+                                    "testID": "solo-rival-count-badge",
                                   },
                                   "type": "View",
                                 },

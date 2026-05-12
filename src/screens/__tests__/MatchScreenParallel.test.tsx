@@ -17,8 +17,12 @@
  *     (engine-seeded, with badge).
  */
 
+import { act } from '@testing-library/react-native';
+
+import * as haptics from '@/lib/haptics';
 import { MatchScreen } from '@screens/MatchScreen';
 import { __resetRegistryForTests, modeRegistry } from '@game/modeRegistry';
+import { mode1ColorMatch } from '@game/modes/mode1ColorMatch';
 import { mode6SuddenDeath } from '@game/modes/mode6SuddenDeath';
 import { mode7Mirror } from '@game/modes/mode7Mirror';
 import type { GuessEntry, MatchState } from '@game/types';
@@ -87,6 +91,11 @@ beforeEach(() => {
   modeRegistry.register(mode7Mirror);
   __resetMockUserForTests();
   mockUser.username = 'phoenix99';
+  // Phase 7A.7 CP8 — clear global haptics mock between tests so
+  // count-delta-driven `selection()` assertions don't leak across
+  // suites. The CP1 jest.setup.js mock provides the fn; clearing
+  // here gives each test a clean call log.
+  (haptics.selection as jest.Mock).mockClear();
 });
 
 afterEach(() => {
@@ -249,6 +258,170 @@ describe('Mode 6 — active_parallel UI wiring', () => {
     });
     const utils = renderMatch(6);
     expect(stableTreeForSnapshot(utils.toJSON())).toMatchSnapshot();
+  });
+});
+
+// ─────────────────────────────────────────────────────────────
+// Phase 7A.7 CP8 — race-cue + animated badge tests (Items 2 + 4)
+// ─────────────────────────────────────────────────────────────
+
+describe('Mode 7 — CP8 rival-count badge polish + mid-match haptic cue', () => {
+  it('AnimatedRivalCount badge renders with the dedicated testID (CP8 item 2)', () => {
+    seedParallelMatch({
+      modeId: 7,
+      playerSecret: '5678',
+      opponentSecret: '5678',
+      opponentGuesses: [makeOpponentEntry(1, [1, 2, 3, 4])],
+    });
+    const utils = renderMatch(7);
+    // Snapshots verify the larger pill styling; this assertion
+    // pins the wrapper exists so a future refactor that drops
+    // the AnimatedRivalCount component (and reverts to inline
+    // static View) breaks loudly.
+    expect(utils.getByTestId('solo-rival-count-badge')).toBeTruthy();
+  });
+
+  it('does NOT fire haptics.selection on initial mount (no spurious cue on resume / fast-forward)', () => {
+    // Mounting at opponentGuessCount=2 (e.g., resume from background
+    // with a partially-played match) must not pulse the haptic —
+    // there's no delta from the user's perspective. The useRef
+    // initializes to the mounted value, so the first effect run
+    // sees `count === prev`.
+    seedParallelMatch({
+      modeId: 7,
+      playerSecret: '5678',
+      opponentSecret: '5678',
+      opponentGuesses: [makeOpponentEntry(1, [1, 2, 3, 4]), makeOpponentEntry(2, [4, 5, 6, 7])],
+    });
+    renderMatch(7);
+    expect(haptics.selection).not.toHaveBeenCalled();
+  });
+
+  it('fires haptics.selection on opponentGuessCount increment after mount (CP8 item 4)', () => {
+    // Start with 1 opponent guess, then bump to 2 via setState —
+    // the count delta should trigger the race-cue haptic.
+    seedParallelMatch({
+      modeId: 7,
+      playerSecret: '5678',
+      opponentSecret: '5678',
+      opponentGuesses: [makeOpponentEntry(1, [1, 2, 3, 4])],
+    });
+    renderMatch(7);
+    // Sanity: mount produced no haptic.
+    expect(haptics.selection).not.toHaveBeenCalled();
+
+    act(() => {
+      const current = useMatchStore.getState().matchState!;
+      useMatchStore.setState({
+        matchState: {
+          ...current,
+          opponentGuesses: [
+            ...current.opponentGuesses,
+            makeOpponentEntry(2, [5, 6, 7, 8]),
+          ],
+        },
+      });
+    });
+
+    expect(haptics.selection).toHaveBeenCalledTimes(1);
+  });
+
+  it('does NOT fire haptics.selection when the PLAYER submits a guess (delta is on player, not opponent)', () => {
+    // Item 4 is opponent-only — player's own submit haptic comes
+    // from CP1's submit handler (`impact('medium')`), not this
+    // race cue. A re-render driven by playerGuesses.length must
+    // not produce a phantom selection haptic.
+    seedParallelMatch({
+      modeId: 7,
+      playerSecret: '5678',
+      opponentSecret: '5678',
+      opponentGuesses: [makeOpponentEntry(1, [1, 2, 3, 4])],
+    });
+    renderMatch(7);
+    (haptics.selection as jest.Mock).mockClear();
+
+    act(() => {
+      const current = useMatchStore.getState().matchState!;
+      useMatchStore.setState({
+        matchState: {
+          ...current,
+          playerGuesses: [...current.playerGuesses, makePlayerEntry(1, [0, 0, 0, 0])],
+        },
+      });
+    });
+
+    expect(haptics.selection).not.toHaveBeenCalled();
+  });
+
+  it('Mode 6 (parallel but NOT Mirror) does not fire the race-cue haptic — Mode 7-only behaviour', () => {
+    // Mode 6 is also `parallelRace` but has visible opponent rows
+    // and an interleaved timeline — the race cue would compound
+    // with the existing visible activity. CP8 item 4 gates on
+    // `isMirror`, not `isParallel`.
+    seedParallelMatch({
+      modeId: 6,
+      playerSecret: '5678',
+      opponentSecret: '4321',
+      opponentGuesses: [makeOpponentEntry(1, [1, 2, 3, 4])],
+      guessLimits: { playerRemaining: 5, opponentRemaining: 4 },
+    });
+    renderMatch(6);
+
+    act(() => {
+      const current = useMatchStore.getState().matchState!;
+      useMatchStore.setState({
+        matchState: {
+          ...current,
+          opponentGuesses: [
+            ...current.opponentGuesses,
+            makeOpponentEntry(2, [9, 9, 9, 9]),
+          ],
+          guessLimits: { playerRemaining: 5, opponentRemaining: 3 },
+        },
+      });
+    });
+
+    expect(haptics.selection).not.toHaveBeenCalled();
+  });
+
+  it('Mode 1 (turn-based, non-parallel) is also untouched by the race-cue haptic', () => {
+    // Defense in depth: Mode 1 hits a completely different code
+    // path (turn-based engine driver), but the CP8 effect lives in
+    // shared `MatchScreen` code. Verify the `isMirror` gate is
+    // load-bearing — registering Mode 1 + mounting Mode 1 should
+    // produce zero `selection()` calls even when opponent
+    // guesses appear.
+    modeRegistry.register(mode1ColorMatch);
+    const now = Date.now();
+    useMatchStore.setState({
+      matchState: {
+        modeId: 1,
+        playerSecret: '1234',
+        opponentSecret: '4321',
+        playerGuesses: [],
+        opponentGuesses: [],
+        phase: 'active_turn_player',
+        result: null,
+        rngState: { seed: 1, callCount: 0 },
+        botDifficulty: 'normal',
+        firstAuthor: 'self',
+        startedAt: now,
+        lastUpdatedAt: now,
+      },
+    });
+    renderWithNavigation('Match', { Match: MatchScreen }, { modeId: 1, opponentId: 'opp-1' });
+
+    act(() => {
+      const current = useMatchStore.getState().matchState!;
+      useMatchStore.setState({
+        matchState: {
+          ...current,
+          opponentGuesses: [...current.opponentGuesses, makeOpponentEntry(1, [5, 5, 5, 5])],
+        },
+      });
+    });
+
+    expect(haptics.selection).not.toHaveBeenCalled();
   });
 });
 

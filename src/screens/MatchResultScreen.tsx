@@ -73,6 +73,46 @@ interface OutcomeViewModel {
  */
 const SECRET_TILE_STATE = 'neutral' as const;
 
+/**
+ * Phase 7A.7 CP8 (item 1) — race-aware sub for Mode 7.
+ *
+ * The tutorial (CP6) framed Mode 7 wins as "Cracked it first." but
+ * the generic `OUTCOMES.subTemplate` shipped Mode 1's "You cracked
+ * the code in N guesses" framing, losing the race semantic at the
+ * last screen of the user's session. This helper overrides the sub
+ * for Mode 7 only — title/tint/tokens/xp/confetti stay generic (the
+ * gold VICTORY / pink DEFEAT visual identity is mode-agnostic
+ * branding worth preserving).
+ *
+ * Returns `null` for every other modeId so the generic
+ * `view.subTemplate` runs unchanged. Forfeit never reaches this
+ * screen (`MatchScreen.confirmForfeit` calls `clearMatch` +
+ * `popToTop`), so no forfeit branch needed.
+ *
+ * Stalemate intentionally falls through: Mode 7 has no
+ * `maxGuessesPerPlayer` budget, so stalemate is unreachable in
+ * production (`parallelEngine.ts` header documents this). If it
+ * ever became reachable, the generic stalemate copy is still
+ * acceptable.
+ */
+function raceAwareSubFor(
+  modeId: number,
+  outcome: MatchResultOutcome,
+  ctx: { opponentName: string; turns: number },
+): string | null {
+  if (modeId !== 7) return null;
+  switch (outcome) {
+    case 'victory':
+      return 'Cracked it first.';
+    case 'defeat':
+      return `${ctx.opponentName} cracked it first.`;
+    case 'draw':
+      return 'Both cracked it.';
+    default:
+      return null;
+  }
+}
+
 const OUTCOMES: Readonly<Record<MatchResultOutcome, OutcomeViewModel>> = {
   victory: {
     title: 'VICTORY',
@@ -379,10 +419,11 @@ export function MatchResultScreen(): React.JSX.Element {
     () => Array.from(revealSecret, (c) => Number.parseInt(c, 10)),
     [revealSecret],
   );
-  const sub = view.subTemplate({
+  const subCtx = {
     opponentName: opponent?.username ?? 'Opponent',
     turns,
-  });
+  };
+  const sub = raceAwareSubFor(modeId, outcome, subCtx) ?? view.subTemplate(subCtx);
 
   return (
     <Screen ambientTint={view.tint} ambientIntensity={outcome === 'defeat' ? 0.12 : 0.26}>

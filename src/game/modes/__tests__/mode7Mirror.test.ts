@@ -154,12 +154,63 @@ describe('mode7Mirror — bot strategy re-uses Mode 1 (9K candidatePool)', () =>
     expect(mirrorOut.guess).toBe(mode1Out.guess);
   });
 
-  it('thinkingTime stays inside the global [BOT_THINK_MIN_MS, BOT_THINK_MAX_MS] band', () => {
-    for (let i = 0; i < 100; i += 1) {
+  it('thinkingTime stays inside Mode 7\'s tighter [2500, 8000] band (CP8 item 3)', () => {
+    // Phase 7A.7 CP8 (item 3): Mode 7 ships a tighter band than the
+    // global [2000, 12_000] inherited from Mode 1. The race-tension
+    // deliverable raises the floor to 2.5s (humanlike minimum,
+    // user-fairness on hard) and lowers the ceiling to 8s (removes
+    // the 12s dead spots). The sweep below — 200 iterations covers
+    // both warmup and post-warmup paths and the (now-removed) 8%
+    // outlier branch — confirms NO single value escapes the band.
+    for (let i = 0; i < 200; i += 1) {
       const t = mode7Mirror.bot.thinkingTime(makeContext());
-      expect(t).toBeGreaterThanOrEqual(2000);
-      expect(t).toBeLessThanOrEqual(12_000);
+      expect(t).toBeGreaterThanOrEqual(2500);
+      expect(t).toBeLessThanOrEqual(8000);
     }
+  });
+
+  it('thinkingTime NEVER produces Mode 1\'s 8% phone-down outlier (>=12s) — CP8 item 3 regression guard', () => {
+    // Mode 1's `thinkingTime` adds 5-10s to the chosen delay on 8% of
+    // calls, capped at 12s. That branch was deliberately dropped for
+    // Mode 7. With 1000 samples per difficulty + multiple turn
+    // numbers, the binomial probability of NOT catching it if still
+    // present is negligible (< 1e-30).
+    const difficulties = ['easy', 'normal', 'hard'] as const;
+    for (const difficulty of difficulties) {
+      for (let i = 0; i < 1000; i += 1) {
+        const t = mode7Mirror.bot.thinkingTime(makeContext({ difficulty, turnNumber: i % 10 }));
+        expect(t).toBeLessThan(8001);
+      }
+    }
+  });
+
+  it('hard difficulty stays at or above the 2.5s humanlike floor (no instant-guess unfairness)', () => {
+    // Hard's band is [0.0, 0.4] of the span, post-warmup ×0.8 on the
+    // high end. Math: low = 2500 + 5500*0.0 = 2500; high (warmup) =
+    // 2500 + 5500*0.4*0.8 = 4260. Anything below 2500 is a bug.
+    for (let i = 0; i < 500; i += 1) {
+      const t = mode7Mirror.bot.thinkingTime(makeContext({ difficulty: 'hard', turnNumber: 10 }));
+      expect(t).toBeGreaterThanOrEqual(2500);
+    }
+  });
+
+  it('DDA-pace skew preserved within the new band — easy slower than hard on average', () => {
+    // The whole point of the CP8 narrowing is "tighten without
+    // flattening DDA": easy must still feel slower than hard, just
+    // not 12s-slow. Average over 500 samples per difficulty; the
+    // mean is monotonically decreasing easy → normal → hard.
+    function meanOver(difficulty: 'easy' | 'normal' | 'hard', samples: number): number {
+      let total = 0;
+      for (let i = 0; i < samples; i += 1) {
+        total += mode7Mirror.bot.thinkingTime(makeContext({ difficulty, turnNumber: 5 }));
+      }
+      return total / samples;
+    }
+    const easyMean = meanOver('easy', 500);
+    const normalMean = meanOver('normal', 500);
+    const hardMean = meanOver('hard', 500);
+    expect(easyMean).toBeGreaterThan(normalMean);
+    expect(normalMean).toBeGreaterThan(hardMean);
   });
 });
 

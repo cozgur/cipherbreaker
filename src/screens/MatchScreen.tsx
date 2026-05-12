@@ -25,7 +25,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Animated, Easing, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
@@ -282,6 +282,26 @@ export function MatchScreen(): React.JSX.Element {
     }, 100);
     return () => clearTimeout(id);
   }, [playerGuessCount, opponentGuessCount]);
+
+  // Phase 7A.7 CP8 (item 4) — Mode 7 "rival just guessed" haptic cue.
+  // Fires on opponentGuessCount delta when in Mirror. Uses a useRef
+  // to track the previous value so mounting at a non-zero count
+  // (resume from background, fast-forward in tests) does NOT fire
+  // a spurious haptic — only true increments after first render.
+  // Mode 1-6 are unaffected: turn-based modes already surface
+  // opponent activity through the visible row + typing indicator,
+  // and Mode 6's interleaved timeline makes the count incidental.
+  const prevOpponentCountRef = useRef<number>(opponentGuessCount);
+  useEffect(() => {
+    if (!isMirror) {
+      prevOpponentCountRef.current = opponentGuessCount;
+      return;
+    }
+    if (opponentGuessCount > prevOpponentCountRef.current) {
+      haptics.selection();
+    }
+    prevOpponentCountRef.current = opponentGuessCount;
+  }, [isMirror, opponentGuessCount]);
 
   const closePicker = useCallback(() => setPickerOpen(false), []);
 
@@ -894,13 +914,69 @@ export function SoloRaceBanner({
         </Text>
       </View>
       {opponentGuessCount !== undefined ? (
-        <View style={styles.soloOpponentCountBadge}>
-          <Text style={styles.soloOpponentCountText}>
-            {opponentName}: {opponentGuessCount} {opponentGuessCount === 1 ? 'guess' : 'guesses'}
-          </Text>
-        </View>
+        <AnimatedRivalCount name={opponentName} count={opponentGuessCount} />
       ) : null}
     </View>
+  );
+}
+
+/**
+ * Phase 7A.7 CP8 (item 2) — Mode 7 rival-count badge polish.
+ *
+ * Previously the badge was a small static teal pill below the
+ * opponent row. CP8 recon flagged it as the most race-critical
+ * UI element being the smallest. This component bumps the visual
+ * weight (larger padding + font + dot prefix) AND pulses on each
+ * increment so a user who isn't staring at the badge still sees
+ * peripheral motion when the rival moves. Mid-match haptic
+ * (item 4) lives in the MatchScreen-level `useEffect` so the
+ * tactile cue fires alongside the visual pulse atomically.
+ *
+ * Animation contract:
+ *   - Scale: 1.0 → 1.08 → 1.0 over ~300ms (in 120ms, out 180ms,
+ *     ease-out → ease-in). Subtle, race-tone not celebration.
+ *   - useRef tracks prev count → no spurious pulse on mount or
+ *     resume (same invariant as the haptic effect above).
+ */
+interface AnimatedRivalCountProps {
+  readonly name: string;
+  readonly count: number;
+}
+
+function AnimatedRivalCount({ name, count }: AnimatedRivalCountProps): React.JSX.Element {
+  const [scale] = useState(() => new Animated.Value(1));
+  const prevCountRef = useRef<number>(count);
+
+  useEffect(() => {
+    if (count > prevCountRef.current) {
+      Animated.sequence([
+        Animated.timing(scale, {
+          toValue: 1.08,
+          duration: 120,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.timing(scale, {
+          toValue: 1.0,
+          duration: 180,
+          easing: Easing.in(Easing.quad),
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+    prevCountRef.current = count;
+  }, [count, scale]);
+
+  return (
+    <Animated.View
+      style={[styles.soloOpponentCountBadge, { transform: [{ scale }] }]}
+      testID="solo-rival-count-badge"
+    >
+      <View style={styles.soloOpponentCountDot} />
+      <Text style={styles.soloOpponentCountText}>
+        {name}: {count} {count === 1 ? 'guess' : 'guesses'}
+      </Text>
+    </Animated.View>
   );
 }
 
@@ -1140,19 +1216,33 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
+  // CP8 (item 2) — beefed up from { paddingH: 10, paddingV: 4,
+  // fontSize: 11 } to give the race-critical signal real visual
+  // weight. Added a leading dot in success-green to read as a
+  // "live" indicator (same idiom as `Mode5Row`'s LockedPill dot).
   soloOpponentCountBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: withAlpha('#14b8a6', 0.5),
-    backgroundColor: withAlpha('#14b8a6', 0.12),
+    borderColor: withAlpha('#14b8a6', 0.6),
+    backgroundColor: withAlpha('#14b8a6', 0.16),
+    marginTop: 4,
+  },
+  soloOpponentCountDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#14b8a6',
   },
   soloOpponentCountText: {
     fontFamily: fonts.bodySemibold,
-    fontSize: 11,
+    fontSize: 13,
     color: '#14b8a6',
-    letterSpacing: 0.4,
+    letterSpacing: 0.6,
   },
   timeline: {
     flex: 1,

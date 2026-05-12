@@ -282,6 +282,104 @@ describe('MatchResultScreen — engine path (route params)', () => {
   });
 });
 
+describe('MatchResultScreen — Phase 7A.7 CP8 race-aware sub (Mode 7)', () => {
+  beforeEach(() => {
+    __resetMockUserForTests();
+    useUserStore.setState({
+      stats: {
+        ...USER_STORE_DEFAULTS.stats,
+        gamesPlayed: 100,
+        winRate: 60,
+        bestStreak: 99,
+      },
+    });
+  });
+
+  it('Mode 7 victory sub reads "Cracked it first." (NOT the generic Mode 1 "You cracked the code in N guesses")', () => {
+    // CP6 tutorial framed Mode 7 wins as "Cracked it first." Production previously
+    // shipped the generic Mode 1 sub, losing the race semantic at the last screen
+    // of the user's Mirror session. CP8 item 1 closes this gap.
+    const utils = renderEngineResult({
+      modeId: 7,
+      outcome: 'victory',
+      secret: '1234',
+      guessCount: 4,
+      reward: 180,
+      xpGain: 30,
+    });
+    expect(utils.queryByText('Cracked it first.')).toBeTruthy();
+    expect(utils.queryByText(/You cracked the code in 4 guesses/)).toBeNull();
+  });
+
+  it('Mode 7 defeat sub names the rival ("Rivalname cracked it first.")', () => {
+    // Engine-path renderEngineResult defaults `opponentId: 'opp-1'`
+    // → shadowHunter47 is the rival fixture (per renderResult docstring).
+    const utils = renderEngineResult({
+      modeId: 7,
+      outcome: 'defeat',
+      secret: '1234',
+      guessCount: 6,
+      reward: 0,
+      xpGain: 5,
+    });
+    expect(utils.queryByText('shadowHunter47 cracked it first.')).toBeTruthy();
+    expect(utils.queryByText(/cracked it in 6/)).toBeNull();
+  });
+
+  it('Mode 7 draw sub reads "Both cracked it." (reachable only in test-constructed states per parallelEngine)', () => {
+    const utils = renderEngineResult({
+      modeId: 7,
+      outcome: 'draw',
+      secret: '1234',
+      guessCount: 5,
+      reward: 75,
+      xpGain: 15,
+    });
+    expect(utils.queryByText('Both cracked it.')).toBeTruthy();
+    expect(utils.queryByText(/Both cracked the code in 5/)).toBeNull();
+  });
+
+  it('Mode 7 keeps the generic VICTORY title (race framing lives in the sub, not the title)', () => {
+    // The big stylized title is mode-agnostic visual identity
+    // (gold/pink/violet). Only the sub line carries the race semantic.
+    const utils = renderEngineResult({
+      modeId: 7,
+      outcome: 'victory',
+      secret: '1234',
+      guessCount: 4,
+      reward: 180,
+      xpGain: 30,
+    });
+    expect(utils.queryByText('VICTORY')).toBeTruthy();
+  });
+
+  it('Mode 1-6 outcomes are unaffected — generic sub still ships for non-Mirror modes (regression guard)', () => {
+    const utils = renderEngineResult({
+      modeId: 1,
+      outcome: 'victory',
+      secret: '1234',
+      guessCount: 4,
+      reward: 100,
+      xpGain: 30,
+    });
+    expect(utils.queryByText('You cracked the code in 4 guesses')).toBeTruthy();
+    expect(utils.queryByText('Cracked it first.')).toBeNull();
+  });
+
+  it('Mode 1 defeat copy unaffected (regression guard for the generic Mode 2-6 path)', () => {
+    const utils = renderEngineResult({
+      modeId: 2,
+      outcome: 'defeat',
+      secret: '1234',
+      guessCount: 6,
+      reward: 0,
+      xpGain: 5,
+    });
+    expect(utils.queryByText('shadowHunter47 cracked it in 6')).toBeTruthy();
+    expect(utils.queryByText('shadowHunter47 cracked it first.')).toBeNull();
+  });
+});
+
 describe('MatchResultScreen — Phase 7A.5 CP3 interstitial counter + trigger', () => {
   beforeEach(() => {
     __resetMockUserForTests();
