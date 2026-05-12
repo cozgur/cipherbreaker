@@ -1664,3 +1664,151 @@ Phase 7A.6 is programmatic-green at `1360/1360` tests, manual-sanity verified en
 - Per-mode first-time tutorials (Mode 2 High/Low, Mode 3 Precision, Mode 4 Blitz, Mode 5 Blackout, Mode 6 Sudden Death, Mode 7 Mirror) were tabled until 7A.6 sealed; they can now slot into the post-onboarding surface space (after the CP4 walkthrough has explained tokens, but before the user has played each mode for the first time).
 - Mode 1-7 in-match hint UI integration is the larger downstream design conversation. Currently hints are Daily-only; if Phase 7A.7 wants to extend, the surface is sized in the Phase 9 backlog.
 - Settings entries to re-enable individual onboarding surfaces ("Replay tutorial", "Re-enable notifications") are post-launch polish; Phase 7A.7 may take them or defer to Phase 8.
+
+---
+
+## Phase 7A.7 — UX details + per-mode tutorials (delta)
+
+Phase 7A.7 layered four user-experience seams on top of the sealed Phase 7A.6 onboarding flow: tactile + audio feedback helpers (CP1/CP2), a per-mode tutorial schema + scaffold + six new tutorials (CP3-CP6), HomeScreen tap interception that wires the tutorials into the production flow (CP7), and a four-item polish bundle for Mode 7's race ecosystem (CP8). Mode 1-7 production game logic was untouched except for Mode 7's bot pace + UI polish (CP8).
+
+### CP timeline + commits
+
+- **CP1** — Haptics integration (`a441699`). `src/lib/haptics.ts` wrapper around `expo-haptics` (selection / impact / notify). Global jest mock in `jest.setup.js` so the ~20 trigger sites across screens don't need per-test patching. Activates the pre-existing `useSettingsStore.haptics` field as a master toggle.
+- **CP2** — Sound integration (`2e478b1`). `src/lib/sound.ts` with five named functions (win / lose / draw / earn / dailyUnlock) gated on `useSettingsStore.sound`. Eager module-load `createAudioPlayer` so first-call latency is invisible; `seekTo(0) → play()` semantics restart on rapid repeat. Five procedurally generated WAVs (ffmpeg sine + amix + afade) at `assets/sounds/` as placeholders for production-licensed assets (queued in Phase 9). Global jest mock at the `@/lib/sound` level + native-binding mock at `expo-audio`.
+- **CP3** — Per-mode tutorial schema + migration v5→v6 (`9bab45c`). New `modeTutorialsSeen: Readonly<Record<number, boolean>>` top-level field on `useUserStore` + `markModeTutorialSeen(modeId)` action. Migration `v5 → v6` with a `gamesPlayed > 0` paternalistic-skip heuristic — players who have already played Modes 2-7 get the flag pre-set to `true` so the schema doesn't retroactively intercept them. `STORE_VERSION` bumped to 6. Per-mode tutorial state intentionally lives at the top level (not under `onboarding.*`) because per-mode tutorials are post-onboarding contextual nudges, not part of the linear onboarding flow.
+- **CP4** — `ModeTutorialScreen` scaffold + Mode 2 (High & Low) tutorial (`f235351`). Single generic screen keyed by `route.params.modeId`; mode-specific content modules at `src/components/modeTutorial/mode<N>.tsx` each export a `slides: ModeTutorialSlide[]` array and a `DemoBoard` component. Scaffold renders `slides.length` pagination dots — variable slide counts supported out-of-the-box. Mid-CP hotfix 1: DemoBoard keypad collapsed to 1px bars under parent `alignItems: 'center'` because `DigitKeypad`'s rows use `flex: 1` keySlots with no intrinsic width — fixed via `alignSelf: 'stretch'` wrapper. Mid-CP hotfix 2: GUESS button was 160px primary CTA centered under the (stretched) keypad — read as left-biased; reshaped to `variant="outline" size="lg"` paired with the START MATCH primary in the screen footer. 3-guess soft-rig pattern established: on the 3rd submission force `isWin: true` regardless of input + override mode-specific win signature for clean visual reward.
+- **CP5** — Mode 3 (Precision) + Mode 4 (Blitz) tutorials (`271a473`). `slidesForMode` switch extended with two new cases; no scaffold edits. Mode 3 DemoBoard renders `+N −M` chip mirroring `Mode3Row`; soft-rig overrides `plus = 4 / minus = 0` for the forced-win row. Mode 4 DemoBoard reuses Mode 1's Wordle two-pass green/yellow/gray tiles (mode4Blitz.ts literally re-exports `evaluateColorMatch`); soft-rig overrides `states = ALL_GREEN`. Mode 4 explicit decision (Phase 7A.6): demo does NOT impose time pressure — no live timer.
+- **CP6** — Mode 5 (Blackout) + Mode 6 (Sudden Death) + Mode 7 (Mirror) tutorials (`111f39f`). Three new mode modules, two new test files. Mode 6 ships exactly **2 slides** (Decision 2: simple Mode-1-derivative mechanic doesn't justify a third); the scaffold's `slides.length` plumbing handles the variable count without branching. Mode 5 DemoBoard renders blackout tiles + "N LOCKED" pill mirroring `Mode5Row` (with the inline `LockedPill`); soft-rig overrides `locked = 4`. Mode 6 demo surfaces an "ATTEMPT N / 3" counter mirroring production's `N/5` idiom (smaller cap because demos cap). Mode 7 demo introduces the **static-rival pattern**: split-board layout with three frozen rival rows, NO bot AI invocation, NO `setInterval`, NO `parallelEngine`. Mid-CP hotfix: Mode 5 history row alignment — tiles drifted horizontally as the "N LOCKED" pill width changed; fixed by dropping `flexDirection: 'row'` from `attemptRow` so tiles render on top + pill stacks below (mirrors production `Mode5Row`'s `below`-slot via `GuessRowShell`).
+- **CP7** — HomeScreen ModeCard tap interception (`1e89589`). `playMode(entry)` extended to consult `userStore.modeTutorialsSeen` after the balance gate. Mode 1 explicitly exempt (Phase 7A.6 CP3 `TutorialMatchScreen` owns Mode 1; re-intercepting on Home would loop the user through a per-mode tutorial that doesn't exist — `slidesForMode(1)` returns null + scaffold defensively redirects to Matchmaking). Modes 2-7 route the first tap to `ModeTutorial`; Skip and Start CTAs both call `markModeTutorialSeen(modeId)` + replace into Matchmaking, so re-tap goes straight to Matchmaking.
+- **CP7.1** — Tutorial polish hotfix (`017ccbc`). Two visual gaps surfaced during CP7 sanity: (1) Mode 3 win-row tile column drifted right of non-win rows because the soft-rig win row suppressed the chip → centered total width differed → tiles centered at different X. Fixed via a fixed-width `chipSlot` wrapper that consumes the same horizontal space whether populated or empty. (2) Mode 4 demo had no timer UI at all (CP6 Decision 3: tutorial doesn't impose time pressure), but the slides described a 60-second clock — visual-parity gap. Added a **static decorative timer pill** ("⏱ 1:00", neutral colors, hardcoded, no `setInterval`) above the draft row. Both fixes introduced new test invariants pinning the regression guards.
+- **CP8** — Mode 7 (Mirror) production polish (`7180e72`). Recon pass produced a prioritized polish list; user selected four items: (1) **Race-aware result copy** — `raceAwareSubFor(modeId, outcome, ctx)` helper above `OUTCOMES` returns Mode 7-specific subs ("Cracked it first." / "Rivalname cracked it first." / "Both cracked it."). Title stays mode-agnostic VICTORY/DEFEAT/DRAW (visual identity preserved). (2) **Opponent count badge polish** — new `AnimatedRivalCount` component inside `MatchScreen.tsx`; larger pill + leading green dot + scale pulse `1.0 → 1.08 → 1.0` over 300ms on `opponentGuessCount` increment. `useRef`-tracked prev count → no spurious pulse on mount. (3) **Mode 7-specific bot pace** — new `mirrorThinkingTime` in `mode7Mirror.ts` with constants `[2500, 8000]ms`, no 8% phone-down outlier, reuses Mode 1's difficulty bands + warmup so DDA-pace skew is preserved. Mode 1's `thinkingTime` untouched. (4) **Mid-match haptic cue** — `MatchScreen`-level `useEffect` keyed on `(isMirror, opponentGuessCount)` fires `haptics.selection()` on count delta. Gated on `isMirror` specifically (not `isParallel`) — Mode 6 untouched. Sound deliberately not wired mid-match (CP2 stays outcome-only by design — race tension preserved).
+
+### Mechanic verification protocol (CP4 / CP5 / CP6)
+
+The single highest-leverage discipline added in this phase. The user explicitly noted that the spec's mechanic descriptions for Modes 2-7 were authored from memory by the design conversation, not verified against production code. CP4 caught the first mismatch; the protocol was formalized and applied to every subsequent CP.
+
+Protocol:
+1. Locate the production evaluator at `@game/modes/mode<id>/evaluate` (or the façade like `mode<N><Name>.ts`)
+2. Locate the row renderer at `@components/game/rows/Mode<id>Row`
+3. Report the actual feedback semantics (what the evaluator returns; how the renderer displays it; what the win condition is)
+4. Cross-check against the spec's mechanic descriptions BEFORE drafting copy
+5. Flag any contradictions to the user with corrected-copy vs spec-copy options; do not silently fix
+
+Discipline scoreboard (final, end of CP6):
+
+| CP | Mode | Mismatch | Severity |
+|---|---|---|---|
+| CP4 | 2 (High & Low) | per-digit direction → whole-number direction | Medium |
+| CP5 | 3 (Precision) | cumulative score across guesses → per-guess +4 single-guess win | Medium |
+| CP5 | 4 (Blitz) | "submit to pause briefly" → chess-clock-semantic copy refinement | Minor |
+| **CP6** | **5 (Blackout)** | entire "lock to see" metaphor was fictional → pure blackout count | **Major** |
+| CP6 | 6 (Sudden Death) | none (spec accurate; placeholder N → 5 filled in) | — |
+| CP6 | 7 (Mirror) | "Race the clock-less" → "Pace, not clock" (title polish, no mechanic change) | Minor |
+
+**3 of 6 audited modes had real mechanic mismatches. Zero shipped to production.** Mode 5's correction was the largest — the entire spec metaphor (manual locking action, per-digit persistence, "wrong locks waste turns") was invented; production gives a single `locked: 0..4` count with all-blackout tiles.
+
+The protocol is now recorded as a feedback memory and mandatory for any future per-mode tutorial work (replay surfaces in Settings, new modes, copy polish passes).
+
+### Per-mode tutorial scaffold pattern (CP4-CP6)
+
+- Single `ModeTutorialScreen` keyed by `route.params.modeId` (no per-mode screen explosion)
+- Mode-specific content lives in `src/components/modeTutorial/mode<N>.tsx` — each module exports:
+  - `slides: readonly ModeTutorialSlide[]` where `ModeTutorialSlide = { title, body, visual? }`
+  - `DemoBoard: React.FC` — the interactive demo on the final slide
+- `slidesForMode(modeId)` switch in the scaffold maps modeId → slides; returns `null` for unsupported modeIds (Mode 1 or out-of-range), and the mount-time `useEffect` redirects to Matchmaking
+- DemoBoard owns its own state (digit draft, guess history) — generic state in the scaffold would force every mode to share a state shape
+- Variable slide count works automatically via `slides.length` — Mode 6 ships **2 slides**, every other mode 3
+- 3-guess soft-rig: the 3rd submission forces `isWin: true` regardless of user input; each mode overrides its mode-specific win signature (`states = ALL_GREEN`, `locked = 4`, `plus = 4 / minus = 0`) so the forced-win row reads cleanly instead of showing the user's actual numbers
+- Win cue copy: `"Cracked it. Try a real match."` for Modes 2-6; `"Cracked it first. Try a real match."` for Mode 7 (race framing matches CP8's race-aware production result copy)
+- Skip and Start CTAs both call `markModeTutorialSeen(modeId)` and `navigation.replace('Matchmaking', { modeId })` — Skip semantic is "don't show this again," not "abandon the mode I just picked"
+
+### Static decorative placeholder doctrine (CP6, CP7.1)
+
+"Visual parity yes, mechanic invocation no." When a tutorial demo references a mode-specific UI element that exists in production but would either (a) impose stress on a learning user (timer countdown) or (b) require complex state coordination (rival AI), the placeholder is rendered as a **static, hardcoded approximation** of the production UI.
+
+Two applications:
+- **Mode 4 demo timer** (CP7.1): hardcoded `"1:00"` pill, no `useState`, no `setInterval`, no `formatClock` invocation. Neutral colors (NOT the danger-red of Slide 2's separate teaching clock at "00:43"). Test invariant: timer text does not change after submitting a guess.
+- **Mode 7 demo rival** (CP6): three frozen `STATIC_RIVAL_ROWS` pre-rendered in the split-board's RIVAL column. No bot AI invoked, no `parallelEngine` instantiation, no `thinkingTime` calls. Test invariant: rival board's `—` placeholder count is unchanged across user submits.
+
+Purpose: prepare the user's mental model for the production UI without imposing production's behavioral cost on the tutorial. Pattern reusable for any future mode tutorial that references an asymmetric or stateful production element.
+
+### HomeScreen tap interception pattern (CP7)
+
+```ts
+const playMode = useCallback((entry: ModeCatalogEntry) => {
+  if (user.tokens < entry.meta.stake) {
+    navigation.navigate('InsufficientTokens', { modeId: entry.id });
+    return;
+  }
+  if (entry.id !== 1 && !modeTutorialsSeen[entry.id]) {
+    navigation.navigate('ModeTutorial', { modeId: entry.id });
+    return;
+  }
+  navigation.navigate('Matchmaking', { modeId: entry.id });
+}, [navigation, user.tokens, modeTutorialsSeen]);
+```
+
+Gate order: balance first, tutorial second. Reasoning: a tutorial CTA at the end of ModeTutorial routes to Matchmaking — with insufficient balance, that exit would dead-end at InsufficientTokens anyway. Showing the modal first lets the user resolve balance; the next tap then takes the tutorial path naturally.
+
+Mode 1 exemption is explicit (`entry.id !== 1`), not implicit via slidesForMode(1) returning null. Reasoning: skipping the check entirely avoids the one-frame flash where ModeTutorialScreen mounts, sees null slides, and `navigation.replace`'s back to Matchmaking. Cleaner UX.
+
+Existing `cp2Flows.test.tsx` test 6 (Mode 3 SecretSetup unique-digit error) had to pre-seed `modeTutorialsSeen: { 3: true }` after CP7 — its intent is to isolate SecretSetup behavior, not interception. The pre-seed is documented inline.
+
+### Mode 7 race ecosystem (CP8)
+
+CP8 is a polish bundle, not a feature CP — four items composed into one race-feel deliverable:
+
+| Item | Component | Implementation |
+|---|---|---|
+| Race-aware result copy | `raceAwareSubFor` helper | Mode 7-specific sub overrides; title stays mode-agnostic |
+| Animated count badge | `AnimatedRivalCount` | Larger pill, leading green dot, scale pulse 1.0→1.08→1.0 |
+| Mode 7 bot pace | `mirrorThinkingTime` | `[2500, 8000]ms`, no outlier; Mode 1 untouched |
+| Mid-match haptic | `useEffect` in MatchScreen | `haptics.selection()` on opponent count delta, isMirror-gated |
+
+DDA-pace preservation (CP3 stamps `botDifficulty` at match creation, modulates `thinkingTime` via `ctx.difficulty`):
+
+| Difficulty | Mode 1 (pre-CP8) | Mode 7 (CP8) | Notes |
+|---|---|---|---|
+| easy | 4.2-9.2s (post-warmup) | 4.7-6.7s | tighter; no 12+s dead spots |
+| normal | 3.2-6.7s | 3.6-5.6s | tightened slightly; race feel |
+| hard | 2.0-3.8s | **2.5-4.3s** | floor RAISED for user fairness |
+
+Tests pin: (1) no value escapes `[2500, 8000]` across 200 samples, (2) no 8% outlier across 3 difficulties × 1000 samples, (3) hard floor at 2.5s across 500 samples, (4) mean monotonically decreasing easy → normal → hard.
+
+Forfeit edge case (`confirmForfeit` in `MatchScreen` calls `clearMatch()` + `popToTop()`) never routes through `MatchResultScreen` — `raceAwareSubFor` never sees a forfeit, so no forfeit branch needed.
+
+### Lessons learned (process notes)
+
+- **Mechanic verification protocol is the single highest-leverage discipline added.** 50% mismatch rate; all caught pre-implementation. The cost of checking is ~10 minutes per mode; the cost of shipping a fictional gameplay model is months of confused users and a deferred polish pass. Make the protocol mandatory for any future tutorial copy work.
+- **Test infrastructure decisions made in CP1 / CP2 scaled cleanly across CP3-CP8.** The global `jest.setup.js` mocks for `@/lib/haptics` and `@/lib/sound` (option-α: mock the helper, not just the native binding) absorbed the ~20 trigger sites across screens without per-test patching. The `__resetPlayersForTests` pattern in sound.ts handled module-scope state cleanly. Future helpers in this shape should follow the same convention.
+- **Hot-fixing within a CP is acceptable when manual sanity surfaces small issues.** CP4 keypad collapse, CP4 GUESS button reshape, CP6 Mode 5 alignment, CP7.1 dedicated hotfix. Pre-commit discipline (revert temp dev pills before commit, manual sanity before commit) prevents mass-fix accidents. Use temp dev pills generously during manual sanity; revert without ceremony before commit.
+- **Reconnaissance pre-impl (CP8) — separating "survey what's there" from "decide what to ship" pays off when scope is vague.** The CP8 recon prompt asked for a pure read-pass with no code changes, returning a prioritized polish list with severity + effort tags. The user picked 4 of 7 items based on the effort/impact tradeoff; the remaining 3 went to Phase 9 backlog. This pattern (recon → decision → impl) is reusable any time a polish/refactor scope is fuzzy.
+- **Static decorative placeholders thread the needle between visual parity and mechanic isolation.** Mode 4 timer ("1:00", neutral, never ticks) and Mode 7 rival (3 frozen rows, no AI) both signal "this UI exists in production" without invoking the cost. Test invariants pin the static-ness (timer text unchanged, rival count unchanged) so a future regression that wires up a real ticker / bot is caught loudly.
+- **Schema migrations are now thrice-applied (v1→v2→v3, v3→v4, v5→v6).** The pattern is: (1) type-alias chain bookkeeping (V1State, V2State, …), (2) explicit migration function per version, (3) STORE_VERSION bump, (4) seeding heuristic for pre-existing users (CP3's `gamesPlayed > 0` paternalistic-skip mirrored Phase 7A.5's daily-ad-free invariant logic). Worth promoting to its own ARCHITECTURE checklist note (queued in Phase 9 backlog).
+
+### Test surface — 1360 → 1514 (+154 net)
+
+| CP | Δ | Notes |
+|---|---|---|
+| CP1 | +11 | haptics unit (5) + integration smoke (6 trigger sites) |
+| CP2 | +10 | sound unit (5) + integration smoke + procedural-asset attribution check |
+| CP3 | +9 | schema field + markModeTutorialSeen + migration v5→v6 with `gamesPlayed > 0` heuristic |
+| CP4 | +23 | mode2 slides + DemoBoard (10) + ModeTutorialScreen routing/skip/start/a11y/redirect (8) + soft-rig + button stretch + keypad presence (5) |
+| CP5 | +26 | mode3 (11) + mode4 (12) + scaffold extension tests |
+| CP6 | +44 | mode5 (12) + mode6 (10) + mode7 (11) + scaffold modeId 5/6/7 routing + Mode 6 dot count + Mode 8 defensive redirect |
+| CP7 | +14 | HomeScreen interception (12 parametric + 2 ordering) + cp2Flows pre-seed |
+| CP7.1 | +2 | mode3 chip slot invariant + mode4 static timer pin |
+| CP8 | +15 | MatchResult Mode 7 sub (6) + mode7Mirror bot pace (4) + MatchScreenParallel badge + haptic (5) |
+
+Net: `1360 → 1514` (+154 across the phase). Detailed breakdown in commit messages.
+
+### Phase 7A.7 sealed — Phase 7A.8 (onboarding rework + AI assets + bot illusion polish + mode unlock + Daily rotation) handoff
+
+Phase 7A.7 is programmatic-green at `1514/1514` tests, manual-sanity verified end-to-end on iOS Simulator across all 7 mode tutorials, the HomeScreen interception flow (first tap → tutorial → Matchmaking; re-tap → direct Matchmaking), and Mode 7's race ecosystem polish (race-aware result copy, animated badge, tighter bot pace, mid-match haptic).
+
+**Phase 7A.8 inherits**:
+- All 7 mode tutorials live and reachable through the production ModeCard tap flow
+- A working per-mode tutorial scaffold ready for Settings "Replay tutorial" entries (Phase 9 backlog)
+- Mode 7's race ecosystem as a reference for future asymmetric-mode polish
+- A discipline scoreboard demonstrating the verification protocol's value (any future mechanic-adjacent design conversation should run the protocol BEFORE committing to copy)
+- Phase 9 backlog updated with deferred CP8 polish items (VS ceremony, milestone copy, BotTypingFooter verb) + Phase 7B test infrastructure + tutorial copy native-English review

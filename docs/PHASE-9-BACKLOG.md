@@ -78,6 +78,36 @@ Each item lists: scope, why it was deferred, and (where applicable) what would u
 
 **Bundled with copy:** the `Start match →` / `Continue →` footer wording in `ModeTutorialScreen.tsx` and the per-mode CTA tone (e.g., "Bisect to crack it" intentionally hints at strategy — modes 5 Blackout / 7 Mirror should get a similar strategy hook on slide 3 if the language pass agrees with the framing).
 
+### HomeScreen gate ordering — tutorial-before-balance for first-time mode access?
+
+**Scope.** CP7's `playMode` runs the balance gate first (`tokens < stake → InsufficientTokens`) and the tutorial gate second (`!modeTutorialsSeen[modeId] → ModeTutorial`). For a user with insufficient balance tapping Mode 2-7 for the first time, this means they see the InsufficientTokens modal before they ever see the mode's tutorial — they may not understand what they're being asked to stake on.
+
+**Why deferred.** The current ordering is defensible: the tutorial CTA at the end of ModeTutorial routes to Matchmaking, which would dead-end at InsufficientTokens for a low-balance user anyway. Showing the modal first lets them resolve balance; their next tap takes the tutorial path naturally. But there's an argument for "teach first, gate second" — a user who has no idea what Blackout is shouldn't be pressured to buy tokens for it. Worth a design conversation.
+
+**Unblocks.** A small swap in `HomeScreen.tsx:playMode`. Existing tests would need a parallel "tutorial gate wins over balance gate" case if the ordering flips.
+
+### Mode 7 polish — deferred recon items (CP8)
+
+CP8 reconnaissance flagged 7 polish opportunities; the user picked the top 4 (race-aware result copy, animated badge, tighter bot pace, mid-match haptic). The remaining 3 are queued here:
+
+- **VS ceremony / match start splash.** A short pre-match transition showing both avatars with a brief "VS" treatment before Match mounts. Currently Matchmaking → Match is a hard cut. Effort: medium-large (new component + navigation interlock). Impact: low-medium (cosmetic, not load-bearing).
+- **Milestone copy in SoloRaceBanner (dynamic headline).** Replace the static "Both solving the same code" with state-driven variants like "You're ahead by N guesses" / "Rival's catching up" / "Neck and neck." Effort: medium (state-driven copy variants, tuning risk to avoid feeling fake). Impact: low — risk of overpromising rival behavior.
+- **`BotTypingFooter` verb upgrade for Mode 7.** Currently shows "is guessing" for both Mode 6 and Mode 7. A Mode 7-specific "is racing" would lean into the race framing established in CP6 tutorial + CP8 result copy. Effort: trivial (one-line ternary). Impact: low (cosmetic). Trivial enough to bundle with the next Mode 7-adjacent CP rather than ship standalone.
+
+### Mode 7 forfeit copy
+
+**Scope.** CP8 race-aware result copy handles natural victory / defeat / draw. `confirmForfeit` short-circuits via `clearMatch()` + `popToTop()` — forfeit never routes through MatchResultScreen. But forfeit currently has no race-specific framing at all (the Alert just says "Forfeit match? You lose your entry stake."). A Mode 7-specific Alert variant could read "Quit the race? Rival wins by default." or similar.
+
+**Why deferred.** Forfeit is a low-frequency action; race-specific Alert copy is cosmetic polish that doesn't compose with CP8's core race ecosystem (different code path entirely — Alert API call, not result screen).
+
+### SoloRaceBanner static headline + no asymmetry signal
+
+**Scope.** Two related Mode 7 gaps surfaced by CP8 recon item (k):
+- The SoloRaceBanner headline "Both solving the same code" is static — never reflects progress imbalance.
+- If the user's timeline is short and rival's count is high, there's no visual asymmetry to communicate "they're way ahead." Could surface a subtle indicator (e.g., a marker on the rival pill at certain thresholds).
+
+**Why deferred.** Both items overlap with the "Milestone copy" entry above and should be tackled in the same pass to keep the Mode 7 voice coherent.
+
 ---
 
 ## Cleanup / tech debt
@@ -94,6 +124,32 @@ Each item lists: scope, why it was deferred, and (where applicable) what would u
 **Why deferred.** CP7.1 spec said don't touch `completeOnboarding`. The side-finding was logged; no user-visible bug. Either cleanup is small enough for a single-CP hotfix when the maintainer is in this code anyway.
 
 **Unblocks.** Whoever next touches `RootNavigator.tsx` or `userStore.ts` near these actions can pick Option A or B in passing.
+
+### Audit haptics + sound async rejection handling
+
+**Scope.** CP1 + CP2 helpers gate on `useSettingsStore` and fire-and-forget into native bindings. Most call sites use `void` or implicit ignore; a few (`sound.ts:107 player.seekTo(0).catch(...)`) have explicit catch blocks to suppress unhandled-rejection warnings in dev/test. The mix is inconsistent — a focused audit should:
+- Enumerate every async path in `src/lib/haptics.ts` + `src/lib/sound.ts`
+- Standardize on explicit `.catch(() => {})` (or a shared `swallow` helper) over implicit void for rejection-prone calls
+- Add a lint rule (or test) that catches a future bare `.play()` / `.seekTo()` that drops the rejection
+
+**Why deferred.** No user-visible failure today; this is a robustness pass, not a bug fix.
+
+### Schema migration bookkeeping checklist (ARCHITECTURE note)
+
+**Scope.** The persist-store migration pattern is now thrice-applied:
+- v1 → v2 → v3: pre-Phase-7A.5 schema evolution
+- v3 → v4: Phase 7A.5 daily ad-free invariant (four fields atomic)
+- v5 → v6: Phase 7A.7 CP3 `modeTutorialsSeen` field
+
+Each migration follows the same 5-step pattern (type-alias chain, explicit migration function, STORE_VERSION bump, seeding heuristic for pre-existing users, test coverage). Worth promoting to its own ARCHITECTURE.md checklist so the fourth migration doesn't re-derive the pattern from scratch.
+
+**Why deferred.** Documentation-only; nothing user-visible. Pick up when the next migration lands.
+
+### Tutorial copy native-English / UX-writer review
+
+**Scope.** Already covered in detail under the "Per-mode tutorial copy review" entry above. Cross-listed here as a cleanup item because the corrections shipped in CP4-CP6 were **mechanic-driven** (verification protocol catches), not **stylistic** — a formal UX writer pass over Modes 2-7 slide copy + the win-cue / button label vocabulary is still owed.
+
+**Why deferred.** Same as the upstream entry: queued for the polish pass, not blocking launch.
 
 ### Legacy `OnboardingScreen.tsx` archived (CP7)
 
@@ -128,6 +184,18 @@ Probably (a) is sufficient when the user previously dismissed our soft-ask witho
 ### "Replay token economy walkthrough" + "Replay onboarding intro"
 
 **Scope.** Symmetric Settings entries for CP2 and CP4 walkthroughs. Lower priority than the tutorial replay because CP2/CP4 are passive content (slides) — users who want a refresher could find it elsewhere (a future Help / FAQ surface). Mentioned for completeness; design-discuss before adding.
+
+### "Replay per-mode tutorials" (Mode 2-7)
+
+**Scope.** Six new Settings entries, one per Mode 2-7, that clear the corresponding `modeTutorialsSeen[modeId]` flag so the next tap on that ModeCard re-routes through the tutorial. Or one combined entry — "Replay mode tutorials" — that resets all six flags. Combined is probably right (six toggles in Settings is noisy; the tutorial is a teach-once surface).
+
+**Why deferred.** Phase 7A.7 sealed without a replay path. Users who skip a tutorial today have no way to re-visit it without resetting the entire app. Low-frequency need; CP9 reviewer noted it's "post-launch polish" alongside the other replay entries.
+
+**Implementation sketch.** A single Settings row with the existing toggle style; tapping it calls `useUserStore.setState((s) => ({ modeTutorialsSeen: {} }))`. Optionally add a confirm dialog ("Reset all mode tutorials? Next time you tap Mode 2-7, you'll see the tutorial again.").
+
+### Master volume slider (CP2 deferred)
+
+**Scope.** Already covered as an adjacent under "Sound asset polish" above. Cross-listed here because the slider lives in the Settings surface (not the asset pipeline). When the polish pass adds the slider, the existing `useSettingsStore.sound` boolean master toggle stays as a kill-switch — the slider sits below it for finer control.
 
 ---
 
@@ -185,6 +253,25 @@ Probably (a) is sufficient when the user previously dismissed our soft-ask witho
 - `onboarding_completed_at { path: 'linear' | 'skip', surfaces_seen: [...] }`
 
 **Why deferred.** Same as token events. Phase 7B will take a coordinated pass over event tracking.
+
+### Per-mode tutorial events (Mode 2-7)
+
+**Scope.** Track which per-mode tutorials each user completes vs skips:
+- `mode_tutorial_shown { mode_id, modeName }`
+- `mode_tutorial_skipped { mode_id, slide_index }` — diagnose drop-off mid-walk
+- `mode_tutorial_completed { mode_id }` — Start match CTA path
+- `mode_tutorial_demo_engaged { mode_id, guess_count }` — did the user interact with the slide-3 DemoBoard, or just swipe past?
+
+**Why deferred.** Phase 7B analytics sweep alongside the Onboarding step events above. The DemoBoard engagement is the highest-signal metric here — a low engagement rate would suggest the tutorial demos aren't doing their pedagogical job and could be simplified.
+
+### Mode 7 race outcome analytics
+
+**Scope.** Mode 7's race ecosystem (CP8) introduces specific signals that warrant their own slice:
+- `mode7_race_outcome { outcome, user_guesses, opponent_guesses, bot_difficulty }` — distribution of victories/defeats/draws + how close each was
+- `mode7_bot_pace_p50_p95 { difficulty }` — observed thinking-time percentiles per difficulty band; sanity-check the CP8 pace tightening landed where intended
+- `mode7_match_duration_ms { outcome }` — useful for tuning future pacing decisions
+
+**Why deferred.** Phase 7B analytics sweep. Mode 7 is the only mode where bot pace is part of the user-facing UX (CP8 explicitly tightened it), so it warrants its own telemetry slice that other modes don't need.
 
 ### Teaser / push opt-in events
 
