@@ -30,7 +30,11 @@ yarn-error.*
 *.pem
 
 # local env files
+.env
 .env*.local
+
+# fal.ai client cache (Phase 7A.8 CP1 asset generation pipeline)
+.fal-cache/
 
 # typescript
 *.tsbuildinfo

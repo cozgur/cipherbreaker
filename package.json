@@ -15,6 +15,7 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "ci": "npm run typecheck && npm run lint && npm run test -- --ci --passWithNoTests",
+    "gen-assets": "tsx scripts/generate-onboarding-assets.ts",
     "prepare": "husky"
   },
   "dependencies": {
@@ -44,12 +45,14 @@
     "react": "19.1.0"
   },
   "devDependencies": {
+    "@fal-ai/client": "^1.10.1",
     "@testing-library/react-native": "^13.3.3",
     "@types/jest": "^30.0.0",
     "@types/react": "~19.1.0",
     "@typescript-eslint/eslint-plugin": "^8.59.0",
     "@typescript-eslint/parser": "^8.59.0",
     "babel-preset-expo": "~54.0.10",
+    "dotenv": "^17.4.2",
     "eslint": "^9.39.4",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-react": "^7.37.5",
@@ -59,6 +62,7 @@
     "lint-staged": "^16.4.0",
     "prettier": "^3.8.3",
     "react-test-renderer": "^19.1.0",
+    "tsx": "^4.21.0",
     "typescript": "~5.9.2"
   }
 }

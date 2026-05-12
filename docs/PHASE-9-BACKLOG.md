@@ -62,6 +62,19 @@ Each item lists: scope, why it was deferred, and (where applicable) what would u
 
 **Adjacent: master volume slider.** CP2 hardcoded `volume: 0.7` per player. A user-facing master volume slider in Settings is also queued; both can land together if the Phase 9 polish pass takes audio seriously.
 
+### Onboarding asset polish — hero + teaser-mirror illustrator replacement
+
+**Scope.** Two of the four CP1 onboarding hero assets (`hero-pure-deduction.png` consumed by CP2; `teaser-mirror.png` consumed by CP4 MirrorTeaser) have a residual brand-fit gap. The CP1 Flux Pro 1.1 Ultra outputs are tonally on-brief (deep navy + violet, dark refined lighting) and free of text leaks, but the metaphor reads weakly: `hero-pure-deduction` reads as a speaker iris / sub-woofer, and `teaser-mirror` reads as two stacked vinyl turntables. `teaser-blitz.png` and `modal-notification.png` are brand-acceptable and don't need replacement.
+
+**Why deferred.** CP1 ran four iteration rounds (~$0.84, ~12 image generations across Flux Pro 1.1 Ultra and Recraft v3) and didn't converge on a result that nailed both the abstract-conceptual read AND the dark-refined aesthetic for these two specifically. AI prompting hit a literal-noun ceiling for "premium mysterious refined deduction artifact" — every concrete noun the prompt named ("orb," "disc," "monolith," "cipher dial") rendered as the literal real-world object. Recraft v3 sidestepped the literal-noun problem but couldn't be coerced out of bright pastel palettes. Full iteration history preserved in `assets/onboarding/ATTRIBUTION.md`.
+
+**Unblocks.** A professional illustrator brief is the appropriate next step:
+- Budget: $50-200 (one round of bespoke illustration for two assets)
+- Brief: provide the existing brand brief (dark, mysterious, refined; deep navy + violet palette; cinematic chiaroscuro; abstract conceptual subjects) + the CP1 ATTRIBUTION.md iteration history + the two current PNGs as "tonally close, metaphorically off — please rework the subjects"
+- Output: drop-in replacements at `assets/onboarding/hero-pure-deduction.png` and `assets/onboarding/teaser-mirror.png`. The integration code in CP2/CP4 references the filenames, not the content — swap is zero-code.
+
+**Implementation today.** CP1 ships the Flux Pro Ultra round 2 versions as the canonical assets. CP2 + CP4 integrate them. If launch readiness needs the polish before TestFlight, the illustrator brief can run in parallel with subsequent CPs.
+
 ### Per-mode tutorial copy review
 
 **Scope.** Native-English / UX-writer pass over the slide titles and bodies in `src/components/modeTutorial/mode<2..7>.tsx`. Headlines and microcopy were authored by the Phase 7A.7 CP4-CP6 design conversation, not by a copywriter.
