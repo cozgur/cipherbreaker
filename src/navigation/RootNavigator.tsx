@@ -12,8 +12,7 @@ import { MatchmakingScreen } from '@screens/MatchmakingScreen';
 import { MatchResultScreen } from '@screens/MatchResultScreen';
 import { MatchScreen } from '@screens/MatchScreen';
 import { ModeTutorialScreen } from '@screens/ModeTutorialScreen';
-import { OnboardingIntroScreen } from '@screens/OnboardingIntroScreen';
-import { OnboardingTokenWalkthroughScreen } from '@screens/OnboardingTokenWalkthroughScreen';
+import { OnboardingHeroScreen } from '@screens/OnboardingHeroScreen';
 import { ProfileScreen } from '@screens/ProfileScreen';
 import { SecretSetupScreen } from '@screens/SecretSetupScreen';
 import { ShopScreen } from '@screens/ShopScreen';
@@ -39,38 +38,48 @@ const navTheme: Theme = {
 };
 
 /**
- * Phase 7A.6 CP7 — onboarding flow entry point.
+ * Phase 7A.6 CP7 + Phase 7A.8 CP2 — onboarding flow entry point.
  *
  * `hasOnboarded` is the master gate. When true, the user goes
  * straight to Home (the "I've finished onboarding" path). When
  * false, the early-exit chain picks the next unseen step:
  *
- *   !introSeen                 → OnboardingIntro      (CP2)
- *   !tutorialMatchCompleted    → TutorialMatch        (CP3)
- *   !tokenWalkthroughSeen      → OnboardingTokenWalk… (CP4)
- *   otherwise                  → Home                  (failsafe)
+ *   !introSeen                 → OnboardingHero       (CP2)
+ *   !tutorialMatchCompleted    → TutorialMatch        (Phase 7A.6 CP3)
+ *   otherwise                  → Home                  (failsafe + linear-complete)
  *
- * Force-quit recovery is implicit: a user who quits at CP3 has
- * `introSeen=true, tutorialMatchCompleted=false`, so the next
- * launch lands on TutorialMatch — not back at the start. CP3.1
- * zeroed the fresh-install defaults so this gate engages cleanly.
+ * Phase 7A.8 CP2 collapsed the prior 3-step chain (intro →
+ * tutorial → token walkthrough) into 2 steps (hero → tutorial).
+ * The walkthrough was deleted; `tokenWalkthroughSeen` remains
+ * in the schema as a dead flag (Phase 9 cleanup queued in
+ * PHASE-9-BACKLOG.md). In-progress TestFlight users with
+ * `tokenWalkthroughSeen=false` and the other two flags true
+ * hit the failsafe → Home; they don't see the new hero (their
+ * `introSeen` is already true) and `hasOnboarded` stays false
+ * until they happen to complete a fresh onboarding cycle —
+ * acceptable per CP2 spec decision 6.
  *
- * The chain runs once at component mount (no hook subscription)
- * — same one-shot pattern the legacy `mockUser.hasOnboarded`
- * read used. State changes during a session don't re-route; the
- * per-screen `navigation.replace` calls handle forward motion.
+ * Force-quit recovery is implicit: a user who quits between
+ * Hero and TutorialMatch has `introSeen=true,
+ * tutorialMatchCompleted=false`, so the next launch lands on
+ * TutorialMatch — not back at the start.
+ *
+ * The chain runs once at component mount (no hook subscription).
+ * State changes during a session don't re-route; the per-screen
+ * `navigation.replace` calls handle forward motion.
  */
 function pickInitialRoute(): keyof RootStackParamList {
   const state = useUserStore.getState();
   if (state.hasOnboarded) return 'Home';
   const onboarding = state.onboarding;
-  if (!onboarding.introSeen) return 'OnboardingIntro';
+  if (!onboarding.introSeen) return 'OnboardingHero';
   if (!onboarding.tutorialMatchCompleted) return 'TutorialMatch';
-  if (!onboarding.tokenWalkthroughSeen) return 'OnboardingTokenWalkthrough';
-  // All step flags true but `hasOnboarded === false` — defensive
-  // failsafe (corrupt state / programmer error). The screens'
-  // own completion calls flip `completedAt`; if every flag is set
-  // here the user has effectively finished, so route them home.
+  // All remaining step flags true but `hasOnboarded === false` —
+  // defensive failsafe (corrupt state, programmer error, or
+  // TestFlight user mid-flow before the CP2 rework). The
+  // screens' own completion calls flip `completedAt` /
+  // `hasOnboarded`; if we reach here the user has effectively
+  // finished, so route them home.
   return 'Home';
 }
 
@@ -87,8 +96,8 @@ export function RootNavigator(): React.JSX.Element {
         }}
       >
         <Stack.Screen
-          name="OnboardingIntro"
-          component={OnboardingIntroScreen}
+          name="OnboardingHero"
+          component={OnboardingHeroScreen}
           options={{
             presentation: 'fullScreenModal',
             gestureEnabled: false,
@@ -98,15 +107,6 @@ export function RootNavigator(): React.JSX.Element {
         <Stack.Screen
           name="TutorialMatch"
           component={TutorialMatchScreen}
-          options={{
-            presentation: 'fullScreenModal',
-            gestureEnabled: false,
-            headerShown: false,
-          }}
-        />
-        <Stack.Screen
-          name="OnboardingTokenWalkthrough"
-          component={OnboardingTokenWalkthroughScreen}
           options={{
             presentation: 'fullScreenModal',
             gestureEnabled: false,

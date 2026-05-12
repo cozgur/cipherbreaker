@@ -1,12 +1,18 @@
 /**
- * Phase 7A.6 CP7 — RootNavigator integration tests.
+ * Phase 7A.6 CP7 + Phase 7A.8 CP2 — RootNavigator integration tests.
  *
  * Asserts the early-exit conditional flow:
  *   hasOnboarded === true → Home (master gate)
- *   !introSeen → OnboardingIntro (CP2)
- *   !tutorialMatchCompleted → TutorialMatch (CP3)
- *   !tokenWalkthroughSeen → OnboardingTokenWalkthrough (CP4)
- *   otherwise → Home (failsafe — defensive against corrupt state)
+ *   !introSeen → OnboardingHero (CP2, single slide replacing the
+ *               3-slide intro carousel + deleted token walkthrough)
+ *   !tutorialMatchCompleted → TutorialMatch (Phase 7A.6 CP3,
+ *               unchanged; CP2 moved the completion stamp into
+ *               its `finishAndExit`)
+ *   otherwise → Home (failsafe + linear-complete)
+ *
+ * Phase 7A.8 CP2 deleted `OnboardingTokenWalkthrough`. The
+ * `tokenWalkthroughSeen` flag stays in schema as dead data
+ * (Phase 9 cleanup queued in PHASE-9-BACKLOG.md).
  *
  * Force-quit recovery is implicit in the chain: a user who quit
  * mid-flow has the prior step's flag set, so the next launch
@@ -80,11 +86,13 @@ describe('RootNavigator — onboarding flow routing (Phase 7A.6 CP7)', () => {
   });
 
   describe('Fresh-install early-exit chain', () => {
-    it('hasOnboarded=false + all step flags false → OnboardingIntro renders', () => {
+    it('hasOnboarded=false + all step flags false → OnboardingHero renders', () => {
+      // CP2 hero replaced the 3-slide intro carousel. The unique
+      // copy is the title "Pure deduction." (was "A new code
+      // every day" pre-CP2).
       pinOnboardingState({ hasOnboarded: false });
       const utils = renderRoot();
-      // Slide 1 of OnboardingIntro is unique to that screen.
-      expect(utils.getByText('A new code every day')).toBeTruthy();
+      expect(utils.getByText('Pure deduction.')).toBeTruthy();
     });
 
     it('introSeen=true, others false → TutorialMatch renders', () => {
@@ -94,21 +102,29 @@ describe('RootNavigator — onboarding flow routing (Phase 7A.6 CP7)', () => {
       expect(utils.getByText('Crack the code')).toBeTruthy();
     });
 
-    it('introSeen+tutorialMatchCompleted=true → OnboardingTokenWalkthrough renders', () => {
+    it('introSeen+tutorialMatchCompleted=true → Home renders (CP2 removed the token walkthrough step)', () => {
+      // Pre-CP2 this state routed to OnboardingTokenWalkthrough.
+      // CP2 deleted that route — the chain now ends at
+      // TutorialMatch, so the user reaches Home via the
+      // "otherwise" failsafe. The CP2 TutorialMatch handler
+      // would normally also flip `hasOnboarded` itself; this
+      // test models the post-tutorial / pre-stamp window or
+      // a corrupt state.
       pinOnboardingState({
         hasOnboarded: false,
         introSeen: true,
         tutorialMatchCompleted: true,
       });
       const utils = renderRoot();
-      // Slide 1 of the token walkthrough is unique.
-      expect(utils.getByText('Tokens for every win')).toBeTruthy();
+      expect(utils.getByText('CipherBreaker')).toBeTruthy();
     });
 
     it('all step flags true but hasOnboarded=false → Home renders (failsafe)', () => {
       // Defensive: corrupt state where every step is "seen" but the
       // master gate stayed false. The pickInitialRoute fallback
       // routes to Home rather than re-showing any step.
+      // `tokenWalkthroughSeen` is dead data after CP2 but the
+      // override is harmless — it never gates the chain.
       pinOnboardingState({
         hasOnboarded: false,
         introSeen: true,
@@ -121,12 +137,12 @@ describe('RootNavigator — onboarding flow routing (Phase 7A.6 CP7)', () => {
   });
 
   describe('Force-quit recovery', () => {
-    it('quit at TutorialMatch → next launch lands back on TutorialMatch (not Intro)', () => {
-      // Models the "user quit during CP3" scenario: introSeen was
-      // flipped on Intro's "Start Playing" before the navigation
-      // replace, so the persisted state has introSeen=true and
-      // tutorialMatchCompleted=false. Re-launching engages the
-      // chain at the tutorial step.
+    it('quit at TutorialMatch → next launch lands back on TutorialMatch (not Hero)', () => {
+      // Models the "user quit between Hero and TutorialMatch"
+      // scenario: introSeen was flipped on Hero's "Get started"
+      // before the navigation replace, so persisted state has
+      // introSeen=true, tutorialMatchCompleted=false. The chain
+      // engages at the tutorial step.
       pinOnboardingState({
         hasOnboarded: false,
         introSeen: true,
@@ -134,10 +150,16 @@ describe('RootNavigator — onboarding flow routing (Phase 7A.6 CP7)', () => {
       });
       const utils = renderRoot();
       expect(utils.getByText('Crack the code')).toBeTruthy();
-      expect(utils.queryByText('A new code every day')).toBeNull();
+      expect(utils.queryByText('Pure deduction.')).toBeNull();
     });
 
-    it('quit at OnboardingTokenWalkthrough → next launch lands back on the walkthrough', () => {
+    it('in-progress TestFlight user with tokenWalkthroughSeen=false → Home (CP2 dropped the walkthrough step)', () => {
+      // Pre-CP2 this state routed to the walkthrough. CP2's
+      // chain no longer consults `tokenWalkthroughSeen`, so the
+      // user falls through to Home. Spec decision 6: in-progress
+      // TestFlight users lose any walkthrough state on upgrade;
+      // acceptable because the walkthrough was advisory not
+      // load-bearing and TestFlight volume is small.
       pinOnboardingState({
         hasOnboarded: false,
         introSeen: true,
@@ -145,7 +167,7 @@ describe('RootNavigator — onboarding flow routing (Phase 7A.6 CP7)', () => {
         tokenWalkthroughSeen: false,
       });
       const utils = renderRoot();
-      expect(utils.getByText('Tokens for every win')).toBeTruthy();
+      expect(utils.getByText('CipherBreaker')).toBeTruthy();
       expect(utils.queryByText('Crack the code')).toBeNull();
     });
   });

@@ -8,31 +8,25 @@ export type MatchResultOutcome = 'victory' | 'defeat' | 'draw' | 'stalemate';
 
 export type RootStackParamList = {
   /**
-   * Phase 7A.6 CP2 — 3-slide intro carousel (Daily / Modes / Tokens).
-   * CP7 wired the conditional flow:
-   *   Skip → completeOnboarding(today) → Home
-   *   Start Playing → markIntroSeen → TutorialMatch
-   * The legacy `Onboarding` route (Phase 1B) was removed in CP7;
-   * fresh-install routing now starts here.
+   * Phase 7A.8 CP2 — single-slide onboarding hero. Replaces
+   * Phase 7A.6 CP2's three-slide `OnboardingIntro` carousel and
+   * CP4's `OnboardingTokenWalkthrough` (both deleted in CP2).
+   * Single CTA "Get started" → `markIntroSeen` →
+   * `TutorialMatch`. No Skip path — TutorialMatch is mandatory.
    */
-  OnboardingIntro: undefined;
+  OnboardingHero: undefined;
   /**
    * Phase 7A.6 CP3 — guided first match. Self-contained tutorial
    * surface that reuses Mode 1's `evaluateColorMatch` evaluator
    * without going through `matchStore` / `MatchScreen` /
    * `MatchResultScreen` (see TutorialMatchScreen header for the
-   * isolation rationale). All exit paths reach Home today; CP7
-   * swaps Home for the next onboarding step (token walkthrough).
+   * isolation rationale). Phase 7A.8 CP2 moved the
+   * `stampOnboardingComplete` call into TutorialMatch's
+   * `finishAndExit` because TutorialMatch is now the LAST
+   * onboarding screen (the token walkthrough that previously
+   * owned the stamp was deleted).
    */
   TutorialMatch: undefined;
-  /**
-   * Phase 7A.6 CP4 — 3-slide token economy walkthrough (Earn /
-   * Spend / Streak). Skip = `completeOnboarding`; Start playing →
-   * `markTokenWalkthroughSeen` + Home. CP4 only registers the
-   * route; CP7 wires the conditional flow from
-   * `onboarding.tokenWalkthroughSeen`.
-   */
-  OnboardingTokenWalkthrough: undefined;
   /**
    * Phase 7A.7 CP4 — per-mode tutorial. Generic 3-slide scaffold
    * keyed by `modeId`. CP4 ships Mode 2 content only; CP5 adds

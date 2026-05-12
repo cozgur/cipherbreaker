@@ -53,6 +53,7 @@ import { SectionLabel } from '@components/SectionLabel';
 import { SkipTutorialDialog } from '@components/tutorial/SkipTutorialDialog';
 import { TutorialOverlay } from '@components/tutorial/TutorialOverlay';
 import { TutorialToast } from '@components/tutorial/TutorialToast';
+import { formatDailyDate } from '@game/daily/dailyDate';
 import { evaluateColorMatch, SECRET_LENGTH } from '@game/modes/mode1/evaluate';
 import { generateTutorialSecret } from '@game/tutorial/secret';
 import type { DigitTileVisualState } from '@game/types';
@@ -144,6 +145,11 @@ export function TutorialMatchScreen(): React.JSX.Element {
   const insets = useSafeAreaInsets();
   const addTokens = useUserStore((s) => s.addTokens);
   const markTutorialMatchCompleted = useUserStore((s) => s.markTutorialMatchCompleted);
+  // Phase 7A.8 CP2 — completion-stamp ownership moved here from
+  // the deleted OnboardingTokenWalkthroughScreen. TutorialMatch
+  // is now the LAST onboarding screen, so it owns flipping
+  // `hasOnboarded` + `completedAt` on every exit path.
+  const stampOnboardingComplete = useUserStore((s) => s.stampOnboardingComplete);
 
   const [state, setState] = useState<TutorialState>(() => freshState());
   const [showSkipDialog, setShowSkipDialog] = useState(false);
@@ -307,14 +313,32 @@ export function TutorialMatchScreen(): React.JSX.Element {
   }, [state.hasLost]);
 
   const finishAndExit = useCallback(() => {
-    // Phase 7A.6 CP7 — single exit funnel for all three paths
-    // (Win Continue, Lose Skip-and-continue, Mid-match Skip
-    // confirm). Marks the tutorial step seen and forwards to the
-    // token economy walkthrough (CP4). Replaces the CP3-shipped
-    // `'Home'` placeholder.
+    // Phase 7A.6 CP7 + Phase 7A.8 CP2 — single exit funnel for
+    // all paths (Win Continue, Lose Skip-and-continue, Mid-match
+    // Skip confirm). CP2 deleted the token walkthrough that
+    // previously followed this screen; TutorialMatch is now the
+    // LAST onboarding screen, so it owns:
+    //   1. `markTutorialMatchCompleted()` — flips the step flag
+    //      (CP3 contract, unchanged).
+    //   2. `stampOnboardingComplete(today)` — flips `hasOnboarded`
+    //      + `completedAt`. Migrated here from the deleted
+    //      `OnboardingTokenWalkthroughScreen` "Start playing"
+    //      handler (Phase 7A.6 CP7.1 lineage).
+    //   3. `navigation.replace('Home')` — direct to Home,
+    //      replacing the CP7 `'OnboardingTokenWalkthrough'`
+    //      target.
+    //
+    // Deliberately does NOT call `completeOnboarding` — that
+    // action flips every onboarding flag including the CP5
+    // teaser gates and CP6 push opt-in. Linear-completion
+    // users keep those gates open so the post-onboarding
+    // contextual nudges still fire (preserves Phase 7A.6 CP7.1
+    // invariant — see PHASE-9-BACKLOG.md "completeOnboarding
+    // does not flip hasOnboarded" entry for context).
     markTutorialMatchCompleted();
-    navigation.replace('OnboardingTokenWalkthrough');
-  }, [markTutorialMatchCompleted, navigation]);
+    stampOnboardingComplete(formatDailyDate(new Date()));
+    navigation.replace('Home');
+  }, [markTutorialMatchCompleted, stampOnboardingComplete, navigation]);
 
   const onWinContinue = useCallback(() => {
     sound.earn();

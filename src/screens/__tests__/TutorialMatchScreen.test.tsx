@@ -8,7 +8,6 @@ import {
   USER_STORE_DEFAULTS,
   useUserStore,
 } from '@state/userStore';
-import { RouteStubScreen } from '@/test-utils/RouteStubScreen';
 import { renderWithNavigation } from '@/test-utils/renderWithNavigation';
 
 jest.mock('@game/tutorial/secret', () => ({
@@ -33,9 +32,12 @@ function resetUserStore(): void {
 }
 
 function mountTutorial() {
+  // Phase 7A.8 CP2 — TutorialMatch now forwards directly to
+  // Home (the token walkthrough that previously sat between
+  // them was deleted; completion-stamp ownership moved into
+  // `TutorialMatchScreen.finishAndExit`).
   return renderWithNavigation('TutorialMatch', {
     TutorialMatch: TutorialMatchScreen,
-    OnboardingTokenWalkthrough: RouteStubScreen,
     Home: HomeScreen,
   });
 }
@@ -252,11 +254,13 @@ describe('TutorialMatchScreen', () => {
     // (DDA bypass invariant).
     expect(after.stats.gamesPlayed).toBe(before.stats.gamesPlayed);
     expect(after.stats.recentMatches).toEqual(before.stats.recentMatches);
-    // Phase 7A.6 CP7 — Win Continue forwards to the token walkthrough,
-    // not Home (was the CP3 placeholder).
-    expect(utils.navRef.current?.getCurrentRoute()?.name).toBe(
-      'OnboardingTokenWalkthrough',
-    );
+    // Phase 7A.8 CP2 — Win Continue forwards directly to Home
+    // (CP2 deleted the intermediate token walkthrough). The
+    // completion stamp (`hasOnboarded` + `completedAt`) fires
+    // here as part of the same handler.
+    expect(after.hasOnboarded).toBe(true);
+    expect(after.onboarding.completedAt).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(utils.navRef.current?.getCurrentRoute()?.name).toBe('Home');
   });
 
   it('skip button opens the confirm dialog; Cancel keeps the match running', () => {
@@ -277,11 +281,14 @@ describe('TutorialMatchScreen', () => {
     expect(useUserStore.getState().onboarding.tutorialMatchCompleted).toBe(false);
   });
 
-  it('skip confirm marks tutorial complete and forwards to OnboardingTokenWalkthrough', () => {
-    // Phase 7A.6 CP7 — atomic step skip: TutorialMatch's mid-match
-    // Skip is a step-level skip, not a full-flow skip. It marks
-    // the tutorial step done and forwards to the next step (CP4
-    // token walkthrough); the user can still Skip All from there.
+  it('skip confirm marks tutorial complete + stamps onboarding done and forwards to Home', () => {
+    // Phase 7A.8 CP2 — TutorialMatch is now the LAST onboarding
+    // screen. Skip-confirm goes through the same single exit
+    // funnel (`finishAndExit`) that owns the completion stamp,
+    // so even a mid-match skip flips `hasOnboarded` + records
+    // `completedAt`. Pre-CP2 this forwarded to the token
+    // walkthrough as an atomic step-skip; that intermediate
+    // screen no longer exists.
     pinSecret(SECRET_DIGITS_1234);
     const utils = mountTutorial();
     dismissWelcome(utils);
@@ -293,10 +300,11 @@ describe('TutorialMatchScreen', () => {
       fireEvent.press(utils.getByText('Skip'));
     });
 
-    expect(useUserStore.getState().onboarding.tutorialMatchCompleted).toBe(true);
-    expect(utils.navRef.current?.getCurrentRoute()?.name).toBe(
-      'OnboardingTokenWalkthrough',
-    );
+    const after = useUserStore.getState();
+    expect(after.onboarding.tutorialMatchCompleted).toBe(true);
+    expect(after.hasOnboarded).toBe(true);
+    expect(after.onboarding.completedAt).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(utils.navRef.current?.getCurrentRoute()?.name).toBe('Home');
   });
 
   it('losing 10 turns transitions to the lose view with code reveal', () => {
@@ -335,10 +343,11 @@ describe('TutorialMatchScreen', () => {
     expect(useUserStore.getState().onboarding.tutorialMatchCompleted).toBe(false);
   });
 
-  it('Skip and continue from the lose view marks complete and forwards to OnboardingTokenWalkthrough', () => {
-    // Phase 7A.6 CP7 — same atomic step-skip semantic as the
-    // mid-match Skip confirm: tutorial step marked done, flow
-    // continues to CP4.
+  it('Skip and continue from the lose view marks complete + stamps onboarding done and forwards to Home', () => {
+    // Phase 7A.8 CP2 — same single-exit funnel as the mid-match
+    // skip path above. The lose-view "Skip and continue" hits
+    // `finishAndExit`, which stamps onboarding done and routes
+    // directly to Home (token walkthrough deleted).
     pinSecret(SECRET_DIGITS_1234);
     const utils = mountTutorial();
     dismissWelcome(utils);
@@ -352,10 +361,11 @@ describe('TutorialMatchScreen', () => {
       fireEvent.press(utils.getByText('Skip and continue'));
     });
 
-    expect(useUserStore.getState().onboarding.tutorialMatchCompleted).toBe(true);
-    expect(utils.navRef.current?.getCurrentRoute()?.name).toBe(
-      'OnboardingTokenWalkthrough',
-    );
+    const after = useUserStore.getState();
+    expect(after.onboarding.tutorialMatchCompleted).toBe(true);
+    expect(after.hasOnboarded).toBe(true);
+    expect(after.onboarding.completedAt).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(utils.navRef.current?.getCurrentRoute()?.name).toBe('Home');
   });
 
   it('manual hints do not exist in the tutorial UI (Mode 1 has no hint affordance)', () => {

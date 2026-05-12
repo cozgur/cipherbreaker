@@ -121,6 +121,25 @@ CP8 reconnaissance flagged 7 polish opportunities; the user picked the top 4 (ra
 
 **Why deferred.** Both items overlap with the "Milestone copy" entry above and should be tackled in the same pass to keep the Mode 7 voice coherent.
 
+### OnboardingHero gradient overlay polish
+
+**Scope.** CP2's pre-commit contrast fix added a `LinearGradient` (transparent → `rgba(0, 0, 0, 0.45)`, bottom 40% of `heroSection`) plus `textShadow*` on the title + sub. Combined, the title is readable against the violet zone of `hero-pure-deduction.png`. But the gradient's 40% height + 0.45 alpha terminus creates a visible "panel edge" mid-image where the gradient starts taking hold — under casual viewing this reads less as a soft fade and more as a darker bottom region of the image itself.
+
+**Why deferred.** Three tuning options, all small:
+- Lengthen the fade: bump height from 40% → 55-60% so the transition starts higher and reads softer.
+- Lower the terminal alpha: 0.45 → 0.30-0.35 so the bottom darkens less aggressively.
+- Multi-stop gradient: `['transparent', 'rgba(0,0,0,0.15)', 'rgba(0,0,0,0.40)']` for a smoother S-curve.
+
+Or skip the gradient entirely once the hero asset itself gets replaced (the illustrator-polish entry above already queues a replacement for `hero-pure-deduction.png` — a tonally-correct asset wouldn't need the gradient at all). The gradient is a safety net; if the asset upgrade lands first, this entry resolves itself.
+
+### TutorialSkipDialog vertical positioning
+
+**Scope.** `TutorialMatchScreen`'s mid-match Skip button opens a confirm dialog (`SkipTutorialDialog`). The dialog renders at a vertical offset that overlaps the screen header — the "TURN N OF 10" label is partially obscured by the dialog's top edge when triggered mid-match. Same shape of bug as the TutorialToast overlap CP2 just fixed (Phase 7A.6 CP3 pre-existing), but the dialog wasn't surfaced loudly enough during CP2 manual sanity to bundle the fix.
+
+**Why deferred.** Low frequency — the Skip dialog only shows when the user actively taps Skip mid-tutorial, which is rare. Visible-but-not-blocking. Fix is the same pattern as the toast: either center the dialog vertically (a11y-friendlier than top-anchored), or apply a `HEADER_CLEARANCE`-equivalent top offset. CP2 already established the constant in `TutorialToast.tsx`; lifting it to a shared `tutorial/layoutConstants.ts` while applying the dialog fix would also be reasonable.
+
+**Implementation today.** None — surfaced + queued.
+
 ---
 
 ## Cleanup / tech debt
@@ -163,6 +182,20 @@ Each migration follows the same 5-step pattern (type-alias chain, explicit migra
 **Scope.** Already covered in detail under the "Per-mode tutorial copy review" entry above. Cross-listed here as a cleanup item because the corrections shipped in CP4-CP6 were **mechanic-driven** (verification protocol catches), not **stylistic** — a formal UX writer pass over Modes 2-7 slide copy + the win-cue / button label vocabulary is still owed.
 
 **Why deferred.** Same as the upstream entry: queued for the polish pass, not blocking launch.
+
+### userStore dead code after Phase 7A.8 CP2 (onboarding rework)
+
+**Scope.** CP2 deleted `OnboardingTokenWalkthroughScreen` but kept its store surface intact to avoid a schema migration in-scope. The following are now dead code in `src/state/userStore.ts`:
+
+- `OnboardingState.tokenWalkthroughSeen` — field is set on store init (default `false`) and on `completeOnboarding` (flips to `true` alongside the other step flags), but never read by routing or any screen. `pickInitialRoute` in `RootNavigator.tsx` no longer consults it.
+- `markTokenWalkthroughSeen()` action — defined + tested but no production caller (its only consumer was the deleted walkthrough's "Start playing" handler).
+- `completeOnboarding(today)` action — also defined + tested but no production caller. CP2 removed the only Skip path (the hero has no Skip CTA), so the "flip all flags including teaser/notif gates" semantic this action provided is no longer reachable from the UI.
+
+**Why deferred.** A schema migration v6 → v7 to drop the field is the clean fix but it's a multi-step change (type-alias chain, migration function, STORE_VERSION bump, test churn across `userStore.test.ts` + `cp72PersistRehydration.test.ts`). CP2 was already large; the dead surface is harmless (zero functional impact on existing or new users) and can be cleaned up in a focused tech-debt CP or post-launch.
+
+**Cleanup batch when picked up.** Combine with the pending `completeOnboarding does not flip hasOnboarded` entry above — both touch `completeOnboarding`. If the cleanup CP keeps `completeOnboarding` it can either:
+- (a) Delete the field + action + the dead action and remove dead callers, OR
+- (b) Repurpose `completeOnboarding` as the canonical "wipe-and-replay" admin action for the Settings "Replay tutorial" entry queued elsewhere in this file.
 
 ### Legacy `OnboardingScreen.tsx` archived (CP7)
 

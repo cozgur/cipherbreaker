@@ -19,6 +19,27 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { colors, fonts, withAlpha } from '@theme/tokens';
 
+/**
+ * Phase 7A.8 CP2 — vertical offset that clears TutorialMatchScreen's
+ * top header (`TutorialMatchScreen.tsx` renders `<View paddingTop:
+ * insets.top + 14>` containing a `SectionLabel` ~28pt tall plus an
+ * absolute-positioned Skip floater also at `insets.top + 14`).
+ * Pre-CP2 the toast anchored at `insets.top + 12` and rendered on
+ * top of both the label and the Skip button (zIndex 50 hid them
+ * visually). CP2's pre-commit hotfix pushes the toast below the
+ * header so all three elements coexist.
+ *
+ * Sized empirically: 14 (header paddingTop) + 28 (SectionLabel
+ * height) + ~14 (vertical breathing) ≈ 56. Component-local rather
+ * than promoted to `@theme/spacing` because the constant is
+ * specifically about clearing TutorialMatchScreen's header — not a
+ * general layout token. TutorialToast has exactly one consumer
+ * today (TutorialMatchScreen); if a second screen ever adopts the
+ * toast with a different header height, this is the right seam to
+ * lift the constant out.
+ */
+const HEADER_CLEARANCE = 56;
+
 interface TutorialToastProps {
   readonly visible: boolean;
   readonly message: string;
@@ -45,7 +66,7 @@ export function TutorialToast({
   return (
     <View
       pointerEvents="none"
-      style={[styles.root, { top: insets.top + 12 }, style]}
+      style={[styles.root, { top: insets.top + HEADER_CLEARANCE }, style]}
       testID={testID}
       accessibilityLiveRegion="polite"
       accessibilityRole="alert"
