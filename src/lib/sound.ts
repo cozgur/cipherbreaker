@@ -17,13 +17,18 @@
  * applied to haptics — settingsStore.sound was pre-built for
  * Phase 1B's mock infra; CP2 is the first consumer.
  *
- * Loading strategy: eager. Module-load-time
- * `createAudioPlayer` calls (executed when any screen first
- * imports this module) instantiate five persistent `AudioPlayer`
- * objects. expo-audio loads files asynchronously in the
- * background; first-call resilience is handled by the player's
- * `isLoaded` property (skip silently if not yet loaded — caller
- * doesn't see a delay or error).
+ * Loading strategy: lazy. Module load only resolves the bundled
+ * WAV asset numbers into the `SOURCES` map; the `players`
+ * record is initialized to all-nulls. `createAudioPlayer` is
+ * invoked on first `play()` call via the `getPlayer()` helper,
+ * which memoises each player so subsequent calls reuse the same
+ * instance. expo-audio then loads the file asynchronously in
+ * the background; first-call resilience is handled by the
+ * player's `isLoaded` property (skip silently if not yet loaded
+ * — caller doesn't see a delay or error). Mitigates startup
+ * memory cost (no five-player allocation on a cold launch that
+ * may never play any of them) without a perceptible first-play
+ * delay because `createAudioPlayer` returns synchronously.
  *
  * Replay semantic: each call performs `seekTo(0)` then `play()`,
  * so a rapid second fire of the same sound restarts from the
@@ -52,9 +57,11 @@ type SoundKey = 'win' | 'lose' | 'draw' | 'earn' | 'dailyUnlock';
 
 const PLAYER_VOLUME = 0.7;
 
-// Module-load-time eager player creation. `require` resolves
-// the bundled WAV asset; `createAudioPlayer` returns
-// synchronously and starts loading in the background.
+// `SOURCES` resolves the bundled WAV asset numbers eagerly at
+// module load — `require` returns Metro bundle IDs, not player
+// instances. Actual `createAudioPlayer` invocation is lazy: see
+// `getPlayer()` below, which instantiates a player on first
+// `play()` call and memoises into the `players` record.
 const SOURCES: Record<SoundKey, number> = {
   win: require('../../assets/sounds/win.wav'),
   lose: require('../../assets/sounds/lose.wav'),
