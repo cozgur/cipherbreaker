@@ -138,4 +138,65 @@ describe('Phase 7A.6 CP7.2 — onboarding actions survive persist rehydration', 
     expect(after.onboarding.mirrorTeaserSeen).toBe(true);
     expect(after.onboarding.notificationOptInAsked).toBe(true);
   });
+
+  describe('Phase 7A.8 CP3 — jitTooltipsSeen rehydration', () => {
+    /**
+     * CP3 added `jitTooltipsSeen` without bumping `STORE_VERSION`.
+     * Legacy v6 blobs persisted before CP3 lack the namespace
+     * entirely. Zustand persist's default shallow merge spreads
+     * persisted state over initial state, so the missing key
+     * resolves to the initial-state default (all three flags
+     * false). These tests pin that contract — a future custom
+     * `merge` that drops fields rather than backfilling would
+     * otherwise silently rehydrate `jitTooltipsSeen: undefined`
+     * and crash on the trigger sites' `seenSnap.jitTooltipsSeen
+     * .firstTokenEarn` reads.
+     */
+    it('a pre-CP3 v6 blob lacking jitTooltipsSeen rehydrates with the default namespace', async () => {
+      // Seed without jitTooltipsSeen — simulates a player whose
+      // persist blob was written by a pre-CP3 build.
+      const { jitTooltipsSeen: _omit, ...legacyV6 } = USER_STORE_DEFAULTS;
+      await AsyncStorage.setItem(
+        PERSIST_KEY,
+        JSON.stringify({ state: legacyV6, version: 6 }),
+      );
+      await useUserStore.persist.rehydrate();
+
+      const after = useUserStore.getState();
+      expect(after.jitTooltipsSeen).toEqual({
+        firstTokenEarn: false,
+        firstHintSpend: false,
+        firstStreakMilestone: false,
+      });
+      // All three mark actions remain wired post-rehydrate.
+      expect(typeof after.markFirstTokenEarnTooltipSeen).toBe('function');
+      expect(typeof after.markFirstHintSpendTooltipSeen).toBe('function');
+      expect(typeof after.markFirstStreakMilestoneTooltipSeen).toBe('function');
+    });
+
+    it('a persisted blob with explicit jitTooltipsSeen flags wins over the default', async () => {
+      await AsyncStorage.setItem(
+        PERSIST_KEY,
+        JSON.stringify({
+          state: {
+            ...USER_STORE_DEFAULTS,
+            jitTooltipsSeen: {
+              firstTokenEarn: true,
+              firstHintSpend: false,
+              firstStreakMilestone: true,
+            },
+          },
+          version: 6,
+        }),
+      );
+      await useUserStore.persist.rehydrate();
+
+      const after = useUserStore.getState();
+      expect(after.jitTooltipsSeen).toEqual({
+        firstTokenEarn: true,
+        firstHintSpend: false,
+        firstStreakMilestone: true,
+      });
+    });
+  });
 });

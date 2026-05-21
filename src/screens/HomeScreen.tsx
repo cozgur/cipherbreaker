@@ -36,7 +36,11 @@ import { LOW_BALANCE_THRESHOLD } from '@game/economy/constants';
 import type { ModeCatalogEntry } from '@game/types';
 import type { RootStackParamList } from '@navigation/routes';
 import { useUserStore } from '@state/userStore';
+import { JITTooltipHost } from '@components/tutorial/JITTooltipHost';
+import { fireJITTooltip } from '@/lib/jitTooltipManager';
 import { colors, fonts, withAlpha } from '@theme/tokens';
+
+const STREAK_MILESTONE_THRESHOLD = 3;
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'Home'>;
 
@@ -170,6 +174,27 @@ export function HomeScreen(): React.JSX.Element {
   );
   const onLowBalanceDismiss = useCallback(() => setLowBalanceDismissed(true), []);
 
+  // Phase 7A.8 CP3 — STREAK_MILESTONE first-time tooltip. Fires on
+  // mount + on any change to currentStreak that pushes it past the
+  // 3-day threshold. Gated on hasOnboarded + !seen. The 500ms
+  // delay lets the screen finish its initial layout (banner,
+  // ModeCards) before the educational toast lands so the user has
+  // a beat to register "I'm back on Home" before the explanation.
+  // ModeTutorial suppression is structural — ModeTutorial is a
+  // fullScreenModal on top of Home, so this mount effect doesn't
+  // re-fire when the modal dismisses (Home stays mounted underneath).
+  const currentStreak = dailyState.currentStreak;
+  useEffect(() => {
+    if (currentStreak < STREAK_MILESTONE_THRESHOLD) return undefined;
+    const seenSnap = useUserStore.getState();
+    if (!seenSnap.hasOnboarded) return undefined;
+    if (seenSnap.jitTooltipsSeen.firstStreakMilestone) return undefined;
+    const id = setTimeout(() => {
+      fireJITTooltip('STREAK_MILESTONE');
+    }, 500);
+    return () => clearTimeout(id);
+  }, [currentStreak]);
+
   const playMode = useCallback(
     (entry: ModeCatalogEntry) => {
       if (user.tokens < entry.meta.stake) {
@@ -292,6 +317,8 @@ export function HomeScreen(): React.JSX.Element {
 
       <BlitzTeaserModal visible={showBlitzTeaser} onClose={handleTeaserClose} />
       <MirrorTeaserModal visible={showMirrorTeaser} onClose={handleTeaserClose} />
+
+      <JITTooltipHost />
     </Screen>
   );
 }

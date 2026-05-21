@@ -1271,6 +1271,44 @@ describe('useUserStore', () => {
         expect(useUserStore.getState().modeTutorialsSeen[99]).toBe(true);
       });
     });
+
+    describe('JIT tooltip mark actions (Phase 7A.8 CP3)', () => {
+      it('fresh install starts with all three jitTooltipsSeen flags false', () => {
+        expect(USER_STORE_DEFAULTS.jitTooltipsSeen).toEqual({
+          firstTokenEarn: false,
+          firstHintSpend: false,
+          firstStreakMilestone: false,
+        });
+      });
+
+      it('markFirstTokenEarnTooltipSeen flips only firstTokenEarn', () => {
+        useUserStore.getState().markFirstTokenEarnTooltipSeen();
+        const s = useUserStore.getState().jitTooltipsSeen;
+        expect(s.firstTokenEarn).toBe(true);
+        expect(s.firstHintSpend).toBe(false);
+        expect(s.firstStreakMilestone).toBe(false);
+      });
+
+      it('markFirstHintSpendTooltipSeen flips only firstHintSpend', () => {
+        useUserStore.getState().markFirstHintSpendTooltipSeen();
+        const s = useUserStore.getState().jitTooltipsSeen;
+        expect(s.firstTokenEarn).toBe(false);
+        expect(s.firstHintSpend).toBe(true);
+        expect(s.firstStreakMilestone).toBe(false);
+      });
+
+      it('markFirstStreakMilestoneTooltipSeen flips only firstStreakMilestone', () => {
+        useUserStore.getState().markFirstStreakMilestoneTooltipSeen();
+        const s = useUserStore.getState().jitTooltipsSeen;
+        expect(s.firstStreakMilestone).toBe(true);
+      });
+
+      it('mark actions are idempotent — calling twice does not toggle', () => {
+        useUserStore.getState().markFirstTokenEarnTooltipSeen();
+        useUserStore.getState().markFirstTokenEarnTooltipSeen();
+        expect(useUserStore.getState().jitTooltipsSeen.firstTokenEarn).toBe(true);
+      });
+    });
   });
 
   describe('Phase 7A.6 CP1 — Daily-Challenge invariant for matchesCompletedSinceOnboarding', () => {

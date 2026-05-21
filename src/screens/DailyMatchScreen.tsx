@@ -62,11 +62,32 @@ import type { GuessRowProps, NormalizedFeedback } from '@game/types';
 import type { RootStackParamList } from '@navigation/routes';
 import { useDailyChallengeStore } from '@state/dailyChallengeStore';
 import { useUserStore } from '@state/userStore';
+import { JITTooltipHost } from '@components/tutorial/JITTooltipHost';
+import { fireJITTooltip } from '@/lib/jitTooltipManager';
 import { colors, fonts, withAlpha } from '@theme/tokens';
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'Daily'>;
 
 const PROBE_DIGITS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] as const;
+
+/**
+ * Phase 7A.8 CP3 — HINT_SPEND JIT tooltip trigger. Called from the
+ * OK callback of green / yellow hint Alerts and the resolved-probe
+ * Alert. Eligibility gate matches the spec:
+ *   - `hasOnboarded === true` — onboarding flow suppresses all JIT
+ *     tooltips. TutorialMatch's auto-hint is purely local state and
+ *     never reaches this seam (no `useHint` call); covered
+ *     defensively here regardless.
+ *   - `!jitTooltipsSeen.firstHintSpend` — fire once per user.
+ * `fireJITTooltip` reads the seen flag and short-circuits if set,
+ * but reading it upfront keeps the seam grep-able from the screen.
+ */
+function maybeFireHintSpendTooltip(): void {
+  const state = useUserStore.getState();
+  if (!state.hasOnboarded) return;
+  if (state.jitTooltipsSeen.firstHintSpend) return;
+  fireJITTooltip('HINT_SPEND');
+}
 
 export function DailyMatchScreen(): React.JSX.Element {
   const navigation = useNavigation<Nav>();
@@ -169,15 +190,28 @@ export function DailyMatchScreen(): React.JSX.Element {
       return;
     }
     if (r.kind === 'warning') {
+      // Warning short-circuits — no hint resource consumed, no
+      // JIT tooltip. (`hintCostForState` returns 'free' for
+      // this branch in the store; nothing to teach about.)
       Alert.alert('No correct digits yet', 'Try a guess that lands at least one position or digit first.');
       return;
     }
+    // Phase 7A.8 CP3 — green / yellow are token- or earned-hint-
+    // paid. The OK callback fires the HINT_SPEND tooltip AFTER
+    // the Alert dismisses so the toast's 5s auto-dismiss timer
+    // doesn't tick down behind a blocking native dialog.
     if (r.kind === 'green') {
-      Alert.alert('Hint', `Position ${r.position + 1} is ${r.digit}.`);
+      Alert.alert('Hint', `Position ${r.position + 1} is ${r.digit}.`, [
+        { text: 'OK', onPress: maybeFireHintSpendTooltip },
+      ]);
       return;
     }
     // yellow
-    Alert.alert('Hint', `Digit ${r.digit} is somewhere in the secret. Place it to find out where.`);
+    Alert.alert(
+      'Hint',
+      `Digit ${r.digit} is somewhere in the secret. Place it to find out where.`,
+      [{ text: 'OK', onPress: maybeFireHintSpendTooltip }],
+    );
   }, [currentAttempt]);
 
   // ── Hint B (Probe) state machine ──
@@ -210,8 +244,14 @@ export function DailyMatchScreen(): React.JSX.Element {
           onPress: () => {
             const r = useDailyChallengeStore.getState().useProbe(digit);
             if (r.kind === 'resolved') {
+              // Phase 7A.8 CP3 — probe is the other token-/earned-
+              // hint-paid path; same OK-callback fire pattern as
+              // `onHintPress` so the tooltip lands after the
+              // native Alert dismisses.
               Alert.alert(
                 r.exists ? `✅ ${r.digit} is in the secret` : `❌ ${r.digit} is not in the secret`,
+                undefined,
+                [{ text: 'OK', onPress: maybeFireHintSpendTooltip }],
               );
             }
           },
@@ -422,6 +462,8 @@ export function DailyMatchScreen(): React.JSX.Element {
           </Pressable>
         </Pressable>
       </Modal>
+
+      <JITTooltipHost />
     </Screen>
   );
 }

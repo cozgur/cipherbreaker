@@ -143,6 +143,42 @@ export interface UserStoreState {
    * reset users land on an empty map.
    */
   readonly modeTutorialsSeen: Readonly<Record<number, boolean>>;
+  /**
+   * Phase 7A.8 CP3 — just-in-time tooltip seen flags. Each tooltip
+   * fires exactly once per user at its respective trigger:
+   *   - `firstTokenEarn`: first post-onboarding win that grants
+   *     tokens (MatchResultScreen mount).
+   *   - `firstHintSpend`: first user-initiated hint use in Daily
+   *     Challenge (DailyMatchScreen `onHintPress` / probe path).
+   *     Auto-hints in TutorialMatchScreen do NOT route through
+   *     this flag — they're purely local component state and
+   *     never call `useDailyChallengeStore.useHint()`.
+   *   - `firstStreakMilestone`: first time
+   *     `dailyChallenge.currentStreak >= 3` lands on HomeScreen
+   *     mount. Persistent — if the user breaks the streak and
+   *     rebuilds it, the tooltip does not re-fire (semantic is
+   *     "discovery moment for the streak mechanic," not "every
+   *     time the streak hits 3").
+   *
+   * No schema version bump in CP3 — the three fields are read with
+   * optional-chained access at trigger sites so a v6 legacy blob
+   * that omits the namespace reads as "not seen" and the tooltips
+   * fire on their next eligible trigger. CP6 mode unlock will
+   * batch a v6 → v7 migration that locks the field shape in.
+   */
+  readonly jitTooltipsSeen: JITTooltipsSeenState;
+}
+
+/**
+ * Phase 7A.8 CP3 — namespace for the three just-in-time tooltip
+ * seen flags. Nested rather than flat to mirror the `onboarding`
+ * pattern: related one-shot booleans live together so the schema
+ * surface stays organised as more discovery aids land.
+ */
+export interface JITTooltipsSeenState {
+  readonly firstTokenEarn: boolean;
+  readonly firstHintSpend: boolean;
+  readonly firstStreakMilestone: boolean;
 }
 
 export interface OnboardingState {
@@ -387,6 +423,17 @@ export interface UserStoreActions {
    * land in CP7.
    */
   markModeTutorialSeen(modeId: number): void;
+  /**
+   * Phase 7A.8 CP3 — flip the corresponding `jitTooltipsSeen` flag
+   * to `true`. Idempotent — once `true`, subsequent calls do not
+   * mutate. Called at the trigger site immediately after the
+   * tooltip is shown (NOT after dismiss) so a force-quit during
+   * the 5s display window does not re-fire the tooltip on next
+   * launch.
+   */
+  markFirstTokenEarnTooltipSeen(): void;
+  markFirstHintSpendTooltipSeen(): void;
+  markFirstStreakMilestoneTooltipSeen(): void;
 }
 
 export const DAILY_CHALLENGE_DEFAULTS: DailyChallengeState = {
@@ -398,6 +445,17 @@ export const DAILY_CHALLENGE_DEFAULTS: DailyChallengeState = {
   history: [],
   earnedHints: 0,
   lastHintEarnedAtStreak: 0,
+};
+
+/** Phase 7A.8 CP3 — fresh-install defaults for the JIT tooltip
+ *  namespace. All three flags start `false` so a new user sees each
+ *  tooltip exactly once on its respective first trigger. Legacy v6
+ *  blobs that omit the namespace pick this up via zustand's shallow
+ *  merge (initial state spreads under persisted state). */
+export const JIT_TOOLTIPS_SEEN_DEFAULTS: JITTooltipsSeenState = {
+  firstTokenEarn: false,
+  firstHintSpend: false,
+  firstStreakMilestone: false,
 };
 
 export const ONBOARDING_DEFAULTS: OnboardingState = {
@@ -489,6 +547,8 @@ export const USER_STORE_DEFAULTS: UserStoreState = {
   // gating treats undefined as "not seen". Mode 1 deliberately
   // not in the map (covered by `onboarding.tutorialMatchCompleted`).
   modeTutorialsSeen: {},
+  // Phase 7A.8 CP3 — fresh-install: no JIT tooltips seen.
+  jitTooltipsSeen: JIT_TOOLTIPS_SEEN_DEFAULTS,
 };
 
 const STORE_VERSION = 6;
@@ -946,6 +1006,33 @@ export const useUserStore = create<UserStoreState & UserStoreActions>()(
         set((s) => ({
           modeTutorialsSeen: { ...s.modeTutorialsSeen, [modeId]: true },
         }));
+      },
+
+      markFirstTokenEarnTooltipSeen: () => {
+        set((s) => {
+          if (s.jitTooltipsSeen.firstTokenEarn) return {};
+          return {
+            jitTooltipsSeen: { ...s.jitTooltipsSeen, firstTokenEarn: true },
+          };
+        });
+      },
+
+      markFirstHintSpendTooltipSeen: () => {
+        set((s) => {
+          if (s.jitTooltipsSeen.firstHintSpend) return {};
+          return {
+            jitTooltipsSeen: { ...s.jitTooltipsSeen, firstHintSpend: true },
+          };
+        });
+      },
+
+      markFirstStreakMilestoneTooltipSeen: () => {
+        set((s) => {
+          if (s.jitTooltipsSeen.firstStreakMilestone) return {};
+          return {
+            jitTooltipsSeen: { ...s.jitTooltipsSeen, firstStreakMilestone: true },
+          };
+        });
       },
 
       applyRewardedDouble: (matchId) => {

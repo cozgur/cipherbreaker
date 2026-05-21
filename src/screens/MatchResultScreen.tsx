@@ -33,6 +33,8 @@ import { Screen } from '@components/Screen';
 import { TinyTag } from '@components/TinyTag';
 import { TokenCoin } from '@components/TokenCoin';
 import { TokenRewardFloater } from '@components/TokenRewardFloater';
+import { JITTooltipHost } from '@components/tutorial/JITTooltipHost';
+import { fireJITTooltip } from '@/lib/jitTooltipManager';
 import { findMode } from '@data/modeCatalog';
 import { secretFor } from '@data/mockSecrets';
 import { findOpponent } from '@data/mockOpponents';
@@ -414,6 +416,27 @@ export function MatchResultScreen(): React.JSX.Element {
     setSkipDoubleTapped(true);
   }, [modeId, outcome]);
 
+  // Phase 7A.8 CP3 — first-time TOKEN_EARN tooltip. Mount effect
+  // gated on win-with-reward + post-onboarding + engine path. The
+  // 500ms delay lets the chip's AnimatedTokenCounter finish its
+  // count-up before the educational tooltip lands — pre-empting
+  // the user's own recognition would dampen the discovery moment.
+  // Marks the seen flag on show (inside fireJITTooltip) so a
+  // re-mount under Strict Mode or a screen-redraw race cannot
+  // double-fire it.
+  const isWinWithReward =
+    isEnginePath && reward > 0 && (outcome === 'victory' || outcome === 'draw');
+  useEffect(() => {
+    if (!isWinWithReward) return undefined;
+    const seenSnap = useUserStore.getState();
+    if (!seenSnap.hasOnboarded) return undefined;
+    if (seenSnap.jitTooltipsSeen.firstTokenEarn) return undefined;
+    const id = setTimeout(() => {
+      fireJITTooltip('TOKEN_EARN');
+    }, 500);
+    return () => clearTimeout(id);
+  }, [isWinWithReward]);
+
   const revealSecret = routeSecret ?? secretFor(modeId);
   const digits = useMemo(
     () => Array.from(revealSecret, (c) => Number.parseInt(c, 10)),
@@ -535,6 +558,8 @@ export function MatchResultScreen(): React.JSX.Element {
           </Button>
         </View>
       </View>
+
+      <JITTooltipHost />
     </Screen>
   );
 }
