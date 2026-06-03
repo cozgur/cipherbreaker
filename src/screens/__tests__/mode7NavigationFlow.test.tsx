@@ -62,9 +62,9 @@ describe('Mode 7 navigation flow — Matchmaking seeds the engine path', () => {
       { modeId: 7 },
     );
 
-    // Search delay (random=0.5 → 2700ms) → opponent paint.
+    // Search delay (random=0.5 -> pickMatchmakingDuration 6000ms) -> opponent paint.
     act(() => {
-      jest.advanceTimersByTime(2700);
+      jest.advanceTimersByTime(6000);
     });
     // Reveal window → seed + replace into Match.
     act(() => {

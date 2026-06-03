@@ -138,9 +138,9 @@ describe('CP2 flows', () => {
     });
     expect(utils.navRef.current?.getCurrentRoute()?.name).toBe('Matchmaking');
 
-    // Search 2700ms, then 1000ms reveal → SecretSetup.
+    // Search 6000ms (random=0.5 -> r<0.6 branch), then 1000ms reveal → SecretSetup.
     act(() => {
-      jest.advanceTimersByTime(2700);
+      jest.advanceTimersByTime(6000);
     });
     act(() => {
       jest.advanceTimersByTime(1000);
@@ -159,7 +159,7 @@ describe('CP2 flows', () => {
       fireEvent.press(utils.getByLabelText('COLOR MATCH — 50 tokens'));
     });
     act(() => {
-      jest.advanceTimersByTime(2700);
+      jest.advanceTimersByTime(6000);
     });
     act(() => {
       jest.advanceTimersByTime(1000);
@@ -204,7 +204,7 @@ describe('CP2 flows', () => {
       fireEvent.press(utils.getByLabelText('PRECISION — 50 tokens'));
     });
     act(() => {
-      jest.advanceTimersByTime(2700);
+      jest.advanceTimersByTime(6000);
     });
     act(() => {
       jest.advanceTimersByTime(1000);

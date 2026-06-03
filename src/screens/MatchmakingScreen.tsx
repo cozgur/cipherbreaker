@@ -1,13 +1,23 @@
 /**
- * Matchmaking — a randomised search delay (2200–3200ms) followed by a
+ * Matchmaking — a skewed search delay (Phase 7A.8 CP5) followed by a
  * 1-second opponent reveal, then auto-navigation to the next route.
  * The next route is decided by `modeRouter` so Mode 7 (Mirror) skips
  * SecretSetup and lands straight on Match.
  *
- * The randomised delay is intentional: a fixed 2.5s search felt
- * mechanical in playtests. Math.random keeps it organic without
- * needing a real backend; Phase 7A's real matchmaking will swap the
- * timer for a server roundtrip without changing the screen state.
+ * The search delay is drawn from `pickMatchmakingDuration` — skewed so
+ * most matches resolve in 4-8s with the occasional 8-15s wait, capped
+ * at 15s (no phone-down outlier). A fixed delay read as mechanical in
+ * playtests and broke the "real opponent" illusion. The duration is
+ * picked ONCE on mount and held in a ref so the same match never
+ * re-rolls its wait on re-render. Phase 7A's real matchmaking will
+ * swap the timer for a server roundtrip without changing screen state.
+ *
+ * Progressive wait copy (CP5): while still searching, an apologetic
+ * note fades in at the 10s and 15s thresholds so a longer-than-usual
+ * wait is acknowledged rather than left silent. The 0-10s window keeps
+ * the existing headline/subline untouched (including Mode 7's
+ * race-specific copy). The 15s note is defensive — the duration cap is
+ * <15s, so it only surfaces if a future change lifts the ceiling.
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -26,6 +36,7 @@ import { findMode } from '@data/modeCatalog';
 import { pickRandomOpponent, type MockOpponent } from '@data/mockOpponents';
 import { nextRouteAfterMatchmaking } from '@game/modeRouter';
 import { modeRegistry } from '@game/modeRegistry';
+import { pickMatchmakingDuration } from '@/lib/matchmaking';
 import type { RootStackParamList } from '@navigation/routes';
 import { useMatchStore } from '@state/matchStore';
 import { colors, fonts, withAlpha } from '@theme/tokens';
@@ -33,13 +44,24 @@ import { colors, fonts, withAlpha } from '@theme/tokens';
 type Nav = NativeStackNavigationProp<RootStackParamList, 'Matchmaking'>;
 type RouteParams = RouteProp<RootStackParamList, 'Matchmaking'>;
 
-const SEARCH_MIN_MS = 2200;
-const SEARCH_MAX_MS = 3200;
 const REVEAL_MS = 1000;
 
-function rollSearchDelay(): number {
-  return SEARCH_MIN_MS + Math.random() * (SEARCH_MAX_MS - SEARCH_MIN_MS);
-}
+// Progressive wait-message thresholds (ms from mount). Each stage only
+// matters while still searching; once an opponent is found the headline
+// switches to "Opponent found!" and the wait note is unmounted.
+const WAIT_STAGE_1_MS = 5000; // normal range — tracker only, no copy
+const WAIT_STAGE_2_MS = 10000; // longer than usual — apologetic note
+const WAIT_STAGE_3_MS = 15000; // edge case — proactive reassurance
+
+// English per app locale (the screen's other copy is English; the TR
+// draft from the CP5 brief was reverted after a locale survey). No
+// i18n system exists yet, so these stay inline like the other literals.
+// Casual + lightly apologetic to match the app's tone; "almost there"
+// reassures without promising a specific time.
+const WAIT_COPY_LONG = 'Taking longer than usual...';
+const WAIT_COPY_LONGER = 'Hang tight, almost there...';
+
+type WaitStage = 0 | 1 | 2 | 3;
 
 export function MatchmakingScreen(): React.JSX.Element {
   const navigation = useNavigation<Nav>();
@@ -56,6 +78,16 @@ export function MatchmakingScreen(): React.JSX.Element {
   const [opponent, setOpponent] = useState<MockOpponent | null>(null);
   const opponentRef = useRef<MockOpponent | null>(null);
 
+  // Pick the search duration once per mount and hold it in a ref so a
+  // re-render never re-rolls the wait. Lazy-init guard is the standard
+  // React idiom for a ref that should be computed exactly once.
+  const searchDelayRef = useRef<number | null>(null);
+  if (searchDelayRef.current === null) {
+    searchDelayRef.current = pickMatchmakingDuration();
+  }
+
+  const [waitStage, setWaitStage] = useState<WaitStage>(0);
+
   useEffect(() => {
     let cancelled = false;
     const searchTimer = setTimeout(() => {
@@ -63,11 +95,28 @@ export function MatchmakingScreen(): React.JSX.Element {
       const picked = pickRandomOpponent();
       opponentRef.current = picked;
       setOpponent(picked);
-    }, rollSearchDelay());
+    }, searchDelayRef.current ?? 0);
 
     return (): void => {
       cancelled = true;
       clearTimeout(searchTimer);
+    };
+  }, []);
+
+  // Progressive wait-stage timers, independent of the search timer.
+  // Each only advances the stage (never rewinds), and the render gate
+  // on `opponent == null` means a stage that fires after the match is
+  // found leaves no visible trace.
+  useEffect(() => {
+    const advanceTo = (stage: WaitStage) => (): void =>
+      setWaitStage((prev) => (prev < stage ? stage : prev));
+    const t1 = setTimeout(advanceTo(1), WAIT_STAGE_1_MS);
+    const t2 = setTimeout(advanceTo(2), WAIT_STAGE_2_MS);
+    const t3 = setTimeout(advanceTo(3), WAIT_STAGE_3_MS);
+    return (): void => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
     };
   }, []);
 
@@ -139,6 +188,22 @@ export function MatchmakingScreen(): React.JSX.Element {
           {opponent ? null : <Text style={styles.dots}>...</Text>}
         </Text>
         <Text style={styles.subline}>{subline}</Text>
+
+        {opponent == null && waitStage >= 2 ? (
+          <MotiView
+            // `key` on the stage so stepping 2 → 3 remounts the node and
+            // each new message gets its own fade-in rather than a silent
+            // text swap.
+            key={waitStage}
+            from={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ type: 'timing', duration: 400 }}
+          >
+            <Text style={styles.waitNote}>
+              {waitStage >= 3 ? WAIT_COPY_LONGER : WAIT_COPY_LONG}
+            </Text>
+          </MotiView>
+        ) : null}
       </View>
 
       {opponent ? (
@@ -213,6 +278,14 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: colors.textSecondary,
     textAlign: 'center',
+  },
+  waitNote: {
+    marginTop: 14,
+    fontFamily: fonts.body,
+    fontSize: 12,
+    color: withAlpha(colors.text, 0.55),
+    textAlign: 'center',
+    fontStyle: 'italic',
   },
   opponentWrap: {
     position: 'absolute',
