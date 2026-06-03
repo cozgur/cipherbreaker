@@ -99,6 +99,17 @@ export type RootStackParamList = {
   InterstitialAd: undefined;
   Profile: undefined;
   InsufficientTokens: { modeId: number };
+  /**
+   * Phase 7A.8 CP7 — one-time mode purchase modal. Tap-driven
+   * (HomeScreen ModeCard → `playMode` unlock gate), so it's a stack
+   * route like InsufficientTokens rather than a state-driven inline
+   * overlay like the CP5 teasers. Transparent-modal + fade
+   * presentation. On a successful `unlockMode`, the screen
+   * `replace`s into ModeTutorial (tutorial unseen) or Matchmaking
+   * (seen) so the unlock feels like one continuous "try this mode"
+   * action with no Home re-tap.
+   */
+  Unlock: { modeId: number };
   ChangeUsername: undefined;
   /**
    * Phase 7A.4 — Daily Challenge anchor feature. No params: the

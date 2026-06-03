@@ -1,6 +1,6 @@
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import Svg, { Path } from 'react-native-svg';
+import Svg, { Path, Rect } from 'react-native-svg';
 
 import type { ModeMeta } from '@game/types';
 import { colors, fonts, withAlpha } from '@theme/tokens';
@@ -12,6 +12,15 @@ interface ModeCardProps {
   readonly meta: ModeMeta;
   readonly onPress?: () => void;
   readonly disabled?: boolean;
+  /**
+   * Phase 7A.8 CP7 — render the lock overlay (Mode 2-7 not yet
+   * unlocked). The card stays pressable; the overlay is
+   * `pointerEvents="none"` so the tap still reaches `onPress`
+   * (HomeScreen's `playMode` routes a locked tap to the UnlockModal).
+   */
+  readonly locked?: boolean;
+  /** Token cost shown in the lock badge — required when `locked`. */
+  readonly unlockCost?: number;
 }
 
 /**
@@ -21,11 +30,21 @@ interface ModeCardProps {
  * corner ribbon so the title never has to share horizontal space
  * with a growing tag (SUDDEN DEATH + HIGH RISK was clipping).
  */
-export function ModeCard({ meta, onPress, disabled = false }: ModeCardProps): React.JSX.Element {
+export function ModeCard({
+  meta,
+  onPress,
+  disabled = false,
+  locked = false,
+  unlockCost,
+}: ModeCardProps): React.JSX.Element {
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`${meta.name} — ${meta.stake} tokens`}
+      accessibilityLabel={
+        locked
+          ? `${meta.name} — locked, unlock for ${unlockCost} tokens`
+          : `${meta.name} — ${meta.stake} tokens`
+      }
       disabled={disabled || !onPress}
       onPress={onPress}
       style={({ pressed }) => [
@@ -98,7 +117,32 @@ export function ModeCard({ meta, onPress, disabled = false }: ModeCardProps): Re
           <Text style={[styles.ribbonLabel, { color: meta.badge.color }]}>{meta.badge.label}</Text>
         </View>
       ) : null}
+
+      {locked ? (
+        <View style={styles.lockOverlay} pointerEvents="none">
+          <LockIcon size={26} />
+          <Text style={styles.unlockBadge}>UNLOCK FOR {unlockCost} TOKENS</Text>
+        </View>
+      ) : null}
     </Pressable>
+  );
+}
+
+function LockIcon({ size = 26 }: { readonly size?: number }): React.JSX.Element {
+  // Simple padlock — body rect + shackle arc. Bespoke SVG to match
+  // the house style (no icon library; see ModeIcon).
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path
+        d="M7 10V7a5 5 0 0 1 10 0v3"
+        stroke={colors.gold}
+        strokeWidth={2}
+        strokeLinecap="round"
+        fill="none"
+      />
+      <Rect x="4.5" y="10" width="15" height="10.5" rx="2.5" fill={colors.gold} />
+      <Rect x="11" y="13.5" width="2" height="3.5" rx="1" fill={withAlpha('#000000', 0.55)} />
+    </Svg>
   );
 }
 
@@ -189,5 +233,24 @@ const styles = StyleSheet.create({
     letterSpacing: 1.2,
     textTransform: 'uppercase',
     lineHeight: 12,
+  },
+  // Phase 7A.8 CP7 — lock overlay. Absolute-fill dim layer + centered
+  // padlock + gold unlock badge. `pointerEvents="none"` so the card's
+  // Pressable still receives the tap (routes to UnlockModal).
+  lockOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: withAlpha('#000000', 0.6),
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  unlockBadge: {
+    fontFamily: fonts.bodySemibold,
+    fontSize: 11,
+    fontWeight: '600',
+    letterSpacing: 1.3,
+    textTransform: 'uppercase',
+    color: colors.gold,
   },
 });

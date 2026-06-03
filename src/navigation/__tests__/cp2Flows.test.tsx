@@ -195,7 +195,9 @@ describe('CP2 flows', () => {
     // ModeTutorial first. This test predates that interception
     // and isolates the SecretSetup unique-digit flow, so we
     // pre-seed the seen flag to bypass the tutorial gate.
-    useUserStore.setState({ modeTutorialsSeen: { 3: true } });
+    // Mode 3 must be unlocked (CP7 unlock gate) and tutorial-seen to
+    // reach SecretSetup directly.
+    useUserStore.setState({ modeTutorialsSeen: { 3: true }, modeUnlocked: { 1: true, 3: true } });
     jest.useFakeTimers();
     jest.spyOn(Math, 'random').mockReturnValue(0.5);
 

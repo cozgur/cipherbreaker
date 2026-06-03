@@ -6787,9 +6787,145 @@ exports[`HomeScreen snapshots the seven-mode layout 1`] = `
                                               },
                                               "type": "View",
                                             },
+                                            {
+                                              "children": [
+                                                {
+                                                  "children": [
+                                                    {
+                                                      "children": [
+                                                        {
+                                                          "children": null,
+                                                          "props": {
+                                                            "d": "M7 10V7a5 5 0 0 1 10 0v3",
+                                                            "fill": null,
+                                                            "propList": [
+                                                              "fill",
+                                                              "stroke",
+                                                              "strokeWidth",
+                                                              "strokeLinecap",
+                                                            ],
+                                                            "stroke": {
+                                                              "payload": 4294688548,
+                                                              "type": 0,
+                                                            },
+                                                            "strokeLinecap": 1,
+                                                            "strokeWidth": 2,
+                                                          },
+                                                          "type": "RNSVGPath",
+                                                        },
+                                                        {
+                                                          "children": null,
+                                                          "props": {
+                                                            "fill": {
+                                                              "payload": 4294688548,
+                                                              "type": 0,
+                                                            },
+                                                            "height": "10.5",
+                                                            "propList": [
+                                                              "fill",
+                                                            ],
+                                                            "rx": "2.5",
+                                                            "ry": undefined,
+                                                            "width": "15",
+                                                            "x": "4.5",
+                                                            "y": "10",
+                                                          },
+                                                          "type": "RNSVGRect",
+                                                        },
+                                                        {
+                                                          "children": null,
+                                                          "props": {
+                                                            "fill": {
+                                                              "payload": 2348810240,
+                                                              "type": 0,
+                                                            },
+                                                            "height": "3.5",
+                                                            "propList": [
+                                                              "fill",
+                                                            ],
+                                                            "rx": "1",
+                                                            "ry": undefined,
+                                                            "width": "2",
+                                                            "x": "11",
+                                                            "y": "13.5",
+                                                          },
+                                                          "type": "RNSVGRect",
+                                                        },
+                                                      ],
+                                                      "props": {
+                                                        "fill": {
+                                                          "payload": 4278190080,
+                                                          "type": 0,
+                                                        },
+                                                      },
+                                                      "type": "RNSVGGroup",
+                                                    },
+                                                  ],
+                                                  "props": {
+                                                    "align": "xMidYMid",
+                                                    "bbHeight": 26,
+                                                    "bbWidth": 26,
+                                                    "focusable": false,
+                                                    "height": 26,
+                                                    "meetOrSlice": 0,
+                                                    "minX": 0,
+                                                    "minY": 0,
+                                                    "style": [
+                                                      {
+                                                        "backgroundColor": "transparent",
+                                                        "borderWidth": 0,
+                                                      },
+                                                      {
+                                                        "flex": 0,
+                                                        "height": 26,
+                                                        "width": 26,
+                                                      },
+                                                    ],
+                                                    "vbHeight": 24,
+                                                    "vbWidth": 24,
+                                                    "width": 26,
+                                                  },
+                                                  "type": "RNSVGSvgView",
+                                                },
+                                                {
+                                                  "children": [
+                                                    "UNLOCK FOR ",
+                                                    "300",
+                                                    " TOKENS",
+                                                  ],
+                                                  "props": {
+                                                    "style": {
+                                                      "color": "#fbbf24",
+                                                      "fontFamily": "Inter-SemiBold",
+                                                      "fontSize": 11,
+                                                      "fontWeight": "600",
+                                                      "letterSpacing": 1.3,
+                                                      "textTransform": "uppercase",
+                                                    },
+                                                  },
+                                                  "type": "Text",
+                                                },
+                                              ],
+                                              "props": {
+                                                "pointerEvents": "none",
+                                                "style": {
+                                                  "alignItems": "center",
+                                                  "backgroundColor": "rgba(0,0,0,0.6)",
+                                                  "borderRadius": 16,
+                                                  "bottom": 0,
+                                                  "gap": 8,
+                                                  "justifyContent": "center",
+                                                  "left": 0,
+                                                  "position": "absolute",
+                                                  "right": 0,
+                                                  "top": 0,
+                                                },
+                                              },
+                                              "type": "View",
+                                            },
                                           ],
                                           "props": {
-                                            "accessibilityLabel": "HIGH & LOW — 50 tokens",
+                                            "accessibilityLabel": "HIGH & LOW — locked, unlock for 300 tokens",
                                             "accessibilityRole": "button",
                                             "accessibilityState": {
                                               "busy": undefined,
@@ -7284,9 +7420,145 @@ exports[`HomeScreen snapshots the seven-mode layout 1`] = `
                                               },
                                               "type": "View",
                                             },
+                                            {
+                                              "children": [
+                                                {
+                                                  "children": [
+                                                    {
+                                                      "children": [
+                                                        {
+                                                          "children": null,
+                                                          "props": {
+                                                            "d": "M7 10V7a5 5 0 0 1 10 0v3",
+                                                            "fill": null,
+                                                            "propList": [
+                                                              "fill",
+                                                              "stroke",
+                                                              "strokeWidth",
+                                                              "strokeLinecap",
+                                                            ],
+                                                            "stroke": {
+                                                              "payload": 4294688548,
+                                                              "type": 0,
+                                                            },
+                                                            "strokeLinecap": 1,
+                                                            "strokeWidth": 2,
+                                                          },
+                                                          "type": "RNSVGPath",
+                                                        },
+                                                        {
+                                                          "children": null,
+                                                          "props": {
+                                                            "fill": {
+                                                              "payload": 4294688548,
+                                                              "type": 0,
+                                                            },
+                                                            "height": "10.5",
+                                                            "propList": [
+                                                              "fill",
+                                                            ],
+                                                            "rx": "2.5",
+                                                            "ry": undefined,
+                                                            "width": "15",
+                                                            "x": "4.5",
+                                                            "y": "10",
+                                                          },
+                                                          "type": "RNSVGRect",
+                                                        },
+                                                        {
+                                                          "children": null,
+                                                          "props": {
+                                                            "fill": {
+                                                              "payload": 2348810240,
+                                                              "type": 0,
+                                                            },
+                                                            "height": "3.5",
+                                                            "propList": [
+                                                              "fill",
+                                                            ],
+                                                            "rx": "1",
+                                                            "ry": undefined,
+                                                            "width": "2",
+                                                            "x": "11",
+                                                            "y": "13.5",
+                                                          },
+                                                          "type": "RNSVGRect",
+                                                        },
+                                                      ],
+                                                      "props": {
+                                                        "fill": {
+                                                          "payload": 4278190080,
+                                                          "type": 0,
+                                                        },
+                                                      },
+                                                      "type": "RNSVGGroup",
+                                                    },
+                                                  ],
+                                                  "props": {
+                                                    "align": "xMidYMid",
+                                                    "bbHeight": 26,
+                                                    "bbWidth": 26,
+                                                    "focusable": false,
+                                                    "height": 26,
+                                                    "meetOrSlice": 0,
+                                                    "minX": 0,
+                                                    "minY": 0,
+                                                    "style": [
+                                                      {
+                                                        "backgroundColor": "transparent",
+                                                        "borderWidth": 0,
+                                                      },
+                                                      {
+                                                        "flex": 0,
+                                                        "height": 26,
+                                                        "width": 26,
+                                                      },
+                                                    ],
+                                                    "vbHeight": 24,
+                                                    "vbWidth": 24,
+                                                    "width": 26,
+                                                  },
+                                                  "type": "RNSVGSvgView",
+                                                },
+                                                {
+                                                  "children": [
+                                                    "UNLOCK FOR ",
+                                                    "500",
+                                                    " TOKENS",
+                                                  ],
+                                                  "props": {
+                                                    "style": {
+                                                      "color": "#fbbf24",
+                                                      "fontFamily": "Inter-SemiBold",
+                                                      "fontSize": 11,
+                                                      "fontWeight": "600",
+                                                      "letterSpacing": 1.3,
+                                                      "textTransform": "uppercase",
+                                                    },
+                                                  },
+                                                  "type": "Text",
+                                                },
+                                              ],
+                                              "props": {
+                                                "pointerEvents": "none",
+                                                "style": {
+                                                  "alignItems": "center",
+                                                  "backgroundColor": "rgba(0,0,0,0.6)",
+                                                  "borderRadius": 16,
+                                                  "bottom": 0,
+                                                  "gap": 8,
+                                                  "justifyContent": "center",
+                                                  "left": 0,
+                                                  "position": "absolute",
+                                                  "right": 0,
+                                                  "top": 0,
+                                                },
+                                              },
+                                              "type": "View",
+                                            },
                                           ],
                                           "props": {
-                                            "accessibilityLabel": "PRECISION — 50 tokens",
+                                            "accessibilityLabel": "PRECISION — locked, unlock for 500 tokens",
                                             "accessibilityRole": "button",
                                             "accessibilityState": {
                                               "busy": undefined,
@@ -7890,9 +8162,145 @@ exports[`HomeScreen snapshots the seven-mode layout 1`] = `
                                               },
                                               "type": "View",
                                             },
+                                            {
+                                              "children": [
+                                                {
+                                                  "children": [
+                                                    {
+                                                      "children": [
+                                                        {
+                                                          "children": null,
+                                                          "props": {
+                                                            "d": "M7 10V7a5 5 0 0 1 10 0v3",
+                                                            "fill": null,
+                                                            "propList": [
+                                                              "fill",
+                                                              "stroke",
+                                                              "strokeWidth",
+                                                              "strokeLinecap",
+                                                            ],
+                                                            "stroke": {
+                                                              "payload": 4294688548,
+                                                              "type": 0,
+                                                            },
+                                                            "strokeLinecap": 1,
+                                                            "strokeWidth": 2,
+                                                          },
+                                                          "type": "RNSVGPath",
+                                                        },
+                                                        {
+                                                          "children": null,
+                                                          "props": {
+                                                            "fill": {
+                                                              "payload": 4294688548,
+                                                              "type": 0,
+                                                            },
+                                                            "height": "10.5",
+                                                            "propList": [
+                                                              "fill",
+                                                            ],
+                                                            "rx": "2.5",
+                                                            "ry": undefined,
+                                                            "width": "15",
+                                                            "x": "4.5",
+                                                            "y": "10",
+                                                          },
+                                                          "type": "RNSVGRect",
+                                                        },
+                                                        {
+                                                          "children": null,
+                                                          "props": {
+                                                            "fill": {
+                                                              "payload": 2348810240,
+                                                              "type": 0,
+                                                            },
+                                                            "height": "3.5",
+                                                            "propList": [
+                                                              "fill",
+                                                            ],
+                                                            "rx": "1",
+                                                            "ry": undefined,
+                                                            "width": "2",
+                                                            "x": "11",
+                                                            "y": "13.5",
+                                                          },
+                                                          "type": "RNSVGRect",
+                                                        },
+                                                      ],
+                                                      "props": {
+                                                        "fill": {
+                                                          "payload": 4278190080,
+                                                          "type": 0,
+                                                        },
+                                                      },
+                                                      "type": "RNSVGGroup",
+                                                    },
+                                                  ],
+                                                  "props": {
+                                                    "align": "xMidYMid",
+                                                    "bbHeight": 26,
+                                                    "bbWidth": 26,
+                                                    "focusable": false,
+                                                    "height": 26,
+                                                    "meetOrSlice": 0,
+                                                    "minX": 0,
+                                                    "minY": 0,
+                                                    "style": [
+                                                      {
+                                                        "backgroundColor": "transparent",
+                                                        "borderWidth": 0,
+                                                      },
+                                                      {
+                                                        "flex": 0,
+                                                        "height": 26,
+                                                        "width": 26,
+                                                      },
+                                                    ],
+                                                    "vbHeight": 24,
+                                                    "vbWidth": 24,
+                                                    "width": 26,
+                                                  },
+                                                  "type": "RNSVGSvgView",
+                                                },
+                                                {
+                                                  "children": [
+                                                    "UNLOCK FOR ",
+                                                    "1000",
+                                                    " TOKENS",
+                                                  ],
+                                                  "props": {
+                                                    "style": {
+                                                      "color": "#fbbf24",
+                                                      "fontFamily": "Inter-SemiBold",
+                                                      "fontSize": 11,
+                                                      "fontWeight": "600",
+                                                      "letterSpacing": 1.3,
+                                                      "textTransform": "uppercase",
+                                                    },
+                                                  },
+                                                  "type": "Text",
+                                                },
+                                              ],
+                                              "props": {
+                                                "pointerEvents": "none",
+                                                "style": {
+                                                  "alignItems": "center",
+                                                  "backgroundColor": "rgba(0,0,0,0.6)",
+                                                  "borderRadius": 16,
+                                                  "bottom": 0,
+                                                  "gap": 8,
+                                                  "justifyContent": "center",
+                                                  "left": 0,
+                                                  "position": "absolute",
+                                                  "right": 0,
+                                                  "top": 0,
+                                                },
+                                              },
+                                              "type": "View",
+                                            },
                                           ],
                                           "props": {
-                                            "accessibilityLabel": "BLITZ — 50 tokens",
+                                            "accessibilityLabel": "BLITZ — locked, unlock for 1000 tokens",
                                             "accessibilityRole": "button",
                                             "accessibilityState": {
                                               "busy": undefined,
@@ -8447,9 +8855,145 @@ exports[`HomeScreen snapshots the seven-mode layout 1`] = `
                                               },
                                               "type": "View",
                                             },
+                                            {
+                                              "children": [
+                                                {
+                                                  "children": [
+                                                    {
+                                                      "children": [
+                                                        {
+                                                          "children": null,
+                                                          "props": {
+                                                            "d": "M7 10V7a5 5 0 0 1 10 0v3",
+                                                            "fill": null,
+                                                            "propList": [
+                                                              "fill",
+                                                              "stroke",
+                                                              "strokeWidth",
+                                                              "strokeLinecap",
+                                                            ],
+                                                            "stroke": {
+                                                              "payload": 4294688548,
+                                                              "type": 0,
+                                                            },
+                                                            "strokeLinecap": 1,
+                                                            "strokeWidth": 2,
+                                                          },
+                                                          "type": "RNSVGPath",
+                                                        },
+                                                        {
+                                                          "children": null,
+                                                          "props": {
+                                                            "fill": {
+                                                              "payload": 4294688548,
+                                                              "type": 0,
+                                                            },
+                                                            "height": "10.5",
+                                                            "propList": [
+                                                              "fill",
+                                                            ],
+                                                            "rx": "2.5",
+                                                            "ry": undefined,
+                                                            "width": "15",
+                                                            "x": "4.5",
+                                                            "y": "10",
+                                                          },
+                                                          "type": "RNSVGRect",
+                                                        },
+                                                        {
+                                                          "children": null,
+                                                          "props": {
+                                                            "fill": {
+                                                              "payload": 2348810240,
+                                                              "type": 0,
+                                                            },
+                                                            "height": "3.5",
+                                                            "propList": [
+                                                              "fill",
+                                                            ],
+                                                            "rx": "1",
+                                                            "ry": undefined,
+                                                            "width": "2",
+                                                            "x": "11",
+                                                            "y": "13.5",
+                                                          },
+                                                          "type": "RNSVGRect",
+                                                        },
+                                                      ],
+                                                      "props": {
+                                                        "fill": {
+                                                          "payload": 4278190080,
+                                                          "type": 0,
+                                                        },
+                                                      },
+                                                      "type": "RNSVGGroup",
+                                                    },
+                                                  ],
+                                                  "props": {
+                                                    "align": "xMidYMid",
+                                                    "bbHeight": 26,
+                                                    "bbWidth": 26,
+                                                    "focusable": false,
+                                                    "height": 26,
+                                                    "meetOrSlice": 0,
+                                                    "minX": 0,
+                                                    "minY": 0,
+                                                    "style": [
+                                                      {
+                                                        "backgroundColor": "transparent",
+                                                        "borderWidth": 0,
+                                                      },
+                                                      {
+                                                        "flex": 0,
+                                                        "height": 26,
+                                                        "width": 26,
+                                                      },
+                                                    ],
+                                                    "vbHeight": 24,
+                                                    "vbWidth": 24,
+                                                    "width": 26,
+                                                  },
+                                                  "type": "RNSVGSvgView",
+                                                },
+                                                {
+                                                  "children": [
+                                                    "UNLOCK FOR ",
+                                                    "1500",
+                                                    " TOKENS",
+                                                  ],
+                                                  "props": {
+                                                    "style": {
+                                                      "color": "#fbbf24",
+                                                      "fontFamily": "Inter-SemiBold",
+                                                      "fontSize": 11,
+                                                      "fontWeight": "600",
+                                                      "letterSpacing": 1.3,
+                                                      "textTransform": "uppercase",
+                                                    },
+                                                  },
+                                                  "type": "Text",
+                                                },
+                                              ],
+                                              "props": {
+                                                "pointerEvents": "none",
+                                                "style": {
+                                                  "alignItems": "center",
+                                                  "backgroundColor": "rgba(0,0,0,0.6)",
+                                                  "borderRadius": 16,
+                                                  "bottom": 0,
+                                                  "gap": 8,
+                                                  "justifyContent": "center",
+                                                  "left": 0,
+                                                  "position": "absolute",
+                                                  "right": 0,
+                                                  "top": 0,
+                                                },
+                                              },
+                                              "type": "View",
+                                            },
                                           ],
                                           "props": {
-                                            "accessibilityLabel": "BLACKOUT — 100 tokens",
+                                            "accessibilityLabel": "BLACKOUT — locked, unlock for 1500 tokens",
                                             "accessibilityRole": "button",
                                             "accessibilityState": {
                                               "busy": undefined,
@@ -9021,9 +9565,145 @@ exports[`HomeScreen snapshots the seven-mode layout 1`] = `
                                               },
                                               "type": "View",
                                             },
+                                            {
+                                              "children": [
+                                                {
+                                                  "children": [
+                                                    {
+                                                      "children": [
+                                                        {
+                                                          "children": null,
+                                                          "props": {
+                                                            "d": "M7 10V7a5 5 0 0 1 10 0v3",
+                                                            "fill": null,
+                                                            "propList": [
+                                                              "fill",
+                                                              "stroke",
+                                                              "strokeWidth",
+                                                              "strokeLinecap",
+                                                            ],
+                                                            "stroke": {
+                                                              "payload": 4294688548,
+                                                              "type": 0,
+                                                            },
+                                                            "strokeLinecap": 1,
+                                                            "strokeWidth": 2,
+                                                          },
+                                                          "type": "RNSVGPath",
+                                                        },
+                                                        {
+                                                          "children": null,
+                                                          "props": {
+                                                            "fill": {
+                                                              "payload": 4294688548,
+                                                              "type": 0,
+                                                            },
+                                                            "height": "10.5",
+                                                            "propList": [
+                                                              "fill",
+                                                            ],
+                                                            "rx": "2.5",
+                                                            "ry": undefined,
+                                                            "width": "15",
+                                                            "x": "4.5",
+                                                            "y": "10",
+                                                          },
+                                                          "type": "RNSVGRect",
+                                                        },
+                                                        {
+                                                          "children": null,
+                                                          "props": {
+                                                            "fill": {
+                                                              "payload": 2348810240,
+                                                              "type": 0,
+                                                            },
+                                                            "height": "3.5",
+                                                            "propList": [
+                                                              "fill",
+                                                            ],
+                                                            "rx": "1",
+                                                            "ry": undefined,
+                                                            "width": "2",
+                                                            "x": "11",
+                                                            "y": "13.5",
+                                                          },
+                                                          "type": "RNSVGRect",
+                                                        },
+                                                      ],
+                                                      "props": {
+                                                        "fill": {
+                                                          "payload": 4278190080,
+                                                          "type": 0,
+                                                        },
+                                                      },
+                                                      "type": "RNSVGGroup",
+                                                    },
+                                                  ],
+                                                  "props": {
+                                                    "align": "xMidYMid",
+                                                    "bbHeight": 26,
+                                                    "bbWidth": 26,
+                                                    "focusable": false,
+                                                    "height": 26,
+                                                    "meetOrSlice": 0,
+                                                    "minX": 0,
+                                                    "minY": 0,
+                                                    "style": [
+                                                      {
+                                                        "backgroundColor": "transparent",
+                                                        "borderWidth": 0,
+                                                      },
+                                                      {
+                                                        "flex": 0,
+                                                        "height": 26,
+                                                        "width": 26,
+                                                      },
+                                                    ],
+                                                    "vbHeight": 24,
+                                                    "vbWidth": 24,
+                                                    "width": 26,
+                                                  },
+                                                  "type": "RNSVGSvgView",
+                                                },
+                                                {
+                                                  "children": [
+                                                    "UNLOCK FOR ",
+                                                    "1200",
+                                                    " TOKENS",
+                                                  ],
+                                                  "props": {
+                                                    "style": {
+                                                      "color": "#fbbf24",
+                                                      "fontFamily": "Inter-SemiBold",
+                                                      "fontSize": 11,
+                                                      "fontWeight": "600",
+                                                      "letterSpacing": 1.3,
+                                                      "textTransform": "uppercase",
+                                                    },
+                                                  },
+                                                  "type": "Text",
+                                                },
+                                              ],
+                                              "props": {
+                                                "pointerEvents": "none",
+                                                "style": {
+                                                  "alignItems": "center",
+                                                  "backgroundColor": "rgba(0,0,0,0.6)",
+                                                  "borderRadius": 16,
+                                                  "bottom": 0,
+                                                  "gap": 8,
+                                                  "justifyContent": "center",
+                                                  "left": 0,
+                                                  "position": "absolute",
+                                                  "right": 0,
+                                                  "top": 0,
+                                                },
+                                              },
+                                              "type": "View",
+                                            },
                                           ],
                                           "props": {
-                                            "accessibilityLabel": "SUDDEN DEATH — 50 tokens",
+                                            "accessibilityLabel": "SUDDEN DEATH — locked, unlock for 1200 tokens",
                                             "accessibilityRole": "button",
                                             "accessibilityState": {
                                               "busy": undefined,
@@ -9564,9 +10244,145 @@ exports[`HomeScreen snapshots the seven-mode layout 1`] = `
                                               },
                                               "type": "View",
                                             },
+                                            {
+                                              "children": [
+                                                {
+                                                  "children": [
+                                                    {
+                                                      "children": [
+                                                        {
+                                                          "children": null,
+                                                          "props": {
+                                                            "d": "M7 10V7a5 5 0 0 1 10 0v3",
+                                                            "fill": null,
+                                                            "propList": [
+                                                              "fill",
+                                                              "stroke",
+                                                              "strokeWidth",
+                                                              "strokeLinecap",
+                                                            ],
+                                                            "stroke": {
+                                                              "payload": 4294688548,
+                                                              "type": 0,
+                                                            },
+                                                            "strokeLinecap": 1,
+                                                            "strokeWidth": 2,
+                                                          },
+                                                          "type": "RNSVGPath",
+                                                        },
+                                                        {
+                                                          "children": null,
+                                                          "props": {
+                                                            "fill": {
+                                                              "payload": 4294688548,
+                                                              "type": 0,
+                                                            },
+                                                            "height": "10.5",
+                                                            "propList": [
+                                                              "fill",
+                                                            ],
+                                                            "rx": "2.5",
+                                                            "ry": undefined,
+                                                            "width": "15",
+                                                            "x": "4.5",
+                                                            "y": "10",
+                                                          },
+                                                          "type": "RNSVGRect",
+                                                        },
+                                                        {
+                                                          "children": null,
+                                                          "props": {
+                                                            "fill": {
+                                                              "payload": 2348810240,
+                                                              "type": 0,
+                                                            },
+                                                            "height": "3.5",
+                                                            "propList": [
+                                                              "fill",
+                                                            ],
+                                                            "rx": "1",
+                                                            "ry": undefined,
+                                                            "width": "2",
+                                                            "x": "11",
+                                                            "y": "13.5",
+                                                          },
+                                                          "type": "RNSVGRect",
+                                                        },
+                                                      ],
+                                                      "props": {
+                                                        "fill": {
+                                                          "payload": 4278190080,
+                                                          "type": 0,
+                                                        },
+                                                      },
+                                                      "type": "RNSVGGroup",
+                                                    },
+                                                  ],
+                                                  "props": {
+                                                    "align": "xMidYMid",
+                                                    "bbHeight": 26,
+                                                    "bbWidth": 26,
+                                                    "focusable": false,
+                                                    "height": 26,
+                                                    "meetOrSlice": 0,
+                                                    "minX": 0,
+                                                    "minY": 0,
+                                                    "style": [
+                                                      {
+                                                        "backgroundColor": "transparent",
+                                                        "borderWidth": 0,
+                                                      },
+                                                      {
+                                                        "flex": 0,
+                                                        "height": 26,
+                                                        "width": 26,
+                                                      },
+                                                    ],
+                                                    "vbHeight": 24,
+                                                    "vbWidth": 24,
+                                                    "width": 26,
+                                                  },
+                                                  "type": "RNSVGSvgView",
+                                                },
+                                                {
+                                                  "children": [
+                                                    "UNLOCK FOR ",
+                                                    "2000",
+                                                    " TOKENS",
+                                                  ],
+                                                  "props": {
+                                                    "style": {
+                                                      "color": "#fbbf24",
+                                                      "fontFamily": "Inter-SemiBold",
+                                                      "fontSize": 11,
+                                                      "fontWeight": "600",
+                                                      "letterSpacing": 1.3,
+                                                      "textTransform": "uppercase",
+                                                    },
+                                                  },
+                                                  "type": "Text",
+                                                },
+                                              ],
+                                              "props": {
+                                                "pointerEvents": "none",
+                                                "style": {
+                                                  "alignItems": "center",
+                                                  "backgroundColor": "rgba(0,0,0,0.6)",
+                                                  "borderRadius": 16,
+                                                  "bottom": 0,
+                                                  "gap": 8,
+                                                  "justifyContent": "center",
+                                                  "left": 0,
+                                                  "position": "absolute",
+                                                  "right": 0,
+                                                  "top": 0,
+                                                },
+                                              },
+                                              "type": "View",
+                                            },
                                           ],
                                           "props": {
-                                            "accessibilityLabel": "MIRROR — 75 tokens",
+                                            "accessibilityLabel": "MIRROR — locked, unlock for 2000 tokens",
                                             "accessibilityRole": "button",
                                             "accessibilityState": {
                                               "busy": undefined,

@@ -22,7 +22,7 @@ import { SectionLabel } from '@components/SectionLabel';
 import { BlitzTeaserModal } from '@components/teasers/BlitzTeaserModal';
 import { MirrorTeaserModal } from '@components/teasers/MirrorTeaserModal';
 import { TokenBadge } from '@components/TokenBadge';
-import { modeCatalog } from '@data/modeCatalog';
+import { modeCatalog, MODE_UNLOCK_COSTS } from '@data/modeCatalog';
 import { useMockUser } from '@data/mockUser';
 import {
   buildBannerCopy,
@@ -67,6 +67,10 @@ export function HomeScreen(): React.JSX.Element {
   // tap straight to Matchmaking instead of looping the user
   // back through the tutorial.
   const modeTutorialsSeen = useUserStore((s) => s.modeTutorialsSeen);
+  // Phase 7A.8 CP7 — subscribe to the unlock slice (NOT the
+  // imperative isModeUnlocked method) so a card re-renders / flips its
+  // lock overlay when the user returns from an unlock.
+  const modeUnlocked = useUserStore((s) => s.modeUnlocked);
   const showBlitzTeaser = matchesCount === 3 && !blitzTeaserSeen;
   const showMirrorTeaser = matchesCount === 5 && !mirrorTeaserSeen;
   // No-op onClose: the modal's CTA / Skip handlers flip the
@@ -197,6 +201,16 @@ export function HomeScreen(): React.JSX.Element {
 
   const playMode = useCallback(
     (entry: ModeCatalogEntry) => {
+      // Phase 7A.8 CP7 — unlock gate. Mode 1 is never lock-gated; the
+      // `id !== 1` guard also hard-skips it even if state corruption
+      // ever set modeUnlocked[1] false (decision 6). Runs BEFORE the
+      // balance check: a locked mode shows the UnlockModal (which
+      // handles its own "need more tokens" case for the unlock COST),
+      // not the stake-based InsufficientTokens.
+      if (entry.id !== 1 && !modeUnlocked[entry.id]) {
+        navigation.navigate('Unlock', { modeId: entry.id });
+        return;
+      }
       if (user.tokens < entry.meta.stake) {
         navigation.navigate('InsufficientTokens', { modeId: entry.id });
         return;
@@ -228,7 +242,7 @@ export function HomeScreen(): React.JSX.Element {
       }
       navigation.navigate('Matchmaking', { modeId: entry.id });
     },
-    [navigation, user.tokens, modeTutorialsSeen],
+    [navigation, user.tokens, modeTutorialsSeen, modeUnlocked],
   );
 
   const classicModes = modeCatalog.filter((entry) => entry.meta.section === 'CLASSIC');
@@ -297,7 +311,13 @@ export function HomeScreen(): React.JSX.Element {
         </View>
         <View style={styles.cards}>
           {classicModes.map((entry) => (
-            <ModeCard key={entry.id} meta={entry.meta} onPress={() => playMode(entry)} />
+            <ModeCard
+              key={entry.id}
+              meta={entry.meta}
+              onPress={() => playMode(entry)}
+              locked={entry.id !== 1 && !modeUnlocked[entry.id]}
+              unlockCost={MODE_UNLOCK_COSTS[entry.id]}
+            />
           ))}
         </View>
 
@@ -306,7 +326,13 @@ export function HomeScreen(): React.JSX.Element {
         </View>
         <View style={styles.cards}>
           {advancedModes.map((entry) => (
-            <ModeCard key={entry.id} meta={entry.meta} onPress={() => playMode(entry)} />
+            <ModeCard
+              key={entry.id}
+              meta={entry.meta}
+              onPress={() => playMode(entry)}
+              locked={entry.id !== 1 && !modeUnlocked[entry.id]}
+              unlockCost={MODE_UNLOCK_COSTS[entry.id]}
+            />
           ))}
         </View>
 

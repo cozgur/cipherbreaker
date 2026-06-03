@@ -2,7 +2,7 @@ import { act, fireEvent } from '@testing-library/react-native';
 
 import { __resetMockUserForTests, mockUser } from '@data/mockUser';
 import type { DailyResultSummary } from '@game/daily/types';
-import { DAILY_CHALLENGE_DEFAULTS, useUserStore } from '@state/userStore';
+import { DAILY_CHALLENGE_DEFAULTS, USER_STORE_DEFAULTS, useUserStore } from '@state/userStore';
 import { HomeScreen } from '../HomeScreen';
 import { RouteStubScreen } from '@/test-utils/RouteStubScreen';
 import { renderWithNavigation, stableTreeForSnapshot } from '@/test-utils/renderWithNavigation';
@@ -37,7 +37,13 @@ describe('HomeScreen', () => {
 
   afterEach(() => {
     global.Date = originalDate;
-    useUserStore.setState({ dailyChallenge: DAILY_CHALLENGE_DEFAULTS });
+    // Reset slices that individual tests mutate (the suite doesn't do
+    // a full store reset). modeUnlocked is reset so a test that
+    // unlocks modes doesn't leak into the next.
+    useUserStore.setState({
+      dailyChallenge: DAILY_CHALLENGE_DEFAULTS,
+      modeUnlocked: { ...USER_STORE_DEFAULTS.modeUnlocked },
+    });
   });
 
   it('snapshots the seven-mode layout', () => {
@@ -73,6 +79,9 @@ describe('HomeScreen', () => {
 
   it('opens InsufficientTokens when the balance is below the stake', () => {
     mockUser.tokens = 0;
+    // Mode 5 unlocked so the tap clears the CP7 unlock gate and
+    // reaches the stake-balance check.
+    useUserStore.setState({ modeUnlocked: { 1: true, 5: true } });
     const utils = renderWithNavigation('Home', {
       Home: HomeScreen,
       Matchmaking: RouteStubScreen,
@@ -137,7 +146,8 @@ describe('HomeScreen', () => {
       'Mode $modeId first tap (modeTutorialsSeen[$modeId] unset) → ModeTutorial',
       ({ modeId, label }) => {
         mockUser.tokens = 1000;
-        useUserStore.setState({ modeTutorialsSeen: {} });
+        // Unlocked (CP7 gate) so the tap reaches the tutorial gate.
+        useUserStore.setState({ modeTutorialsSeen: {}, modeUnlocked: { 1: true, [modeId]: true } });
 
         const utils = renderWithNavigation('Home', {
           Home: HomeScreen,
@@ -159,7 +169,10 @@ describe('HomeScreen', () => {
       'Mode $modeId post-tutorial tap (modeTutorialsSeen[$modeId] = true) → Matchmaking directly',
       ({ modeId, label }) => {
         mockUser.tokens = 1000;
-        useUserStore.setState({ modeTutorialsSeen: { [modeId]: true } });
+        useUserStore.setState({
+          modeTutorialsSeen: { [modeId]: true },
+          modeUnlocked: { 1: true, [modeId]: true },
+        });
 
         const utils = renderWithNavigation('Home', {
           Home: HomeScreen,
@@ -183,7 +196,9 @@ describe('HomeScreen', () => {
       // anyway. Showing the modal first lets the user resolve
       // balance; the next tap then takes the tutorial path.
       mockUser.tokens = 0;
-      useUserStore.setState({ modeTutorialsSeen: {} });
+      // Mode 5 unlocked so the unlock gate passes and the balance
+      // gate (not the tutorial gate) is what fires.
+      useUserStore.setState({ modeTutorialsSeen: {}, modeUnlocked: { 1: true, 5: true } });
 
       const utils = renderWithNavigation('Home', {
         Home: HomeScreen,
@@ -199,6 +214,80 @@ describe('HomeScreen', () => {
       const current = utils.navRef.current?.getCurrentRoute();
       expect(current?.name).toBe('InsufficientTokens');
       expect(current?.params).toEqual({ modeId: 5 });
+    });
+  });
+
+  // ── Phase 7A.8 CP7 — mode unlock gate ────────────────────────
+
+  describe('mode unlock gate (CP7)', () => {
+    it('locked Mode 2-7 render a lock overlay with the correct cost badge', () => {
+      // Fresh-install defaults: Mode 1 unlocked, 2-7 locked.
+      useUserStore.setState({ modeUnlocked: { ...USER_STORE_DEFAULTS.modeUnlocked } });
+      const utils = renderWithNavigation('Home', { Home: HomeScreen });
+
+      // Mode 2 (HIGH & LOW) cost 300; Mode 7 (MIRROR) cost 2000.
+      expect(utils.getByText('UNLOCK FOR 300 TOKENS')).toBeTruthy();
+      expect(utils.getByText('UNLOCK FOR 2000 TOKENS')).toBeTruthy();
+      // Locked cards expose the lock state in their a11y label.
+      expect(utils.getByLabelText('HIGH & LOW — locked, unlock for 300 tokens')).toBeTruthy();
+      // Mode 1 is never locked — its label stays the plain stake form.
+      expect(utils.getByLabelText('COLOR MATCH — 50 tokens')).toBeTruthy();
+    });
+
+    it('tapping a locked mode opens the UnlockModal (before the balance check)', () => {
+      mockUser.tokens = 0; // even broke, the unlock gate wins over balance
+      useUserStore.setState({ modeUnlocked: { ...USER_STORE_DEFAULTS.modeUnlocked } });
+      const utils = renderWithNavigation('Home', {
+        Home: HomeScreen,
+        Unlock: RouteStubScreen,
+        InsufficientTokens: RouteStubScreen,
+      });
+
+      act(() => {
+        fireEvent.press(utils.getByLabelText('HIGH & LOW — locked, unlock for 300 tokens'));
+      });
+
+      const current = utils.navRef.current?.getCurrentRoute();
+      expect(current?.name).toBe('Unlock');
+      expect(current?.params).toEqual({ modeId: 2 });
+    });
+
+    it('unlock gate fires before the tutorial gate — locked + tutorial seen still opens UnlockModal', () => {
+      mockUser.tokens = 1000;
+      useUserStore.setState({
+        modeUnlocked: { ...USER_STORE_DEFAULTS.modeUnlocked },
+        modeTutorialsSeen: { 2: true },
+      });
+      const utils = renderWithNavigation('Home', {
+        Home: HomeScreen,
+        Unlock: RouteStubScreen,
+        ModeTutorial: RouteStubScreen,
+        Matchmaking: RouteStubScreen,
+      });
+
+      act(() => {
+        fireEvent.press(utils.getByLabelText('HIGH & LOW — locked, unlock for 300 tokens'));
+      });
+
+      expect(utils.navRef.current?.getCurrentRoute()?.name).toBe('Unlock');
+    });
+
+    it('Mode 1 hard-skip — never opens UnlockModal even if modeUnlocked[1] is somehow false', () => {
+      mockUser.tokens = 1000;
+      // Defensive corruption: Mode 1 marked locked. The id !== 1 guard
+      // must still bypass the unlock gate.
+      useUserStore.setState({ modeUnlocked: { 1: false } });
+      const utils = renderWithNavigation('Home', {
+        Home: HomeScreen,
+        Unlock: RouteStubScreen,
+        Matchmaking: RouteStubScreen,
+      });
+
+      act(() => {
+        fireEvent.press(utils.getByLabelText('COLOR MATCH — 50 tokens'));
+      });
+
+      expect(utils.navRef.current?.getCurrentRoute()?.name).toBe('Matchmaking');
     });
   });
 

@@ -17,6 +17,7 @@ import { ProfileScreen } from '@screens/ProfileScreen';
 import { SecretSetupScreen } from '@screens/SecretSetupScreen';
 import { ShopScreen } from '@screens/ShopScreen';
 import { TutorialMatchScreen } from '@screens/TutorialMatchScreen';
+import { UnlockModal } from '@screens/UnlockModal';
 import { useUserStore } from '@state/userStore';
 import { colors } from '@theme/index';
 import type { RootStackParamList } from './routes';
@@ -150,6 +151,11 @@ export function RootNavigator(): React.JSX.Element {
         <Stack.Screen
           name="InsufficientTokens"
           component={InsufficientTokensModal}
+          options={{ presentation: 'transparentModal', animation: 'fade' }}
+        />
+        <Stack.Screen
+          name="Unlock"
+          component={UnlockModal}
           options={{ presentation: 'transparentModal', animation: 'fade' }}
         />
         <Stack.Screen
