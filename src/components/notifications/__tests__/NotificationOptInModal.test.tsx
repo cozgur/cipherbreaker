@@ -67,12 +67,11 @@ describe('NotificationOptInModal', () => {
     expect(utils.queryByTestId('notification-opt-in-modal')).toBeNull();
   });
 
-  it('renders the iOS-style notification banner mockup', () => {
+  it('renders the AI hero illustration as the sole hero visual', () => {
     const utils = renderModal();
-    expect(utils.getByTestId('notification-banner-mockup')).toBeTruthy();
-    expect(utils.getByText('CipherBreaker')).toBeTruthy();
-    expect(utils.getByText('✨ New Daily Challenge unlocked')).toBeTruthy();
-    expect(utils.getByText('now')).toBeTruthy();
+    expect(utils.getByLabelText('Daily reminder hero illustration')).toBeTruthy();
+    // CP4 removed the legacy inline iOS-notification-banner mockup.
+    expect(utils.queryByTestId('notification-banner-mockup')).toBeNull();
   });
 
   it('"Not now" flips the flag and fires onClose without requesting permission', () => {

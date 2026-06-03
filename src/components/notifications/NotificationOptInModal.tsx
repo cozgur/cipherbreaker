@@ -23,24 +23,28 @@
  * any notifications, configure delivery handlers, or implement
  * Daily reminder content. All of that is Phase 7B+.
  *
- * Mockup follows the CP4.1 / CP5 inline-mockup pattern: a
- * stylized iOS notification banner illustration so the user
- * recognises what they're being asked about. Not a screenshot;
- * the rounded-card-with-app-icon-and-two-lines visual idiom is
- * iOS-Notification-Center vernacular.
+ * Hero visual is the CP1 AI-generated brand illustration
+ * (`modal-notification.png`) rendered via the shared
+ * `ModalHeroImage` block (top ~40% of the card, bottom-fade
+ * gradient for text contrast). Phase 7A.8 CP4 replaced the earlier
+ * inline stylized iOS-notification-banner mockup with this asset.
  */
 
 import { useEffect } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
 import * as Notifications from 'expo-notifications';
 
 import * as haptics from '@/lib/haptics';
 import * as sound from '@/lib/sound';
 import { Button } from '@components/Button';
+import { ModalHeroImage } from '@components/ModalHeroImage';
 import { useUserStore } from '@state/userStore';
 import { colors, fonts, withAlpha } from '@theme/tokens';
+
+// Phase 7A.8 CP4 — AI hero asset (Flux Pro Ultra). Sole hero
+// visual; replaced the legacy inline iOS-notification-banner mockup.
+const AI_HERO = require('../../../assets/onboarding/modal-notification.png');
 
 interface NotificationOptInModalProps {
   readonly visible: boolean;
@@ -117,14 +121,10 @@ export function NotificationOptInModal({
           accessibilityViewIsModal
           accessibilityLabel="Don't miss tomorrow's Daily. We'll remind you when a new Daily Challenge unlocks."
         >
-          <LinearGradient
-            colors={[colors.pink, colors.violet]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.hero}
-          >
-            <NotificationBannerMockup />
-          </LinearGradient>
+          <ModalHeroImage
+            source={AI_HERO}
+            accessibilityLabel="Daily reminder hero illustration"
+          />
 
           <View style={styles.copy}>
             <Text style={styles.title} accessibilityRole="header">
@@ -158,37 +158,6 @@ export function NotificationOptInModal({
   );
 }
 
-// ─────────────────────────────────────────────────────────────
-// Hero mockup — stylized iOS notification banner. Rounded card,
-// app-icon placeholder, two-line text, faded "now" timestamp.
-// Reads as "this is what a notification looks like" — same
-// visual-recognition role CP4.1's match/hint mockups play.
-// ─────────────────────────────────────────────────────────────
-
-function NotificationBannerMockup(): React.JSX.Element {
-  return (
-    <View
-      style={styles.bannerRoot}
-      testID="notification-banner-mockup"
-      accessibilityRole="image"
-      accessibilityLabel="Example notification: New Daily Challenge unlocked"
-    >
-      <View style={styles.appIcon}>
-        <Text style={styles.appIconGlyph}>🔓</Text>
-      </View>
-      <View style={styles.bannerCopy}>
-        <View style={styles.bannerHeaderRow}>
-          <Text style={styles.bannerTitle}>CipherBreaker</Text>
-          <Text style={styles.bannerTimestamp}>now</Text>
-        </View>
-        <Text style={styles.bannerBody} numberOfLines={2}>
-          ✨ New Daily Challenge unlocked
-        </Text>
-      </View>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   backdrop: {
     ...StyleSheet.absoluteFillObject,
@@ -210,13 +179,6 @@ const styles = StyleSheet.create({
     // breathing room from the card's bottom edge. Same direction
     // as the marginTop / marginHorizontal nudges below.
     paddingBottom: 24,
-  },
-  hero: {
-    width: '100%',
-    paddingVertical: 32,
-    paddingHorizontal: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   copy: {
     paddingTop: 22,
@@ -266,54 +228,5 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     color: '#ffffff',
     opacity: 0.85,
-  },
-
-  // iOS notification banner mockup
-  bannerRoot: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    width: '100%',
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-    borderRadius: 16,
-    backgroundColor: withAlpha('#ffffff', 0.92),
-    gap: 10,
-  },
-  appIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: 9,
-    backgroundColor: colors.bgBase,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  appIconGlyph: {
-    fontSize: 20,
-  },
-  bannerCopy: {
-    flex: 1,
-    gap: 2,
-  },
-  bannerHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    justifyContent: 'space-between',
-  },
-  bannerTitle: {
-    fontFamily: fonts.bodySemibold,
-    fontSize: 13,
-    color: '#000000',
-    letterSpacing: 0.1,
-  },
-  bannerTimestamp: {
-    fontFamily: fonts.body,
-    fontSize: 11,
-    color: withAlpha('#000000', 0.5),
-  },
-  bannerBody: {
-    fontFamily: fonts.body,
-    fontSize: 13,
-    color: '#000000',
-    lineHeight: 17,
   },
 });

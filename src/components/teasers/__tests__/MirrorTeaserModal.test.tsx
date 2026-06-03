@@ -57,13 +57,11 @@ describe('MirrorTeaserModal', () => {
     expect(utils.queryByTestId('mirror-teaser-modal')).toBeNull();
   });
 
-  it('hero card mockup structure is present (SOLO RACE pill + YOU/RIVAL columns)', () => {
+  it('renders the AI hero illustration as the sole hero visual', () => {
     const utils = renderModal();
-    expect(utils.getByTestId('mirror-mockup')).toBeTruthy();
-    expect(utils.getByText('SOLO RACE')).toBeTruthy();
-    expect(utils.getByText('YOU')).toBeTruthy();
-    expect(utils.getByText('RIVAL')).toBeTruthy();
-    expect(utils.getByText('Race to crack first')).toBeTruthy();
+    expect(utils.getByLabelText('Mirror mode hero illustration')).toBeTruthy();
+    // CP4 removed the legacy inline split-board mockup.
+    expect(utils.queryByTestId('mirror-mockup')).toBeNull();
   });
 
   it('Skip flips mirrorTeaserSeen and fires onClose, NO token grant', () => {

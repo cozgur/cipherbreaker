@@ -16,16 +16,13 @@
  *   - "Skip" → `markMirrorTeaserSeen()` only (no token grant) +
  *     `onClose`.
  *
- * Mockup composition reuses Mode 7 production styling where
- * possible:
- *   - Gradient `['#14b8a6', '#94a3b8']` matches modeCatalog Mirror.
- *   - "SOLO RACE" TinyTag-equivalent pill in teal `#14b8a6` mirrors
- *     SoloRaceBanner's accent.
- *   - Stylized split-board "YOU vs OPPONENT" mockup diverges from
- *     production (which uses a single-perspective banner with an
- *     opponent-count badge). Same accepted-divergence pattern as
- *     CP4.1 — the mockup illustrates "race semantics" rather than
- *     mirroring the production layout 1:1.
+ * Hero visual is the CP1 AI-generated brand illustration
+ * (`teaser-mirror.png`) rendered via the shared `ModalHeroImage`
+ * block (top ~40% of the card, bottom-fade gradient for text
+ * contrast). Phase 7A.8 CP4 replaced the earlier inline split-board
+ * mockup with this asset — the mockup deliberately diverged from
+ * the production Mode 7 layout, so the brand illustration is no
+ * longer a mechanic demo.
  *
  * Skip rendered last in the JSX tree so the overlay backdrop never
  * absorbs its tap.
@@ -34,16 +31,19 @@
 import { useEffect } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
 
 import * as haptics from '@/lib/haptics';
 import * as sound from '@/lib/sound';
 import { Button } from '@components/Button';
+import { ModalHeroImage } from '@components/ModalHeroImage';
 import { useUserStore } from '@state/userStore';
 import { colors, fonts, withAlpha } from '@theme/tokens';
 
 const MIRROR_TEASER_GIFT_TOKENS = 50;
-const MIRROR_ACCENT = '#14b8a6';
+
+// Phase 7A.8 CP4 — AI hero asset (Flux Pro Ultra). Sole hero
+// visual; replaced the legacy inline split-board mockup.
+const AI_HERO = require('../../../assets/onboarding/teaser-mirror.png');
 
 interface MirrorTeaserModalProps {
   readonly visible: boolean;
@@ -105,14 +105,10 @@ export function MirrorTeaserModal({
           accessibilityViewIsModal
           accessibilityLabel="Same code. Solo race. First to crack wins. Speed matters more than precision."
         >
-          <LinearGradient
-            colors={[MIRROR_ACCENT, '#94a3b8']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.hero}
-          >
-            <MirrorMockup />
-          </LinearGradient>
+          <ModalHeroImage
+            source={AI_HERO}
+            accessibilityLabel="Mirror mode hero illustration"
+          />
 
           <View style={styles.copy}>
             <Text style={styles.title} accessibilityRole="header">
@@ -149,69 +145,6 @@ export function MirrorTeaserModal({
   );
 }
 
-// ─────────────────────────────────────────────────────────────
-// Hero mockup — "SOLO RACE" pill above two columns ("YOU"
-// cracking on row 3, "OPPONENT" still racing on row 2). The
-// split layout illustrates the racing semantic that production's
-// SoloRaceBanner captures via an opponent-count badge — a
-// stylized divergence accepted at the spec level.
-// ─────────────────────────────────────────────────────────────
-
-const MOCKUP_PEG_COLORS = ['#10b981', '#06b6d4', '#ec4899', '#f59e0b'] as const;
-
-const YOU_ROWS = [
-  [MOCKUP_PEG_COLORS[1], MOCKUP_PEG_COLORS[3], MOCKUP_PEG_COLORS[0], MOCKUP_PEG_COLORS[2]],
-  [MOCKUP_PEG_COLORS[0], MOCKUP_PEG_COLORS[2], MOCKUP_PEG_COLORS[3], MOCKUP_PEG_COLORS[1]],
-  [MOCKUP_PEG_COLORS[0], MOCKUP_PEG_COLORS[1], MOCKUP_PEG_COLORS[2], MOCKUP_PEG_COLORS[3]],
-] as const;
-
-const OPP_ROWS = [
-  [MOCKUP_PEG_COLORS[2], MOCKUP_PEG_COLORS[0], MOCKUP_PEG_COLORS[1], MOCKUP_PEG_COLORS[3]],
-  [MOCKUP_PEG_COLORS[1], MOCKUP_PEG_COLORS[2], MOCKUP_PEG_COLORS[0], MOCKUP_PEG_COLORS[3]],
-] as const;
-
-function MirrorMockup(): React.JSX.Element {
-  return (
-    <View style={styles.mockupRoot} testID="mirror-mockup">
-      <View style={styles.tinyTag}>
-        <Text style={styles.tinyTagText}>SOLO RACE</Text>
-      </View>
-      <View style={styles.splitRow}>
-        <View style={styles.splitColumn}>
-          <Text style={styles.splitLabel}>YOU</Text>
-          {YOU_ROWS.map((row, i) => (
-            <View key={i} style={styles.splitPegRow}>
-              {row.map((color, j) => (
-                <View key={j} style={[styles.splitPeg, { backgroundColor: color }]} />
-              ))}
-              {i === YOU_ROWS.length - 1 ? (
-                <Text style={styles.crackedMark}>✓</Text>
-              ) : null}
-            </View>
-          ))}
-        </View>
-        <View style={styles.splitDivider} />
-        <View style={styles.splitColumn}>
-          <Text style={styles.splitLabel}>RIVAL</Text>
-          {OPP_ROWS.map((row, i) => (
-            <View key={i} style={styles.splitPegRow}>
-              {row.map((color, j) => (
-                <View key={j} style={[styles.splitPeg, { backgroundColor: color }]} />
-              ))}
-            </View>
-          ))}
-          <View style={styles.splitPegRowEmpty}>
-            {Array.from({ length: 4 }, (_, j) => (
-              <View key={j} style={[styles.splitPeg, styles.splitPegEmpty]} />
-            ))}
-          </View>
-        </View>
-      </View>
-      <Text style={styles.captionText}>Race to crack first</Text>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   backdrop: {
     ...StyleSheet.absoluteFillObject,
@@ -230,13 +163,6 @@ const styles = StyleSheet.create({
     borderColor: colors.borderSubtle,
     overflow: 'hidden',
     paddingBottom: 18,
-  },
-  hero: {
-    width: '100%',
-    paddingVertical: 22,
-    paddingHorizontal: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   copy: {
     paddingTop: 22,
@@ -288,84 +214,5 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     color: '#ffffff',
     opacity: 0.85,
-  },
-
-  // Mockup
-  mockupRoot: {
-    alignItems: 'center',
-    gap: 12,
-    width: '100%',
-  },
-  tinyTag: {
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-    borderRadius: 999,
-    backgroundColor: withAlpha(MIRROR_ACCENT, 0.18),
-    borderWidth: 1,
-    borderColor: withAlpha(MIRROR_ACCENT, 0.55),
-  },
-  tinyTagText: {
-    fontFamily: fonts.bodySemibold,
-    fontSize: 10,
-    letterSpacing: 1.4,
-    color: '#ffffff',
-  },
-  splitRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 12,
-  },
-  splitColumn: {
-    alignItems: 'center',
-    gap: 4,
-  },
-  splitLabel: {
-    fontFamily: fonts.bodySemibold,
-    fontSize: 9,
-    letterSpacing: 1.6,
-    color: '#ffffff',
-    opacity: 0.85,
-    marginBottom: 2,
-  },
-  splitDivider: {
-    width: 1,
-    alignSelf: 'stretch',
-    backgroundColor: withAlpha('#ffffff', 0.25),
-  },
-  splitPegRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-  },
-  splitPegRowEmpty: {
-    flexDirection: 'row',
-    gap: 3,
-  },
-  splitPeg: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    borderWidth: 1,
-    borderColor: withAlpha('#000000', 0.35),
-  },
-  splitPegEmpty: {
-    backgroundColor: withAlpha('#ffffff', 0.18),
-    borderStyle: 'dashed',
-    borderColor: withAlpha('#ffffff', 0.5),
-  },
-  crackedMark: {
-    marginLeft: 4,
-    fontFamily: fonts.display,
-    fontSize: 14,
-    color: colors.success,
-  },
-  captionText: {
-    fontFamily: fonts.bodySemibold,
-    fontSize: 10,
-    letterSpacing: 1.4,
-    color: '#ffffff',
-    opacity: 0.85,
-    textTransform: 'uppercase',
-    marginTop: 4,
   },
 });

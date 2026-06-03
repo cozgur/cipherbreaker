@@ -57,11 +57,11 @@ describe('BlitzTeaserModal', () => {
     expect(utils.queryByTestId('blitz-teaser-modal')).toBeNull();
   });
 
-  it('hero card mockup structure is present (clock face + mini board pegs)', () => {
+  it('renders the AI hero illustration as the sole hero visual', () => {
     const utils = renderModal();
-    expect(utils.getByTestId('blitz-mockup')).toBeTruthy();
-    // Stylized clock face shows a mid-tick value.
-    expect(utils.getByText('00:42')).toBeTruthy();
+    expect(utils.getByLabelText('Blitz mode hero illustration')).toBeTruthy();
+    // CP4 removed the legacy inline clock + mini-board mockup.
+    expect(utils.queryByTestId('blitz-mockup')).toBeNull();
   });
 
   it('Skip flips blitzTeaserSeen and fires onClose, NO token grant', () => {

@@ -52,141 +52,54 @@ exports[`NotificationOptInModal matches the visible-state snapshot 1`] = `
                 {
                   "children": [
                     {
-                      "children": [
-                        {
-                          "children": [
-                            {
-                              "children": [
-                                "🔓",
-                              ],
-                              "props": {
-                                "style": {
-                                  "fontSize": 20,
-                                },
-                              },
-                              "type": "Text",
-                            },
-                          ],
-                          "props": {
-                            "style": {
-                              "alignItems": "center",
-                              "backgroundColor": "#0a0b1e",
-                              "borderRadius": 9,
-                              "height": 38,
-                              "justifyContent": "center",
-                              "width": 38,
-                            },
-                          },
-                          "type": "View",
-                        },
-                        {
-                          "children": [
-                            {
-                              "children": [
-                                {
-                                  "children": [
-                                    "CipherBreaker",
-                                  ],
-                                  "props": {
-                                    "style": {
-                                      "color": "#000000",
-                                      "fontFamily": "Inter-SemiBold",
-                                      "fontSize": 13,
-                                      "letterSpacing": 0.1,
-                                    },
-                                  },
-                                  "type": "Text",
-                                },
-                                {
-                                  "children": [
-                                    "now",
-                                  ],
-                                  "props": {
-                                    "style": {
-                                      "color": "rgba(0,0,0,0.5)",
-                                      "fontFamily": "Inter-Regular",
-                                      "fontSize": 11,
-                                    },
-                                  },
-                                  "type": "Text",
-                                },
-                              ],
-                              "props": {
-                                "style": {
-                                  "alignItems": "baseline",
-                                  "flexDirection": "row",
-                                  "justifyContent": "space-between",
-                                },
-                              },
-                              "type": "View",
-                            },
-                            {
-                              "children": [
-                                "✨ New Daily Challenge unlocked",
-                              ],
-                              "props": {
-                                "numberOfLines": 2,
-                                "style": {
-                                  "color": "#000000",
-                                  "fontFamily": "Inter-Regular",
-                                  "fontSize": 13,
-                                  "lineHeight": 17,
-                                },
-                              },
-                              "type": "Text",
-                            },
-                          ],
-                          "props": {
-                            "style": {
-                              "flex": 1,
-                              "gap": 2,
-                            },
-                          },
-                          "type": "View",
-                        },
-                      ],
+                      "children": null,
                       "props": {
-                        "accessibilityLabel": "Example notification: New Daily Challenge unlocked",
-                        "accessibilityRole": "image",
+                        "resizeMode": "contain",
+                        "source": {
+                          "testUri": "../../../assets/onboarding/modal-notification.png",
+                        },
                         "style": {
-                          "alignItems": "center",
-                          "backgroundColor": "rgba(255,255,255,0.92)",
-                          "borderRadius": 16,
-                          "flexDirection": "row",
-                          "gap": 10,
-                          "paddingHorizontal": 12,
-                          "paddingVertical": 12,
+                          "height": "100%",
                           "width": "100%",
                         },
-                        "testID": "notification-banner-mockup",
                       },
-                      "type": "View",
+                      "type": "Image",
+                    },
+                    {
+                      "children": null,
+                      "props": {
+                        "colors": [
+                          0,
+                          1493172224,
+                        ],
+                        "dither": undefined,
+                        "endPoint": undefined,
+                        "locations": undefined,
+                        "pointerEvents": "none",
+                        "startPoint": undefined,
+                        "style": {
+                          "bottom": 0,
+                          "height": "35%",
+                          "left": 0,
+                          "position": "absolute",
+                          "right": 0,
+                        },
+                      },
+                      "type": "ViewManagerAdapter_ExpoLinearGradient",
                     },
                   ],
                   "props": {
-                    "colors": [
-                      4293675161,
-                      4287323382,
-                    ],
-                    "dither": undefined,
-                    "endPoint": [
-                      1,
-                      1,
-                    ],
-                    "locations": undefined,
-                    "startPoint": [
-                      0,
-                      0,
-                    ],
+                    "accessibilityLabel": "Daily reminder hero illustration",
+                    "accessibilityRole": "image",
+                    "accessible": true,
                     "style": {
-                      "alignItems": "center",
-                      "justifyContent": "center",
-                      "paddingHorizontal": 22,
-                      "paddingVertical": 32,
+                      "aspectRatio": 1,
+                      "overflow": "hidden",
+                      "position": "relative",
                       "width": "100%",
                     },
                   },
-                  "type": "ViewManagerAdapter_ExpoLinearGradient",
+                  "type": "View",
                 },
                 {
                   "children": [

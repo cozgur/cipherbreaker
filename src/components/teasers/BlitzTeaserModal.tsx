@@ -16,14 +16,11 @@
  *   - "Skip" → `markBlitzTeaserSeen()` only (no token grant) +
  *     `onClose`.
  *
- * Mockup composition mirrors Mode 4 production styling where
- * possible:
- *   - Gradient `[colors.danger, '#f97316']` matches modeCatalog Blitz
- *     entry exactly.
- *   - Clock face uses `fonts.mono` 28px tinted `colors.warning` —
- *     same active-tick color the production clock uses.
- *   - Mini board pegs use the CP4.1 stylized-Mastermind palette
- *     (production digit tiles diverge — illustrative only).
+ * Hero visual is the CP1 AI-generated brand illustration
+ * (`teaser-blitz.png`) rendered via the shared `ModalHeroImage`
+ * block (top ~40% of the card, bottom-fade gradient for text
+ * contrast). Phase 7A.8 CP4 replaced the earlier inline clock +
+ * mini-board mockup with this asset.
  *
  * Skip rendered last in the JSX tree (zIndex via order) so the
  * overlay backdrop never absorbs its tap — same pattern
@@ -33,15 +30,19 @@
 import { useEffect } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
 
 import * as haptics from '@/lib/haptics';
 import * as sound from '@/lib/sound';
 import { Button } from '@components/Button';
+import { ModalHeroImage } from '@components/ModalHeroImage';
 import { useUserStore } from '@state/userStore';
 import { colors, fonts, withAlpha } from '@theme/tokens';
 
 const BLITZ_TEASER_GIFT_TOKENS = 50;
+
+// Phase 7A.8 CP4 — AI hero asset (Flux Pro Ultra). Sole hero
+// visual; replaced the legacy inline clock + mini-board mockup.
+const AI_HERO = require('../../../assets/onboarding/teaser-blitz.png');
 
 interface BlitzTeaserModalProps {
   readonly visible: boolean;
@@ -106,14 +107,10 @@ export function BlitzTeaserModal({
           accessibilityViewIsModal
           accessibilityLabel="Beat the clock. 60 seconds. Crack the code before time runs out."
         >
-          <LinearGradient
-            colors={[colors.danger, '#f97316']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.hero}
-          >
-            <BlitzMockup />
-          </LinearGradient>
+          <ModalHeroImage
+            source={AI_HERO}
+            accessibilityLabel="Blitz mode hero illustration"
+          />
 
           <View style={styles.copy}>
             <Text style={styles.title} accessibilityRole="header">
@@ -150,70 +147,6 @@ export function BlitzTeaserModal({
   );
 }
 
-// ─────────────────────────────────────────────────────────────
-// Hero mockup — chess clock face + drained progress bar +
-// 3-row mini board with feedback dots. Stylized reference to
-// Mode 4's UI; not pixel-equal to production (peg circles vs
-// production digit tiles, per CP4.1's accepted divergence).
-// ─────────────────────────────────────────────────────────────
-
-const MOCKUP_PEG_COLORS = ['#10b981', '#06b6d4', '#ec4899', '#f59e0b'] as const;
-
-interface MockBlitzRow {
-  readonly pegs: readonly string[];
-  readonly feedback: readonly ('exact' | 'present' | 'absent')[];
-}
-
-const MOCKUP_BLITZ_ROWS: readonly MockBlitzRow[] = [
-  {
-    pegs: [MOCKUP_PEG_COLORS[1], MOCKUP_PEG_COLORS[3], MOCKUP_PEG_COLORS[0], MOCKUP_PEG_COLORS[2]],
-    feedback: ['absent', 'present', 'absent', 'absent'],
-  },
-  {
-    pegs: [MOCKUP_PEG_COLORS[0], MOCKUP_PEG_COLORS[2], MOCKUP_PEG_COLORS[3], MOCKUP_PEG_COLORS[1]],
-    feedback: ['exact', 'absent', 'present', 'absent'],
-  },
-  {
-    pegs: [MOCKUP_PEG_COLORS[0], MOCKUP_PEG_COLORS[3], MOCKUP_PEG_COLORS[2], MOCKUP_PEG_COLORS[1]],
-    feedback: ['exact', 'exact', 'present', 'absent'],
-  },
-];
-
-const FEEDBACK_DOT_STYLES: Readonly<
-  Record<'exact' | 'present' | 'absent', { backgroundColor: string; borderColor: string }>
-> = {
-  exact: { backgroundColor: '#000000', borderColor: '#000000' },
-  present: { backgroundColor: '#ffffff', borderColor: '#000000' },
-  absent: { backgroundColor: 'transparent', borderColor: withAlpha('#ffffff', 0.4) },
-};
-
-function BlitzMockup(): React.JSX.Element {
-  return (
-    <View style={styles.mockupRoot} testID="blitz-mockup">
-      <Text style={styles.clockFace}>00:42</Text>
-      <View style={styles.clockTrack}>
-        <View style={styles.clockFill} />
-      </View>
-      <View style={styles.miniBoard}>
-        {MOCKUP_BLITZ_ROWS.map((row, i) => (
-          <View key={i} style={styles.miniBoardRow}>
-            <View style={styles.miniPegRow}>
-              {row.pegs.map((color, j) => (
-                <View key={j} style={[styles.miniPeg, { backgroundColor: color }]} />
-              ))}
-            </View>
-            <View style={styles.feedbackCluster}>
-              {row.feedback.map((f, j) => (
-                <View key={j} style={[styles.feedbackDot, FEEDBACK_DOT_STYLES[f]]} />
-              ))}
-            </View>
-          </View>
-        ))}
-      </View>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   backdrop: {
     ...StyleSheet.absoluteFillObject,
@@ -232,13 +165,6 @@ const styles = StyleSheet.create({
     borderColor: colors.borderSubtle,
     overflow: 'hidden',
     paddingBottom: 18,
-  },
-  hero: {
-    width: '100%',
-    paddingVertical: 26,
-    paddingHorizontal: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   copy: {
     paddingTop: 22,
@@ -290,66 +216,5 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     color: '#ffffff',
     opacity: 0.85,
-  },
-
-  // Mockup styles
-  mockupRoot: {
-    alignItems: 'center',
-    gap: 12,
-    width: '100%',
-  },
-  clockFace: {
-    fontFamily: fonts.mono,
-    fontSize: 36,
-    color: '#ffffff',
-    letterSpacing: 1.6,
-    textShadowColor: withAlpha(colors.warning, 0.5),
-    textShadowRadius: 12,
-    textShadowOffset: { width: 0, height: 0 },
-  },
-  clockTrack: {
-    width: '70%',
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: withAlpha('#000000', 0.35),
-    overflow: 'hidden',
-  },
-  clockFill: {
-    height: '100%',
-    width: '30%',
-    backgroundColor: colors.warning,
-    borderRadius: 3,
-  },
-  miniBoard: {
-    gap: 6,
-    marginTop: 6,
-  },
-  miniBoardRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  miniPegRow: {
-    flexDirection: 'row',
-    gap: 4,
-  },
-  miniPeg: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    borderWidth: 1,
-    borderColor: withAlpha('#000000', 0.35),
-  },
-  feedbackCluster: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    width: 18,
-    gap: 2,
-  },
-  feedbackDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 3.5,
-    borderWidth: 0.6,
   },
 });
