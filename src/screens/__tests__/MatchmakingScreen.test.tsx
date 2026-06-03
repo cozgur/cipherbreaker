@@ -91,68 +91,56 @@ describe('MatchmakingScreen', () => {
   });
 
   describe('progressive wait messages (CP5 bot illusion)', () => {
-    // Force a duration past every threshold so the search stays pending
-    // while we step the wait-stage timers. The real distribution caps
-    // under 15s, so the 15s stage is only reachable with an overridden
-    // duration — which is exactly the defensive path we want to pin.
+    // Force a duration past the threshold so the search stays pending
+    // while we step the wait timer. The real distribution caps under
+    // 15s but most matches resolve far sooner, so an override is the
+    // reliable way to exercise the 12s+ note.
     function renderLongSearch(modeId: number) {
       jest.spyOn(matchmaking, 'pickMatchmakingDuration').mockReturnValue(99000);
       return renderMatchmaking(modeId);
     }
 
-    it('keeps the initial copy through the 0-10s window (no wait note before 10s)', () => {
+    it('keeps the initial copy through the 0-12s window (no wait note before 12s)', () => {
       const utils = renderLongSearch(1);
       act(() => {
-        jest.advanceTimersByTime(5000); // stage 1 — tracker only
+        jest.advanceTimersByTime(11000); // just shy of the 12s threshold
       });
       expect(utils.queryByText(/Searching for opponent/)).toBeTruthy();
       expect(utils.queryByText('Taking longer than usual...')).toBeNull();
-      expect(utils.queryByText('Hang tight, almost there...')).toBeNull();
     });
 
-    it('fades in "Taking longer than usual..." at the 10s threshold', () => {
+    it('fades in "Taking longer than usual..." at the 12s threshold', () => {
       const utils = renderLongSearch(1);
       act(() => {
-        jest.advanceTimersByTime(10000);
+        jest.advanceTimersByTime(12000);
       });
       expect(utils.queryByText('Taking longer than usual...')).toBeTruthy();
-      // The 15s reassurance has not replaced it yet.
-      expect(utils.queryByText('Hang tight, almost there...')).toBeNull();
-    });
-
-    it('escalates to "Hang tight, almost there..." at the 15s threshold (defensive edge case)', () => {
-      const utils = renderLongSearch(1);
-      act(() => {
-        jest.advanceTimersByTime(15000);
-      });
-      expect(utils.queryByText('Hang tight, almost there...')).toBeTruthy();
-      // Stage 3 supersedes the stage-2 note.
-      expect(utils.queryByText('Taking longer than usual...')).toBeNull();
     });
 
     it('preserves Mode 7 race copy alongside the wait note (composition)', () => {
       const utils = renderLongSearch(7);
       act(() => {
-        jest.advanceTimersByTime(10000);
+        jest.advanceTimersByTime(12000);
       });
       // Mode 7 headline is unchanged while searching …
       expect(utils.queryByText(/Finding a rival to race/)).toBeTruthy();
-      // … and the progressive note layers on top of it.
+      // … and the wait note layers on top of it.
       expect(utils.queryByText('Taking longer than usual...')).toBeTruthy();
     });
 
-    it('shows no wait note when a stage timer fires after the match is found (gated on opponent)', () => {
-      // 9.5s search: opponent is found before the 10s stage-2 timer, and
-      // the reveal nav (found + 1000ms) lands at 10.5s — so stage 2 fires
-      // at 10s while the opponent is on screen. The note must stay hidden.
-      jest.spyOn(matchmaking, 'pickMatchmakingDuration').mockReturnValue(9500);
+    it('shows no wait note when the timer fires after the match is found (gated on opponent)', () => {
+      // 11.5s search: opponent is found before the 12s wait timer, and
+      // the reveal nav (found + 1000ms) lands at 12.5s — so the timer
+      // fires at 12s while the opponent is on screen. The note must
+      // stay hidden.
+      jest.spyOn(matchmaking, 'pickMatchmakingDuration').mockReturnValue(11500);
       const utils = renderMatchmaking(1);
       act(() => {
-        jest.advanceTimersByTime(9500); // opponent found
+        jest.advanceTimersByTime(11500); // opponent found
       });
       expect(utils.queryByText('Opponent found!')).toBeTruthy();
       act(() => {
-        jest.advanceTimersByTime(500); // cross the 10s mark; stage 2 fires
+        jest.advanceTimersByTime(500); // cross the 12s mark; timer fires
       });
       expect(utils.queryByText('Taking longer than usual...')).toBeNull();
     });

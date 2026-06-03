@@ -46,22 +46,28 @@ type RouteParams = RouteProp<RootStackParamList, 'Matchmaking'>;
 
 const REVEAL_MS = 1000;
 
-// Progressive wait-message thresholds (ms from mount). Each stage only
-// matters while still searching; once an opponent is found the headline
-// switches to "Opponent found!" and the wait note is unmounted.
-const WAIT_STAGE_1_MS = 5000; // normal range — tracker only, no copy
-const WAIT_STAGE_2_MS = 10000; // longer than usual — apologetic note
-const WAIT_STAGE_3_MS = 15000; // edge case — proactive reassurance
+// Wait-note threshold (ms from mount). Only matters while still
+// searching; once an opponent is found the headline switches to
+// "Opponent found!" and the note is unmounted.
+//
+// CP5.1 tuning: bumped 10s → 12s. At 10s the note fired on ~25% of
+// matches (all of the 12-15s bucket + half the 8-12s bucket of the
+// skewed distribution) — too frequent for an "occasional" apologetic
+// beat. At 12s only the 12-15s bucket trips it (~10%), which is the
+// intended "rare longer wait" cadence. The old 15s "almost there"
+// stage was removed: the duration is capped under 15s, so it was
+// dead code in practice.
+const WAIT_NOTE_MS = 12000;
 
 // English per app locale (the screen's other copy is English; the TR
 // draft from the CP5 brief was reverted after a locale survey). No
-// i18n system exists yet, so these stay inline like the other literals.
-// Casual + lightly apologetic to match the app's tone; "almost there"
-// reassures without promising a specific time.
+// i18n system exists yet, so this stays inline like the other literals.
+// Casual + lightly apologetic to match the app's tone.
 const WAIT_COPY_LONG = 'Taking longer than usual...';
-const WAIT_COPY_LONGER = 'Hang tight, almost there...';
 
-type WaitStage = 0 | 1 | 2 | 3;
+// 0: initial copy ("Searching..." / "Finding a rival to race")
+// 1: 12s+ longer-than-usual note
+type WaitStage = 0 | 1;
 
 export function MatchmakingScreen(): React.JSX.Element {
   const navigation = useNavigation<Nav>();
@@ -103,21 +109,12 @@ export function MatchmakingScreen(): React.JSX.Element {
     };
   }, []);
 
-  // Progressive wait-stage timers, independent of the search timer.
-  // Each only advances the stage (never rewinds), and the render gate
-  // on `opponent == null` means a stage that fires after the match is
+  // Wait-note timer, independent of the search timer. The render gate
+  // on `opponent == null` means a timer that fires after the match is
   // found leaves no visible trace.
   useEffect(() => {
-    const advanceTo = (stage: WaitStage) => (): void =>
-      setWaitStage((prev) => (prev < stage ? stage : prev));
-    const t1 = setTimeout(advanceTo(1), WAIT_STAGE_1_MS);
-    const t2 = setTimeout(advanceTo(2), WAIT_STAGE_2_MS);
-    const t3 = setTimeout(advanceTo(3), WAIT_STAGE_3_MS);
-    return (): void => {
-      clearTimeout(t1);
-      clearTimeout(t2);
-      clearTimeout(t3);
-    };
+    const t = setTimeout(() => setWaitStage(1), WAIT_NOTE_MS);
+    return (): void => clearTimeout(t);
   }, []);
 
   useEffect(() => {
@@ -189,19 +186,13 @@ export function MatchmakingScreen(): React.JSX.Element {
         </Text>
         <Text style={styles.subline}>{subline}</Text>
 
-        {opponent == null && waitStage >= 2 ? (
+        {opponent == null && waitStage >= 1 ? (
           <MotiView
-            // `key` on the stage so stepping 2 → 3 remounts the node and
-            // each new message gets its own fade-in rather than a silent
-            // text swap.
-            key={waitStage}
             from={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ type: 'timing', duration: 400 }}
           >
-            <Text style={styles.waitNote}>
-              {waitStage >= 3 ? WAIT_COPY_LONGER : WAIT_COPY_LONG}
-            </Text>
+            <Text style={styles.waitNote}>{WAIT_COPY_LONG}</Text>
           </MotiView>
         ) : null}
       </View>
