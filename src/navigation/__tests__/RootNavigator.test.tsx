@@ -52,7 +52,6 @@ function pinOnboardingState(overrides: {
   readonly hasOnboarded?: boolean;
   readonly introSeen?: boolean;
   readonly tutorialMatchCompleted?: boolean;
-  readonly tokenWalkthroughSeen?: boolean;
   readonly completedAt?: string | null;
 }): void {
   __resetMockUserForTests();
@@ -63,7 +62,6 @@ function pinOnboardingState(overrides: {
       ...ONBOARDING_DEFAULTS,
       introSeen: overrides.introSeen ?? false,
       tutorialMatchCompleted: overrides.tutorialMatchCompleted ?? false,
-      tokenWalkthroughSeen: overrides.tokenWalkthroughSeen ?? false,
       completedAt: overrides.completedAt ?? null,
     },
   });
@@ -123,13 +121,10 @@ describe('RootNavigator — onboarding flow routing (Phase 7A.6 CP7)', () => {
       // Defensive: corrupt state where every step is "seen" but the
       // master gate stayed false. The pickInitialRoute fallback
       // routes to Home rather than re-showing any step.
-      // `tokenWalkthroughSeen` is dead data after CP2 but the
-      // override is harmless — it never gates the chain.
       pinOnboardingState({
         hasOnboarded: false,
         introSeen: true,
         tutorialMatchCompleted: true,
-        tokenWalkthroughSeen: true,
       });
       const utils = renderRoot();
       expect(utils.getByText('CipherBreaker')).toBeTruthy();
@@ -153,18 +148,18 @@ describe('RootNavigator — onboarding flow routing (Phase 7A.6 CP7)', () => {
       expect(utils.queryByText('Pure deduction.')).toBeNull();
     });
 
-    it('in-progress TestFlight user with tokenWalkthroughSeen=false → Home (CP2 dropped the walkthrough step)', () => {
-      // Pre-CP2 this state routed to the walkthrough. CP2's
-      // chain no longer consults `tokenWalkthroughSeen`, so the
-      // user falls through to Home. Spec decision 6: in-progress
-      // TestFlight users lose any walkthrough state on upgrade;
-      // acceptable because the walkthrough was advisory not
-      // load-bearing and TestFlight volume is small.
+    it('in-progress user past intro+tutorial but hasOnboarded=false → Home (CP2 dropped the walkthrough step)', () => {
+      // Pre-CP2 this state routed to the token walkthrough. CP2
+      // deleted that step and CP6 removed the dead
+      // `tokenWalkthroughSeen` flag entirely, so a user who finished
+      // intro+tutorial falls through the chain to Home. Spec
+      // decision 6: in-progress users lose any walkthrough state on
+      // upgrade — acceptable; the walkthrough was advisory, not
+      // load-bearing.
       pinOnboardingState({
         hasOnboarded: false,
         introSeen: true,
         tutorialMatchCompleted: true,
-        tokenWalkthroughSeen: false,
       });
       const utils = renderRoot();
       expect(utils.getByText('CipherBreaker')).toBeTruthy();
@@ -175,8 +170,8 @@ describe('RootNavigator — onboarding flow routing (Phase 7A.6 CP7)', () => {
   describe('Linear-completion routing (Phase 7A.6 CP7.1)', () => {
     it('post-CP4 Start Playing state (hasOnboarded=true + teaser flags false) routes to Home via master gate', () => {
       // Models the exact post-CP7.1 linear-completion state:
-      //   hasOnboarded=true, completedAt set, intro/tutorial/token
-      //   step flags true, but teaser/notification flags STILL FALSE.
+      //   hasOnboarded=true, completedAt set, intro/tutorial step
+      //   flags true, but teaser/notification flags STILL FALSE.
       // The master gate (`hasOnboarded === true`) wins → Home.
       // Distinct from the "all flags true + hasOnboarded false"
       // failsafe path used by Skip handlers.
@@ -188,7 +183,6 @@ describe('RootNavigator — onboarding flow routing (Phase 7A.6 CP7)', () => {
           ...ONBOARDING_DEFAULTS,
           introSeen: true,
           tutorialMatchCompleted: true,
-          tokenWalkthroughSeen: true,
           completedAt: '2026-05-05',
           // CP5 / CP6 trigger gates remain open — this is the
           // whole point of the CP7.1 hotfix.

@@ -29,6 +29,7 @@ import { applyAdWatched, canWatchAd } from '@game/economy/adCap';
 import { AD_REWARD_TOKENS } from '@game/economy/constants';
 import { rewardForCompletedMatch } from '@game/economy/matchReward';
 import { modeRegistry } from '@game/modeRegistry';
+import { MODE_UNLOCK_COSTS } from '@data/modeCatalog';
 import type { MatchResultOutcome } from '@navigation/routes';
 import { useMatchStore } from './matchStore';
 
@@ -167,6 +168,19 @@ export interface UserStoreState {
    * batch a v6 → v7 migration that locks the field shape in.
    */
   readonly jitTooltipsSeen: JITTooltipsSeenState;
+  /**
+   * Phase 7A.8 CP6 — per-mode unlock flags. Mode 1 is free
+   * (always `true`); modes 2-7 are bought once via `unlockMode`
+   * (token-spend, cost from `MODE_UNLOCK_COSTS`) and stay unlocked.
+   * Dense `Record<number, boolean>` keyed 1-7 — every mode has an
+   * explicit entry so `isModeUnlocked` never depends on an absent
+   * key. Seeded by the v6 → v7 migration with defaults only (no
+   * retroactive unlock from play history — there's no per-mode play
+   * counter to honour, and no production cohort predates the
+   * economy). CP7 wires the HomeScreen lock UI + UnlockModal that
+   * consume this; CP6 ships state only.
+   */
+  readonly modeUnlocked: Readonly<Record<number, boolean>>;
 }
 
 /**
@@ -184,7 +198,6 @@ export interface JITTooltipsSeenState {
 export interface OnboardingState {
   readonly introSeen: boolean;
   readonly tutorialMatchCompleted: boolean;
-  readonly tokenWalkthroughSeen: boolean;
   readonly blitzTeaserSeen: boolean;
   readonly mirrorTeaserSeen: boolean;
   readonly notificationOptInAsked: boolean;
@@ -352,28 +365,9 @@ export interface UserStoreActions {
    */
   markIntroSeen(): void;
   markTutorialMatchCompleted(): void;
-  markTokenWalkthroughSeen(): void;
   markBlitzTeaserSeen(): void;
   markMirrorTeaserSeen(): void;
   markNotificationOptInAsked(): void;
-  /**
-   * Phase 7A.6 CP1 — atomic "Skip All" / completion. Stamps
-   * `completedAt` to `today` and flips every onboarding flag to
-   * `true` so no surface re-shows after dismissal. Idempotent: if
-   * `completedAt` is already set, the action is a no-op (the
-   * original completion timestamp is the canonical analytics event).
-   * `today` follows the 'YYYY-MM-DD' injection pattern used by
-   * `watchAdAction` and `recordMissedDay` for deterministic tests.
-   * CP1 ships the action; call sites land in later CPs.
-   *
-   * Use cases (post-CP7.1):
-   *   - CP2 Skip ("rahat bırak" — silence everything)
-   *   - CP4 Skip (same)
-   * NOT used by linear-completion paths — see
-   * `stampOnboardingComplete` for the "I walked the flow normally,
-   * keep CP5/CP6 trigger gates open" path.
-   */
-  completeOnboarding(today: string): void;
   /**
    * Phase 7A.6 CP7.1 — minimal "I finished onboarding linearly"
    * stamp. Flips top-level `hasOnboarded` and `onboarding.completedAt`
@@ -434,6 +428,31 @@ export interface UserStoreActions {
   markFirstTokenEarnTooltipSeen(): void;
   markFirstHintSpendTooltipSeen(): void;
   markFirstStreakMilestoneTooltipSeen(): void;
+  /**
+   * Phase 7A.8 CP6 — one-time mode purchase. Atomically debits the
+   * `MODE_UNLOCK_COSTS[modeId]` token cost and flips
+   * `modeUnlocked[modeId]` to `true` in a single `set`. Returns a
+   * result object (the store's established pattern, cf.
+   * `watchAdAction` / `applyRewardedDouble`) so the CP7 UI can surface
+   * the outcome without re-reading the store. Never silently fails:
+   *   - `invalid_mode`        — modeId not an integer in [1, 7].
+   *   - `already_unlocked`    — mode is already unlocked (includes the
+   *                             always-free Mode 1, which can't be
+   *                             "purchased").
+   *   - `insufficient_balance`— wallet < cost; NO state mutation.
+   * Idempotent on the failure paths (no mutation); success flips the
+   * flag exactly once.
+   */
+  unlockMode(modeId: number): {
+    readonly success: boolean;
+    readonly error?: 'invalid_mode' | 'already_unlocked' | 'insufficient_balance';
+  };
+  /**
+   * Phase 7A.8 CP6 — read whether a mode is unlocked. Mode 1 is always
+   * unlocked. Unknown ids read `false` (defensive — the dense 1-7 map
+   * means real modes always have an entry).
+   */
+  isModeUnlocked(modeId: number): boolean;
 }
 
 export const DAILY_CHALLENGE_DEFAULTS: DailyChallengeState = {
@@ -461,23 +480,28 @@ export const JIT_TOOLTIPS_SEEN_DEFAULTS: JITTooltipsSeenState = {
 export const ONBOARDING_DEFAULTS: OnboardingState = {
   introSeen: false,
   tutorialMatchCompleted: false,
-  tokenWalkthroughSeen: false,
   blitzTeaserSeen: false,
   mirrorTeaserSeen: false,
   notificationOptInAsked: false,
   completedAt: null,
 };
 
-// TypeScript-enforced exhaustive set of all boolean onboarding flags.
-// Adding a new boolean field to OnboardingState will cause a compile error
-// here, forcing `completeOnboarding` to be updated in lockstep.
-const ONBOARDING_ALL_SEEN: Omit<OnboardingState, 'completedAt'> = {
-  introSeen: true,
-  tutorialMatchCompleted: true,
-  tokenWalkthroughSeen: true,
-  blitzTeaserSeen: true,
-  mirrorTeaserSeen: true,
-  notificationOptInAsked: true,
+/**
+ * Phase 7A.8 CP6 — fresh-install mode-unlock defaults. Mode 1 free,
+ * 2-7 locked. Shared by `USER_STORE_DEFAULTS` and the v6 → v7
+ * migration so both seed the identical shape. A fresh spread is taken
+ * at each use site (the values are primitives, but a shared mutable
+ * object reference across the store and every migrated blob would be
+ * a latent aliasing trap).
+ */
+export const MODE_UNLOCKED_DEFAULTS: Readonly<Record<number, boolean>> = {
+  1: true,
+  2: false,
+  3: false,
+  4: false,
+  5: false,
+  6: false,
+  7: false,
 };
 
 /**
@@ -549,9 +573,11 @@ export const USER_STORE_DEFAULTS: UserStoreState = {
   modeTutorialsSeen: {},
   // Phase 7A.8 CP3 — fresh-install: no JIT tooltips seen.
   jitTooltipsSeen: JIT_TOOLTIPS_SEEN_DEFAULTS,
+  // Phase 7A.8 CP6 — fresh-install: Mode 1 free, 2-7 locked.
+  modeUnlocked: { ...MODE_UNLOCKED_DEFAULTS },
 };
 
-const STORE_VERSION = 6;
+const STORE_VERSION = 7;
 
 /**
  * Migrate persisted state across `STORE_VERSION` bumps. The persist
@@ -593,6 +619,13 @@ const STORE_VERSION = 6;
  *     mode-variety teasers, push opt-in) stay false so the
  *     post-onboarding milestones can still fire if/when those
  *     moments arrive.
+ *   v5 → v6 (Phase 7A.7 CP3): seed `modeTutorialsSeen` with the
+ *     `gamesPlayed > 0` paternalistic-skip heuristic (see
+ *     `migrateV5ToV6`).
+ *   v6 → v7 (Phase 7A.8 CP6): seed `modeUnlocked` with fresh-install
+ *     defaults (Mode 1 free, 2-7 locked — NO retroactive unlock) and
+ *     strip the dead `onboarding.tokenWalkthroughSeen` field (see
+ *     `migrateV6ToV7`).
  */
 
 // Loose v1 shape — only the fields the v1→v2 mapper inspects.
@@ -602,21 +635,32 @@ type V1Stats = Omit<UserStats, 'totalTokensEarned' | 'recentMatches'> & {
 type V7A5Fields = 'adsWatchedToday' | 'adsWatchedLastDate' | 'matchesSinceLastInterstitial' | 'adsRemoved';
 type V7A6Fields = 'onboarding' | 'matchesCompletedSinceOnboarding';
 type V7A7Fields = 'modeTutorialsSeen';
-type V1State = Omit<UserStoreState, 'stats' | 'dailyChallenge' | V7A5Fields | V7A6Fields | V7A7Fields> & {
+type V7A8Fields = 'modeUnlocked';
+type V1State = Omit<
+  UserStoreState,
+  'stats' | 'dailyChallenge' | V7A5Fields | V7A6Fields | V7A7Fields | V7A8Fields
+> & {
   readonly stats?: V1Stats;
 };
 
 // v2 shape — UserStoreState minus dailyChallenge + every later-phase field.
-type V2State = Omit<UserStoreState, 'dailyChallenge' | V7A5Fields | V7A6Fields | V7A7Fields>;
+type V2State = Omit<UserStoreState, 'dailyChallenge' | V7A5Fields | V7A6Fields | V7A7Fields | V7A8Fields>;
 
-// v3 shape — UserStoreState minus the Phase 7A.5 / 7A.6 / 7A.7 fields.
-type V3State = Omit<UserStoreState, V7A5Fields | V7A6Fields | V7A7Fields>;
+// v3 shape — UserStoreState minus the Phase 7A.5 / 7A.6 / 7A.7 / 7A.8 fields.
+type V3State = Omit<UserStoreState, V7A5Fields | V7A6Fields | V7A7Fields | V7A8Fields>;
 
-// v4 shape — UserStoreState minus the Phase 7A.6 / 7A.7 fields.
-type V4State = Omit<UserStoreState, V7A6Fields | V7A7Fields>;
+// v4 shape — UserStoreState minus the Phase 7A.6 / 7A.7 / 7A.8 fields.
+type V4State = Omit<UserStoreState, V7A6Fields | V7A7Fields | V7A8Fields>;
 
-// v5 shape — UserStoreState minus the Phase 7A.7 fields.
-type V5State = Omit<UserStoreState, V7A7Fields>;
+// v5 shape — UserStoreState minus the Phase 7A.7 / 7A.8 fields.
+type V5State = Omit<UserStoreState, V7A7Fields | V7A8Fields>;
+
+// v6 shape — UserStoreState minus the Phase 7A.8 mode-unlock field.
+// NB: the v6 `onboarding` blob on disk also carries the now-removed
+// `tokenWalkthroughSeen`; it's stripped during the v6 → v7 mapper
+// rather than reflected in this alias (the alias uses the current,
+// already-cleaned `OnboardingState`).
+type V6State = Omit<UserStoreState, V7A8Fields>;
 
 function migrateV1ToV2(persisted: unknown): V2State {
   const v1 = (persisted ?? {}) as V1State;
@@ -695,7 +739,7 @@ function migrateV4ToV5(persisted: unknown): V5State {
  * `onboarding.tutorialMatchCompleted` (Phase 7A.6 CP3). Two
  * sources of truth would invite drift.
  */
-function migrateV5ToV6(persisted: unknown): UserStoreState {
+function migrateV5ToV6(persisted: unknown): V6State {
   const v5 = (persisted ?? {}) as V5State;
   const playedAtLeastOnce = (v5.stats?.gamesPlayed ?? 0) > 0;
   const modeTutorialsSeen: Record<number, boolean> = playedAtLeastOnce
@@ -704,6 +748,43 @@ function migrateV5ToV6(persisted: unknown): UserStoreState {
   return {
     ...v5,
     modeTutorialsSeen,
+  };
+}
+
+/**
+ * Phase 7A.8 CP6 — v6 → v7: two changes, both schema-only.
+ *
+ *   1. Seed `modeUnlocked` with fresh-install DEFAULTS (Mode 1 free,
+ *      2-7 locked). NO retroactive unlock from play history: there is
+ *      no per-mode play counter to honour (`perMode` tracks only
+ *      `winRate`, `stats.gamesPlayed` is aggregate), and no production
+ *      cohort predates the unlock economy — so the per-mode heuristic
+ *      the design brief assumed is moot. Everyone lands on defaults;
+ *      the developer seeds their own test state via the store.
+ *   2. Strip the dead `onboarding.tokenWalkthroughSeen` field (CP2
+ *      deleted the walkthrough screen; the flag was never read by
+ *      routing). The onboarding object is rebuilt from the current
+ *      `OnboardingState` keys so a v6 blob carrying the dropped key
+ *      lands clean.
+ *
+ * `markTokenWalkthroughSeen` and `completeOnboarding` are removed in
+ * the same CP, but those are actions — zustand persists state, not
+ * functions, so their removal needs no migration handling.
+ */
+function migrateV6ToV7(persisted: unknown): UserStoreState {
+  const v6 = (persisted ?? {}) as V6State;
+  const ob = v6.onboarding ?? ONBOARDING_DEFAULTS;
+  return {
+    ...v6,
+    onboarding: {
+      introSeen: ob.introSeen ?? false,
+      tutorialMatchCompleted: ob.tutorialMatchCompleted ?? false,
+      blitzTeaserSeen: ob.blitzTeaserSeen ?? false,
+      mirrorTeaserSeen: ob.mirrorTeaserSeen ?? false,
+      notificationOptInAsked: ob.notificationOptInAsked ?? false,
+      completedAt: ob.completedAt ?? null,
+    },
+    modeUnlocked: { ...MODE_UNLOCKED_DEFAULTS },
   };
 }
 
@@ -737,6 +818,9 @@ function migrateUserStore(persisted: unknown, version: number): UserStoreState {
     } else if (v === 5) {
       current = migrateV5ToV6(current);
       v = 6;
+    } else if (v === 6) {
+      current = migrateV6ToV7(current);
+      v = 7;
     } else {
       // Defensive — the bounds check above should prevent reaching
       // this branch, but it keeps the loop total in case the bound
@@ -749,7 +833,7 @@ function migrateUserStore(persisted: unknown, version: number): UserStoreState {
 
 export const useUserStore = create<UserStoreState & UserStoreActions>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       ...USER_STORE_DEFAULTS,
 
       addTokens: (amount, _source) => {
@@ -957,10 +1041,6 @@ export const useUserStore = create<UserStoreState & UserStoreActions>()(
         set((s) => ({ onboarding: { ...s.onboarding, tutorialMatchCompleted: true } }));
       },
 
-      markTokenWalkthroughSeen: () => {
-        set((s) => ({ onboarding: { ...s.onboarding, tokenWalkthroughSeen: true } }));
-      },
-
       markBlitzTeaserSeen: () => {
         set((s) => ({ onboarding: { ...s.onboarding, blitzTeaserSeen: true } }));
       },
@@ -971,16 +1051,6 @@ export const useUserStore = create<UserStoreState & UserStoreActions>()(
 
       markNotificationOptInAsked: () => {
         set((s) => ({ onboarding: { ...s.onboarding, notificationOptInAsked: true } }));
-      },
-
-      completeOnboarding: (today) => {
-        set((s) => {
-          // Idempotency guard — completedAt is the canonical
-          // analytics event timestamp; overwriting it on a second
-          // call would corrupt cohort analysis keyed off that stamp.
-          if (s.onboarding.completedAt !== null) return {};
-          return { onboarding: { ...ONBOARDING_ALL_SEEN, completedAt: today } };
-        });
       },
 
       stampOnboardingComplete: (today) => {
@@ -1034,6 +1104,36 @@ export const useUserStore = create<UserStoreState & UserStoreActions>()(
           };
         });
       },
+
+      unlockMode: (modeId) => {
+        // Guard order matters: validate the id, then reject an
+        // already-unlocked mode (Mode 1 falls in here — it's
+        // default-unlocked and has cost 0, but "unlocking" it is a
+        // category error, not a free purchase), then the balance
+        // check. Each reject is pure — no state touched — so the CP7
+        // UI can call optimistically and branch on the result.
+        if (!Number.isInteger(modeId) || modeId < 1 || modeId > 7) {
+          return { success: false, error: 'invalid_mode' };
+        }
+        const state = get();
+        if (state.modeUnlocked[modeId]) {
+          return { success: false, error: 'already_unlocked' };
+        }
+        const cost = MODE_UNLOCK_COSTS[modeId] ?? 0;
+        if (state.tokens < cost) {
+          return { success: false, error: 'insufficient_balance' };
+        }
+        // Single atomic set — debit + flag flip together so a reader
+        // can never observe a spent wallet without the unlock (or an
+        // unlock without the debit).
+        set((s) => ({
+          tokens: s.tokens - cost,
+          modeUnlocked: { ...s.modeUnlocked, [modeId]: true },
+        }));
+        return { success: true };
+      },
+
+      isModeUnlocked: (modeId) => get().modeUnlocked[modeId] ?? false,
 
       applyRewardedDouble: (matchId) => {
         // Validation chain — each step has a typed error so the

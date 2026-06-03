@@ -1,5 +1,6 @@
 import { __resetRegistryForTests, modeRegistry } from '@game/modeRegistry';
 import { mode1ColorMatch } from '@game/modes/mode1ColorMatch';
+import { MODE_UNLOCK_COSTS } from '@data/modeCatalog';
 import { useMatchStore } from '@state/matchStore';
 import { __migrateUserStoreForTests, ONBOARDING_DEFAULTS, USER_STORE_DEFAULTS, useUserStore } from '../userStore';
 
@@ -355,7 +356,7 @@ describe('useUserStore', () => {
     });
   });
 
-  describe('migration — chained v1 → v2 → v3 → v4 → v5 → v6', () => {
+  describe('migration — chained v1 → v2 → v3 → v4 → v5 → v6 → v7', () => {
     // Phase 7A.4 CP3 + Phase 7A.5 CP1: chained migration pattern.
     // A v1 blob hydrates through every upgrade step to land at v4;
     // a v3 blob takes the v3 → v4 step alone; v4 is identity. Each
@@ -457,8 +458,8 @@ describe('useUserStore', () => {
       expect(next.dailyChallenge.lastResult).toBeNull();
     });
 
-    it('v6 is idempotent — current-version state passes through unchanged', () => {
-      const next = __migrateUserStoreForTests(USER_STORE_DEFAULTS, 6);
+    it('v7 is idempotent — current-version state passes through unchanged', () => {
+      const next = __migrateUserStoreForTests(USER_STORE_DEFAULTS, 7);
       expect(next).toBe(USER_STORE_DEFAULTS);
     });
 
@@ -613,7 +614,6 @@ describe('useUserStore', () => {
       // arrive.
       expect(next.onboarding.introSeen).toBe(true);
       expect(next.onboarding.tutorialMatchCompleted).toBe(false);
-      expect(next.onboarding.tokenWalkthroughSeen).toBe(false);
       expect(next.onboarding.blitzTeaserSeen).toBe(false);
       expect(next.onboarding.mirrorTeaserSeen).toBe(false);
       expect(next.onboarding.notificationOptInAsked).toBe(false);
@@ -718,7 +718,7 @@ describe('useUserStore', () => {
       expect(next).toEqual(USER_STORE_DEFAULTS);
     });
 
-    it('handles a v1 state with a missing `stats` key without throwing — chains to v5', () => {
+    it('handles a v1 state with a missing `stats` key without throwing — chains to v7', () => {
       const partial = { username: 'ghost', tokens: 100 };
       const next = __migrateUserStoreForTests(partial, 1);
       expect(next.username).toBe('ghost');
@@ -744,6 +744,70 @@ describe('useUserStore', () => {
       expect(next.username).toBe(USER_STORE_DEFAULTS.username);
       expect(next.stats).toEqual(USER_STORE_DEFAULTS.stats);
       expect(next.perMode).toEqual(USER_STORE_DEFAULTS.perMode);
+    });
+
+    // Phase 7A.8 CP6 — v6 → v7: seed modeUnlocked defaults (NO
+    // retroactive unlock) + strip dead tokenWalkthroughSeen.
+    it('v6 → v7: seeds modeUnlocked with fresh-install defaults regardless of play history', () => {
+      // An active v6 player with 50 games. There is no per-mode play
+      // counter, and no production cohort predates the economy, so
+      // the migration deliberately does NOT unlock anything from
+      // history — everyone lands on { 1: true, 2-7: false }.
+      const v6State = {
+        ...USER_STORE_DEFAULTS,
+        stats: { ...USER_STORE_DEFAULTS.stats, gamesPlayed: 50 },
+      } as unknown as Record<string, unknown>;
+      delete v6State.modeUnlocked;
+
+      const next = __migrateUserStoreForTests(v6State, 6);
+      expect(next.modeUnlocked).toEqual({
+        1: true,
+        2: false,
+        3: false,
+        4: false,
+        5: false,
+        6: false,
+        7: false,
+      });
+    });
+
+    it('v6 → v7: strips the dead onboarding.tokenWalkthroughSeen field', () => {
+      const v6State = {
+        ...USER_STORE_DEFAULTS,
+        onboarding: {
+          ...ONBOARDING_DEFAULTS,
+          introSeen: true,
+          tutorialMatchCompleted: true,
+          // Dead field a real v6 blob still carries on disk.
+          tokenWalkthroughSeen: true,
+        },
+      } as unknown as Record<string, unknown>;
+      delete v6State.modeUnlocked;
+
+      const next = __migrateUserStoreForTests(v6State, 6);
+      expect(
+        (next.onboarding as unknown as Record<string, unknown>).tokenWalkthroughSeen,
+      ).toBeUndefined();
+      // Surviving onboarding flags preserved.
+      expect(next.onboarding.introSeen).toBe(true);
+      expect(next.onboarding.tutorialMatchCompleted).toBe(true);
+    });
+
+    it('v6 → v7: preserves economy + every non-onboarding field byte-for-byte', () => {
+      const v6State = {
+        ...USER_STORE_DEFAULTS,
+        username: 'streak_seven',
+        tokens: 4242,
+        stats: { ...USER_STORE_DEFAULTS.stats, gamesPlayed: 9 },
+        modeTutorialsSeen: { 2: true, 3: true },
+      } as unknown as Record<string, unknown>;
+      delete v6State.modeUnlocked;
+
+      const next = __migrateUserStoreForTests(v6State, 6);
+      expect(next.username).toBe('streak_seven');
+      expect(next.tokens).toBe(4242);
+      expect(next.stats.gamesPlayed).toBe(9);
+      expect(next.modeTutorialsSeen).toEqual({ 2: true, 3: true });
     });
   });
 
@@ -1014,7 +1078,6 @@ describe('useUserStore', () => {
       const { onboarding } = useUserStore.getState();
       expect(onboarding.introSeen).toBe(true);
       expect(onboarding.tutorialMatchCompleted).toBe(false);
-      expect(onboarding.tokenWalkthroughSeen).toBe(false);
       expect(onboarding.blitzTeaserSeen).toBe(false);
       expect(onboarding.mirrorTeaserSeen).toBe(false);
       expect(onboarding.notificationOptInAsked).toBe(false);
@@ -1034,15 +1097,6 @@ describe('useUserStore', () => {
       const { onboarding } = useUserStore.getState();
       expect(onboarding.introSeen).toBe(false);
       expect(onboarding.tutorialMatchCompleted).toBe(true);
-      expect(onboarding.tokenWalkthroughSeen).toBe(false);
-    });
-
-    it('markTokenWalkthroughSeen flips only tokenWalkthroughSeen', () => {
-      useUserStore.setState({ onboarding: { ...ONBOARDING_DEFAULTS } });
-      useUserStore.getState().markTokenWalkthroughSeen();
-      const { onboarding } = useUserStore.getState();
-      expect(onboarding.tutorialMatchCompleted).toBe(false);
-      expect(onboarding.tokenWalkthroughSeen).toBe(true);
       expect(onboarding.blitzTeaserSeen).toBe(false);
     });
 
@@ -1050,7 +1104,7 @@ describe('useUserStore', () => {
       useUserStore.setState({ onboarding: { ...ONBOARDING_DEFAULTS } });
       useUserStore.getState().markBlitzTeaserSeen();
       const { onboarding } = useUserStore.getState();
-      expect(onboarding.tokenWalkthroughSeen).toBe(false);
+      expect(onboarding.tutorialMatchCompleted).toBe(false);
       expect(onboarding.blitzTeaserSeen).toBe(true);
       expect(onboarding.mirrorTeaserSeen).toBe(false);
     });
@@ -1073,64 +1127,6 @@ describe('useUserStore', () => {
       expect(onboarding.completedAt).toBeNull();
     });
 
-    describe('completeOnboarding', () => {
-      it('flips every flag to true and stamps completedAt with the supplied today string', () => {
-        useUserStore.setState({ onboarding: { ...ONBOARDING_DEFAULTS } });
-        useUserStore.getState().completeOnboarding('2026-05-05');
-        const { onboarding } = useUserStore.getState();
-        expect(onboarding.introSeen).toBe(true);
-        expect(onboarding.tutorialMatchCompleted).toBe(true);
-        expect(onboarding.tokenWalkthroughSeen).toBe(true);
-        expect(onboarding.blitzTeaserSeen).toBe(true);
-        expect(onboarding.mirrorTeaserSeen).toBe(true);
-        expect(onboarding.notificationOptInAsked).toBe(true);
-        expect(onboarding.completedAt).toBe('2026-05-05');
-      });
-
-      it('is idempotent — second call is a no-op regardless of the supplied date', () => {
-        useUserStore.setState({ onboarding: { ...ONBOARDING_DEFAULTS } });
-        useUserStore.getState().completeOnboarding('2026-05-05');
-        // Supply a different date to prove the guard fires, not just same-day coincidence.
-        useUserStore.getState().completeOnboarding('2026-05-06');
-        expect(useUserStore.getState().onboarding.completedAt).toBe('2026-05-05');
-      });
-
-      it('flips the remaining flags when called from a partially-marked state', () => {
-        // A player who marked intro + tutorial then taps Skip All:
-        // the remaining four flags must still flip to true so no
-        // post-onboarding surface re-shows.
-        useUserStore.setState({
-          onboarding: {
-            ...ONBOARDING_DEFAULTS,
-            introSeen: true,
-            tutorialMatchCompleted: true,
-          },
-        });
-        useUserStore.getState().completeOnboarding('2026-05-06');
-        const { onboarding } = useUserStore.getState();
-        expect(onboarding.introSeen).toBe(true);
-        expect(onboarding.tutorialMatchCompleted).toBe(true);
-        expect(onboarding.tokenWalkthroughSeen).toBe(true);
-        expect(onboarding.blitzTeaserSeen).toBe(true);
-        expect(onboarding.mirrorTeaserSeen).toBe(true);
-        expect(onboarding.notificationOptInAsked).toBe(true);
-        expect(onboarding.completedAt).toBe('2026-05-06');
-      });
-
-      it('does NOT reset matchesCompletedSinceOnboarding (counter outlives the flow)', () => {
-        // Mode-variety teasers (3 matches → Blitz, 5 → Mirror) fire
-        // post-onboarding. Skip All must not zero the counter — a
-        // player with 4 matches already deserves the Blitz teaser
-        // on their next eligible moment, not a reset window.
-        useUserStore.setState({
-          matchesCompletedSinceOnboarding: 4,
-          onboarding: { ...ONBOARDING_DEFAULTS },
-        });
-        useUserStore.getState().completeOnboarding('2026-05-06');
-        expect(useUserStore.getState().matchesCompletedSinceOnboarding).toBe(4);
-      });
-    });
-
     describe('stampOnboardingComplete (Phase 7A.6 CP7.1)', () => {
       it('flips hasOnboarded + completedAt only — leaves all 6 step flags untouched', () => {
         useUserStore.setState({
@@ -1146,7 +1142,6 @@ describe('useUserStore', () => {
         // open after linear completion.
         expect(state.onboarding.introSeen).toBe(false);
         expect(state.onboarding.tutorialMatchCompleted).toBe(false);
-        expect(state.onboarding.tokenWalkthroughSeen).toBe(false);
         expect(state.onboarding.blitzTeaserSeen).toBe(false);
         expect(state.onboarding.mirrorTeaserSeen).toBe(false);
         expect(state.onboarding.notificationOptInAsked).toBe(false);
@@ -1162,7 +1157,6 @@ describe('useUserStore', () => {
             ...ONBOARDING_DEFAULTS,
             introSeen: true,
             tutorialMatchCompleted: true,
-            tokenWalkthroughSeen: true,
           },
         });
         useUserStore.getState().stampOnboardingComplete('2026-05-05');
@@ -1172,7 +1166,6 @@ describe('useUserStore', () => {
         expect(onboarding.completedAt).toBe('2026-05-05');
         expect(onboarding.introSeen).toBe(true);
         expect(onboarding.tutorialMatchCompleted).toBe(true);
-        expect(onboarding.tokenWalkthroughSeen).toBe(true);
         // Trigger gates still untouched (this is the whole point).
         expect(onboarding.blitzTeaserSeen).toBe(false);
         expect(onboarding.mirrorTeaserSeen).toBe(false);
@@ -1191,11 +1184,13 @@ describe('useUserStore', () => {
         expect(useUserStore.getState().onboarding.completedAt).toBe('2026-05-05');
       });
 
-      it('semantic divergence from completeOnboarding pinned by name (CP7.1 invariant)', () => {
-        // Two-action regression guard: future drift that lets
+      it('leaves the CP5/CP6 trigger gates open after linear completion (CP7.1 invariant)', () => {
+        // Regression guard: future drift that lets
         // `stampOnboardingComplete` flip teaser/notification flags
         // would silently undo CP7.1's fix and remove CP5 / CP6 from
-        // the linear-completion path.
+        // the linear-completion path. (Previously this also compared
+        // against `completeOnboarding`, removed in CP6's dead-code
+        // cleanup — the invariant now stands on its own.)
         useUserStore.setState({
           hasOnboarded: false,
           onboarding: { ...ONBOARDING_DEFAULTS },
@@ -1203,21 +1198,10 @@ describe('useUserStore', () => {
         useUserStore.getState().stampOnboardingComplete('2026-05-05');
         const stamped = useUserStore.getState().onboarding;
 
-        useUserStore.setState({
-          hasOnboarded: false,
-          onboarding: { ...ONBOARDING_DEFAULTS },
-        });
-        useUserStore.getState().completeOnboarding('2026-05-05');
-        const completed = useUserStore.getState().onboarding;
-
-        // Both stamp completedAt.
         expect(stamped.completedAt).toBe('2026-05-05');
-        expect(completed.completedAt).toBe('2026-05-05');
-        // But only `completeOnboarding` flips the trigger flags.
         expect(stamped.blitzTeaserSeen).toBe(false);
-        expect(completed.blitzTeaserSeen).toBe(true);
+        expect(stamped.mirrorTeaserSeen).toBe(false);
         expect(stamped.notificationOptInAsked).toBe(false);
-        expect(completed.notificationOptInAsked).toBe(true);
       });
     });
 
@@ -1407,6 +1391,118 @@ describe('useUserStore', () => {
         tokensEarnedThisMatch: 100,
       });
       expect(useUserStore.getState().matchesSinceLastInterstitial).toBe(0);
+    });
+  });
+
+  describe('Phase 7A.8 CP6 — mode unlock', () => {
+    it('fresh install: Mode 1 unlocked, Modes 2-7 locked', () => {
+      const { modeUnlocked } = useUserStore.getState();
+      expect(modeUnlocked).toEqual({
+        1: true,
+        2: false,
+        3: false,
+        4: false,
+        5: false,
+        6: false,
+        7: false,
+      });
+    });
+
+    it('MODE_UNLOCK_COSTS exposes the sealed unlock economy (total 6500 across 2-7)', () => {
+      expect(MODE_UNLOCK_COSTS).toEqual({
+        1: 0,
+        2: 300,
+        3: 500,
+        4: 1000,
+        5: 1500,
+        6: 1200,
+        7: 2000,
+      });
+      const total = [2, 3, 4, 5, 6, 7].reduce((sum, id) => sum + MODE_UNLOCK_COSTS[id]!, 0);
+      expect(total).toBe(6500);
+    });
+
+    describe('isModeUnlocked selector', () => {
+      it('reflects the default state (1 true, others false)', () => {
+        const state = useUserStore.getState();
+        expect(state.isModeUnlocked(1)).toBe(true);
+        expect(state.isModeUnlocked(2)).toBe(false);
+        expect(state.isModeUnlocked(7)).toBe(false);
+      });
+
+      it('reads false for an unknown mode id (defensive)', () => {
+        expect(useUserStore.getState().isModeUnlocked(99)).toBe(false);
+      });
+
+      it('reflects a mode unlocked mid-session', () => {
+        useUserStore.setState({ tokens: 1000 });
+        useUserStore.getState().unlockMode(2);
+        expect(useUserStore.getState().isModeUnlocked(2)).toBe(true);
+      });
+    });
+
+    describe('unlockMode action', () => {
+      it('sufficient balance: debits the cost, flips the flag, returns success', () => {
+        useUserStore.setState({ tokens: 500 });
+        const result = useUserStore.getState().unlockMode(2); // cost 300
+        expect(result).toEqual({ success: true });
+        expect(useUserStore.getState().tokens).toBe(200);
+        expect(useUserStore.getState().modeUnlocked[2]).toBe(true);
+      });
+
+      it('exact balance: succeeds and lands the wallet at zero', () => {
+        useUserStore.setState({ tokens: 2000 });
+        const result = useUserStore.getState().unlockMode(7); // cost 2000
+        expect(result.success).toBe(true);
+        expect(useUserStore.getState().tokens).toBe(0);
+        expect(useUserStore.getState().modeUnlocked[7]).toBe(true);
+      });
+
+      it('insufficient balance: returns error, mutates NOTHING', () => {
+        useUserStore.setState({ tokens: 299 });
+        const result = useUserStore.getState().unlockMode(2); // cost 300
+        expect(result).toEqual({ success: false, error: 'insufficient_balance' });
+        // No debit, no flag flip — the whole point of not failing silently.
+        expect(useUserStore.getState().tokens).toBe(299);
+        expect(useUserStore.getState().modeUnlocked[2]).toBe(false);
+      });
+
+      it('Mode 1 (always unlocked) returns already_unlocked, no debit', () => {
+        useUserStore.setState({ tokens: 1000 });
+        const result = useUserStore.getState().unlockMode(1);
+        expect(result).toEqual({ success: false, error: 'already_unlocked' });
+        expect(useUserStore.getState().tokens).toBe(1000);
+      });
+
+      it('a previously-unlocked mode returns already_unlocked, no double-charge', () => {
+        useUserStore.setState({ tokens: 5000 });
+        const first = useUserStore.getState().unlockMode(3); // cost 500
+        expect(first.success).toBe(true);
+        expect(useUserStore.getState().tokens).toBe(4500);
+        // Second attempt must not charge again.
+        const second = useUserStore.getState().unlockMode(3);
+        expect(second).toEqual({ success: false, error: 'already_unlocked' });
+        expect(useUserStore.getState().tokens).toBe(4500);
+      });
+
+      it.each([0, 8, -1, 2.5, NaN])('invalid mode id %p returns invalid_mode, no mutation', (bad) => {
+        useUserStore.setState({ tokens: 9999 });
+        const result = useUserStore.getState().unlockMode(bad);
+        expect(result).toEqual({ success: false, error: 'invalid_mode' });
+        expect(useUserStore.getState().tokens).toBe(9999);
+      });
+
+      it('debit + flag flip are a single atomic update (no partial state observable)', () => {
+        useUserStore.setState({ tokens: 1200 });
+        useUserStore.getState().unlockMode(6); // cost 1200
+        const after = useUserStore.getState();
+        // Both halves landed together.
+        expect(after.tokens).toBe(0);
+        expect(after.modeUnlocked[6]).toBe(true);
+        // Untouched modes stay locked.
+        expect(after.modeUnlocked[5]).toBe(false);
+        expect(after.modeUnlocked[7]).toBe(false);
+      });
     });
   });
 });

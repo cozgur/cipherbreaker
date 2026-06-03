@@ -328,13 +328,13 @@ export function TutorialMatchScreen(): React.JSX.Element {
     //      replacing the CP7 `'OnboardingTokenWalkthrough'`
     //      target.
     //
-    // Deliberately does NOT call `completeOnboarding` — that
-    // action flips every onboarding flag including the CP5
-    // teaser gates and CP6 push opt-in. Linear-completion
-    // users keep those gates open so the post-onboarding
-    // contextual nudges still fire (preserves Phase 7A.6 CP7.1
-    // invariant — see PHASE-9-BACKLOG.md "completeOnboarding
-    // does not flip hasOnboarded" entry for context).
+    // Uses `stampOnboardingComplete` (flips hasOnboarded +
+    // completedAt only), NOT a flip-everything completion. Linear-
+    // completion users keep the CP5 teaser gates and CP6 push opt-in
+    // open so the post-onboarding contextual nudges still fire
+    // (Phase 7A.6 CP7.1 invariant). The old flip-all
+    // `completeOnboarding` action was removed in Phase 7A.8 CP6's
+    // dead-code cleanup — there was no production caller.
     markTutorialMatchCompleted();
     stampOnboardingComplete(formatDailyDate(new Date()));
     navigation.replace('Home');

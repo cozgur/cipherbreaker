@@ -170,3 +170,22 @@ export const modeCatalog: readonly ModeCatalogEntry[] = [
 export function findMode(id: number): ModeCatalogEntry | undefined {
   return modeCatalog.find((entry) => entry.id === id);
 }
+
+/**
+ * Phase 7A.8 CP6 — one-time token cost to unlock each mode (sealed
+ * unlock-economy design). Mode 1 is free (default-unlocked); 2-7 are
+ * bought once and stay unlocked. Lives in the catalog because it's
+ * per-mode metadata — CP7's HomeScreen lock UI and the
+ * `userStore.unlockMode` spend action both read from here, so a single
+ * source of truth keeps the price the player sees and the price the
+ * store charges in lockstep. Total: 6500 tokens across 2-7.
+ */
+export const MODE_UNLOCK_COSTS: Readonly<Record<number, number>> = {
+  1: 0,
+  2: 300,
+  3: 500,
+  4: 1000,
+  5: 1500,
+  6: 1200,
+  7: 2000,
+};

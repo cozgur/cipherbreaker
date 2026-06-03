@@ -62,11 +62,9 @@ describe('Phase 7A.6 CP7.2 — onboarding actions survive persist rehydration', 
     const state = useUserStore.getState();
     expect(typeof state.markIntroSeen).toBe('function');
     expect(typeof state.markTutorialMatchCompleted).toBe('function');
-    expect(typeof state.markTokenWalkthroughSeen).toBe('function');
     expect(typeof state.markBlitzTeaserSeen).toBe('function');
     expect(typeof state.markMirrorTeaserSeen).toBe('function');
     expect(typeof state.markNotificationOptInAsked).toBe('function');
-    expect(typeof state.completeOnboarding).toBe('function');
     expect(typeof state.stampOnboardingComplete).toBe('function');
   });
 
@@ -87,11 +85,9 @@ describe('Phase 7A.6 CP7.2 — onboarding actions survive persist rehydration', 
     const state = useUserStore.getState();
     expect(typeof state.markIntroSeen).toBe('function');
     expect(typeof state.markTutorialMatchCompleted).toBe('function');
-    expect(typeof state.markTokenWalkthroughSeen).toBe('function');
     expect(typeof state.markBlitzTeaserSeen).toBe('function');
     expect(typeof state.markMirrorTeaserSeen).toBe('function');
     expect(typeof state.markNotificationOptInAsked).toBe('function');
-    expect(typeof state.completeOnboarding).toBe('function');
     expect(typeof state.stampOnboardingComplete).toBe('function');
   });
 
@@ -107,7 +103,6 @@ describe('Phase 7A.6 CP7.2 — onboarding actions survive persist rehydration', 
         ...ONBOARDING_DEFAULTS,
         introSeen: true,
         tutorialMatchCompleted: true,
-        tokenWalkthroughSeen: true,
       },
     });
 
@@ -119,24 +114,6 @@ describe('Phase 7A.6 CP7.2 — onboarding actions survive persist rehydration', 
     expect(after.onboarding.blitzTeaserSeen).toBe(false);
     expect(after.onboarding.mirrorTeaserSeen).toBe(false);
     expect(after.onboarding.notificationOptInAsked).toBe(false);
-  });
-
-  it('completeOnboarding behaves correctly after rehydrate (Skip-path coverage)', async () => {
-    await seedPersistedState({
-      ...USER_STORE_DEFAULTS,
-      hasOnboarded: false,
-      onboarding: { ...ONBOARDING_DEFAULTS },
-    });
-
-    useUserStore.getState().completeOnboarding('2026-05-07');
-    const after = useUserStore.getState();
-    expect(after.onboarding.completedAt).toBe('2026-05-07');
-    // Skip path silences ALL post-onboarding nudges — pinned
-    // alongside the linear path so future drift either way is
-    // caught.
-    expect(after.onboarding.blitzTeaserSeen).toBe(true);
-    expect(after.onboarding.mirrorTeaserSeen).toBe(true);
-    expect(after.onboarding.notificationOptInAsked).toBe(true);
   });
 
   describe('Phase 7A.8 CP3 — jitTooltipsSeen rehydration', () => {
@@ -197,6 +174,59 @@ describe('Phase 7A.6 CP7.2 — onboarding actions survive persist rehydration', 
         firstHintSpend: false,
         firstStreakMilestone: true,
       });
+    });
+  });
+
+  describe('Phase 7A.8 CP6 — modeUnlocked migration (v6 → v7) on rehydrate', () => {
+    it('a v6 blob (with play history + dead tokenWalkthroughSeen) rehydrates to v7 defaults — no retroactive unlock', async () => {
+      // A realistic v6 blob: a player who has played matches and
+      // whose onboarding object still carries the now-dead
+      // `tokenWalkthroughSeen` flag. v6 has no `modeUnlocked`.
+      const { modeUnlocked: _omit, ...v6Base } = USER_STORE_DEFAULTS;
+      await AsyncStorage.setItem(
+        PERSIST_KEY,
+        JSON.stringify({
+          state: {
+            ...v6Base,
+            stats: { ...USER_STORE_DEFAULTS.stats, gamesPlayed: 12 },
+            onboarding: {
+              introSeen: true,
+              tutorialMatchCompleted: true,
+              tokenWalkthroughSeen: true,
+              blitzTeaserSeen: false,
+              mirrorTeaserSeen: false,
+              notificationOptInAsked: false,
+              completedAt: null,
+            },
+          },
+          version: 6,
+        }),
+      );
+      await useUserStore.persist.rehydrate();
+
+      const after = useUserStore.getState();
+      // modeUnlocked seeded with fresh-install defaults — NOT
+      // back-filled from the player's 12 games (no per-mode signal,
+      // no pre-economy cohort to honour).
+      expect(after.modeUnlocked).toEqual({
+        1: true,
+        2: false,
+        3: false,
+        4: false,
+        5: false,
+        6: false,
+        7: false,
+      });
+      // Dead field stripped from onboarding during the migration.
+      expect(
+        (after.onboarding as unknown as Record<string, unknown>).tokenWalkthroughSeen,
+      ).toBeUndefined();
+      // Surviving onboarding flags preserved through the migration.
+      expect(after.onboarding.introSeen).toBe(true);
+      expect(after.onboarding.tutorialMatchCompleted).toBe(true);
+      // unlockMode is wired post-rehydrate.
+      expect(typeof after.unlockMode).toBe('function');
+      expect(typeof after.isModeUnlocked).toBe('function');
     });
   });
 });
