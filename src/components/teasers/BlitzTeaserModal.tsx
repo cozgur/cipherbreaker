@@ -39,6 +39,7 @@ import { useUserStore } from '@state/userStore';
 import { colors, fonts, withAlpha } from '@theme/tokens';
 
 const BLITZ_TEASER_GIFT_TOKENS = 50;
+const BLITZ_MODE_ID = 4;
 
 // Phase 7A.8 CP4 — AI hero asset (Flux Pro Ultra). Sole hero
 // visual; replaced the legacy inline clock + mini-board mockup.
@@ -46,15 +47,26 @@ const AI_HERO = require('../../../assets/onboarding/teaser-blitz.png');
 
 interface BlitzTeaserModalProps {
   readonly visible: boolean;
+  /** Skip / backdrop dismiss — no unlock, no gift. */
   readonly onClose: () => void;
+  /**
+   * Phase 7A.8 CP8 — "Try Blitz" accepted. The modal handles the
+   * promotional unlock + token gift + seen flag itself; `onTry` is
+   * the navigation hand-off to the parent (HomeScreen owns nav and
+   * routes to ModeTutorial / Matchmaking for Mode 4). Split out from
+   * `onClose` so Skip never navigates.
+   */
+  readonly onTry: () => void;
 }
 
 export function BlitzTeaserModal({
   visible,
   onClose,
+  onTry,
 }: BlitzTeaserModalProps): React.JSX.Element | null {
   const insets = useSafeAreaInsets();
   const addTokens = useUserStore((s) => s.addTokens);
+  const grantModeUnlock = useUserStore((s) => s.grantModeUnlock);
   const markBlitzTeaserSeen = useUserStore((s) => s.markBlitzTeaserSeen);
 
   // Phase 7A.7 CP1 — open haptic. Fires when the modal becomes
@@ -76,9 +88,14 @@ export function BlitzTeaserModal({
   const handleTry = (): void => {
     haptics.impact('medium');
     sound.earn();
+    // Phase 7A.8 CP8 — promotional unlock: free flag flip for Mode 4
+    // (idempotent if somehow already unlocked), plus the separate
+    // 50-token gift (unchanged from CP5). markSeen flips the gate so
+    // the teaser never re-shows. Navigation is the parent's job.
+    grantModeUnlock(BLITZ_MODE_ID);
     addTokens(BLITZ_TEASER_GIFT_TOKENS, 'blitz_teaser_gift');
     markBlitzTeaserSeen();
-    onClose();
+    onTry();
   };
 
   return (

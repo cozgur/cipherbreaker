@@ -453,6 +453,23 @@ export interface UserStoreActions {
    * means real modes always have an entry).
    */
   isModeUnlocked(modeId: number): boolean;
+  /**
+   * Phase 7A.8 CP8 — promotional (cost-free) unlock. Flips
+   * `modeUnlocked[modeId]` to `true` WITHOUT spending tokens —
+   * distinct from `unlockMode`, whose balance/spend semantics stay
+   * clean. For marketing/teaser grants (the CP5 "Try Blitz/Mirror"
+   * CTAs) where reaching the teaser is itself the price paid.
+   *   - `invalid_mode` — modeId not an integer in [2, 7]. Mode 1 is
+   *     always unlocked, so there's nothing to promotionally grant.
+   *   - otherwise success; `alreadyUnlocked` reports whether the flag
+   *     was already set (the call is then a no-op — the caller still
+   *     grants its separate token gift for consistency).
+   */
+  grantModeUnlock(modeId: number): {
+    readonly success: boolean;
+    readonly alreadyUnlocked?: boolean;
+    readonly error?: 'invalid_mode';
+  };
 }
 
 export const DAILY_CHALLENGE_DEFAULTS: DailyChallengeState = {
@@ -1134,6 +1151,17 @@ export const useUserStore = create<UserStoreState & UserStoreActions>()(
       },
 
       isModeUnlocked: (modeId) => get().modeUnlocked[modeId] ?? false,
+
+      grantModeUnlock: (modeId) => {
+        if (!Number.isInteger(modeId) || modeId < 2 || modeId > 7) {
+          return { success: false, error: 'invalid_mode' };
+        }
+        const alreadyUnlocked = get().modeUnlocked[modeId] === true;
+        if (!alreadyUnlocked) {
+          set((s) => ({ modeUnlocked: { ...s.modeUnlocked, [modeId]: true } }));
+        }
+        return { success: true, alreadyUnlocked };
+      },
 
       applyRewardedDouble: (matchId) => {
         // Validation chain — each step has a typed error so the

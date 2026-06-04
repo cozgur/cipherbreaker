@@ -22,6 +22,7 @@ function resetStore(): void {
 
 function renderModal(overrides: Partial<React.ComponentProps<typeof MirrorTeaserModal>> = {}) {
   const onClose = overrides.onClose ?? jest.fn();
+  const onTry = overrides.onTry ?? jest.fn();
   const utils = render(
     <SafeAreaProvider
       initialMetrics={{
@@ -29,10 +30,10 @@ function renderModal(overrides: Partial<React.ComponentProps<typeof MirrorTeaser
         frame: { x: 0, y: 0, width: 390, height: 844 },
       }}
     >
-      <MirrorTeaserModal visible={overrides.visible ?? true} onClose={onClose} />
+      <MirrorTeaserModal visible={overrides.visible ?? true} onClose={onClose} onTry={onTry} />
     </SafeAreaProvider>,
   );
-  return Object.assign(utils, { onClose });
+  return Object.assign(utils, { onClose, onTry });
 }
 
 describe('MirrorTeaserModal', () => {
@@ -64,7 +65,7 @@ describe('MirrorTeaserModal', () => {
     expect(utils.queryByTestId('mirror-mockup')).toBeNull();
   });
 
-  it('Skip flips mirrorTeaserSeen and fires onClose, NO token grant', () => {
+  it('Skip flips mirrorTeaserSeen and fires onClose, NO token grant or unlock', () => {
     const utils = renderModal();
     const before = useUserStore.getState();
     expect(before.onboarding.mirrorTeaserSeen).toBe(false);
@@ -76,10 +77,30 @@ describe('MirrorTeaserModal', () => {
     const after = useUserStore.getState();
     expect(after.onboarding.mirrorTeaserSeen).toBe(true);
     expect(after.tokens).toBe(before.tokens);
+    expect(after.modeUnlocked[7]).toBe(false);
     expect(utils.onClose).toHaveBeenCalledTimes(1);
+    expect(utils.onTry).not.toHaveBeenCalled();
   });
 
-  it('"Try Mirror" CTA grants 50 tokens, flips mirrorTeaserSeen, fires onClose', () => {
+  it('"Try Mirror" CTA promotionally unlocks Mode 7, grants 50 tokens, flips seen, fires onTry (CP8)', () => {
+    const utils = renderModal();
+    const before = useUserStore.getState();
+    expect(before.modeUnlocked[7]).toBe(false);
+
+    act(() => {
+      fireEvent.press(utils.getByText('Try Mirror →'));
+    });
+
+    const after = useUserStore.getState();
+    expect(after.modeUnlocked[7]).toBe(true);
+    expect(after.tokens).toBe(before.tokens + 50);
+    expect(after.onboarding.mirrorTeaserSeen).toBe(true);
+    expect(utils.onTry).toHaveBeenCalledTimes(1);
+    expect(utils.onClose).not.toHaveBeenCalled();
+  });
+
+  it('"Try Mirror" is defensive — already-unlocked Mode 7 still grants 50 + fires onTry', () => {
+    useUserStore.setState({ modeUnlocked: { ...USER_STORE_DEFAULTS.modeUnlocked, 7: true } });
     const utils = renderModal();
     const before = useUserStore.getState();
 
@@ -88,9 +109,9 @@ describe('MirrorTeaserModal', () => {
     });
 
     const after = useUserStore.getState();
+    expect(after.modeUnlocked[7]).toBe(true);
     expect(after.tokens).toBe(before.tokens + 50);
-    expect(after.onboarding.mirrorTeaserSeen).toBe(true);
-    expect(utils.onClose).toHaveBeenCalledTimes(1);
+    expect(utils.onTry).toHaveBeenCalledTimes(1);
   });
 
   it('exposes the modal a11y semantics on the inner card', () => {

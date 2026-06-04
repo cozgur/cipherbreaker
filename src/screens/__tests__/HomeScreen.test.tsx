@@ -43,6 +43,8 @@ describe('HomeScreen', () => {
     useUserStore.setState({
       dailyChallenge: DAILY_CHALLENGE_DEFAULTS,
       modeUnlocked: { ...USER_STORE_DEFAULTS.modeUnlocked },
+      matchesCompletedSinceOnboarding: 0,
+      onboarding: { ...USER_STORE_DEFAULTS.onboarding },
     });
   });
 
@@ -288,6 +290,91 @@ describe('HomeScreen', () => {
       });
 
       expect(utils.navRef.current?.getCurrentRoute()?.name).toBe('Matchmaking');
+    });
+  });
+
+  // ── Phase 7A.8 CP8 — teaser promotional unlock ───────────────
+
+  describe('teaser promotional unlock (CP8)', () => {
+    it('"Try Blitz" promotionally unlocks Mode 4, gifts 50, and routes to ModeTutorial when unseen', () => {
+      mockUser.tokens = 100;
+      // Blitz teaser shows at exactly 3 post-onboarding matches, unseen.
+      useUserStore.setState({
+        matchesCompletedSinceOnboarding: 3,
+        onboarding: { ...USER_STORE_DEFAULTS.onboarding },
+        modeUnlocked: { ...USER_STORE_DEFAULTS.modeUnlocked },
+        modeTutorialsSeen: {},
+      });
+      const utils = renderWithNavigation('Home', {
+        Home: HomeScreen,
+        ModeTutorial: RouteStubScreen,
+        Matchmaking: RouteStubScreen,
+      });
+      const tokensBefore = useUserStore.getState().tokens;
+
+      act(() => {
+        fireEvent.press(utils.getByText('Try Blitz →'));
+      });
+
+      const state = useUserStore.getState();
+      expect(state.modeUnlocked[4]).toBe(true);
+      expect(state.tokens).toBe(tokensBefore + 50);
+      expect(state.onboarding.blitzTeaserSeen).toBe(true);
+      const current = utils.navRef.current?.getCurrentRoute();
+      expect(current?.name).toBe('ModeTutorial');
+      expect(current?.params).toEqual({ modeId: 4 });
+    });
+
+    it('"Try Blitz" routes to Matchmaking when the Mode 4 tutorial is already seen', () => {
+      mockUser.tokens = 100;
+      useUserStore.setState({
+        matchesCompletedSinceOnboarding: 3,
+        onboarding: { ...USER_STORE_DEFAULTS.onboarding },
+        modeUnlocked: { ...USER_STORE_DEFAULTS.modeUnlocked },
+        modeTutorialsSeen: { 4: true },
+      });
+      const utils = renderWithNavigation('Home', {
+        Home: HomeScreen,
+        ModeTutorial: RouteStubScreen,
+        Matchmaking: RouteStubScreen,
+      });
+
+      act(() => {
+        fireEvent.press(utils.getByText('Try Blitz →'));
+      });
+
+      const current = utils.navRef.current?.getCurrentRoute();
+      expect(current?.name).toBe('Matchmaking');
+      expect(current?.params).toEqual({ modeId: 4 });
+    });
+
+    it('"Try Mirror" promotionally unlocks Mode 7, gifts 50, and routes to ModeTutorial when unseen', () => {
+      mockUser.tokens = 100;
+      // Mirror teaser shows at exactly 5 post-onboarding matches, unseen.
+      useUserStore.setState({
+        matchesCompletedSinceOnboarding: 5,
+        onboarding: { ...USER_STORE_DEFAULTS.onboarding },
+        modeUnlocked: { ...USER_STORE_DEFAULTS.modeUnlocked },
+        modeTutorialsSeen: {},
+      });
+      const utils = renderWithNavigation('Home', {
+        Home: HomeScreen,
+        ModeTutorial: RouteStubScreen,
+        Matchmaking: RouteStubScreen,
+      });
+      const tokensBefore = useUserStore.getState().tokens;
+
+      act(() => {
+        fireEvent.press(utils.getByText('Try Mirror →'));
+      });
+
+      const state = useUserStore.getState();
+      expect(state.modeUnlocked[7]).toBe(true);
+      expect(state.tokens).toBe(tokensBefore + 50);
+      expect(state.onboarding.mirrorTeaserSeen).toBe(true);
+      const current = utils.navRef.current?.getCurrentRoute();
+      expect(current?.name).toBe('ModeTutorial');
+      expect(current?.params).toEqual({ modeId: 7 });
     });
   });
 

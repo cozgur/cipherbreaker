@@ -22,6 +22,7 @@ function resetStore(): void {
 
 function renderModal(overrides: Partial<React.ComponentProps<typeof BlitzTeaserModal>> = {}) {
   const onClose = overrides.onClose ?? jest.fn();
+  const onTry = overrides.onTry ?? jest.fn();
   const utils = render(
     <SafeAreaProvider
       initialMetrics={{
@@ -29,10 +30,10 @@ function renderModal(overrides: Partial<React.ComponentProps<typeof BlitzTeaserM
         frame: { x: 0, y: 0, width: 390, height: 844 },
       }}
     >
-      <BlitzTeaserModal visible={overrides.visible ?? true} onClose={onClose} />
+      <BlitzTeaserModal visible={overrides.visible ?? true} onClose={onClose} onTry={onTry} />
     </SafeAreaProvider>,
   );
-  return Object.assign(utils, { onClose });
+  return Object.assign(utils, { onClose, onTry });
 }
 
 describe('BlitzTeaserModal', () => {
@@ -64,7 +65,7 @@ describe('BlitzTeaserModal', () => {
     expect(utils.queryByTestId('blitz-mockup')).toBeNull();
   });
 
-  it('Skip flips blitzTeaserSeen and fires onClose, NO token grant', () => {
+  it('Skip flips blitzTeaserSeen and fires onClose, NO token grant or unlock', () => {
     const utils = renderModal();
     const before = useUserStore.getState();
     expect(before.onboarding.blitzTeaserSeen).toBe(false);
@@ -75,12 +76,35 @@ describe('BlitzTeaserModal', () => {
 
     const after = useUserStore.getState();
     expect(after.onboarding.blitzTeaserSeen).toBe(true);
-    // Token grant must NOT happen on skip.
+    // Skip grants nothing and unlocks nothing.
     expect(after.tokens).toBe(before.tokens);
+    expect(after.modeUnlocked[4]).toBe(false);
     expect(utils.onClose).toHaveBeenCalledTimes(1);
+    expect(utils.onTry).not.toHaveBeenCalled();
   });
 
-  it('"Try Blitz" CTA grants 50 tokens, flips blitzTeaserSeen, fires onClose', () => {
+  it('"Try Blitz" CTA promotionally unlocks Mode 4, grants 50 tokens, flips seen, fires onTry (CP8)', () => {
+    const utils = renderModal();
+    const before = useUserStore.getState();
+    expect(before.modeUnlocked[4]).toBe(false);
+
+    act(() => {
+      fireEvent.press(utils.getByText('Try Blitz →'));
+    });
+
+    const after = useUserStore.getState();
+    // Promotional unlock — flag flipped, NO unlock cost charged
+    // (only the +50 gift moved the balance).
+    expect(after.modeUnlocked[4]).toBe(true);
+    expect(after.tokens).toBe(before.tokens + 50);
+    expect(after.onboarding.blitzTeaserSeen).toBe(true);
+    // Navigation is delegated to the parent via onTry (not onClose).
+    expect(utils.onTry).toHaveBeenCalledTimes(1);
+    expect(utils.onClose).not.toHaveBeenCalled();
+  });
+
+  it('"Try Blitz" is defensive — already-unlocked Mode 4 still grants 50 + fires onTry, no double charge', () => {
+    useUserStore.setState({ modeUnlocked: { ...USER_STORE_DEFAULTS.modeUnlocked, 4: true } });
     const utils = renderModal();
     const before = useUserStore.getState();
 
@@ -89,9 +113,9 @@ describe('BlitzTeaserModal', () => {
     });
 
     const after = useUserStore.getState();
+    expect(after.modeUnlocked[4]).toBe(true);
     expect(after.tokens).toBe(before.tokens + 50);
-    expect(after.onboarding.blitzTeaserSeen).toBe(true);
-    expect(utils.onClose).toHaveBeenCalledTimes(1);
+    expect(utils.onTry).toHaveBeenCalledTimes(1);
   });
 
   it('exposes the modal a11y semantics on the inner card (not the outer wrapper, per CP3 lesson)', () => {

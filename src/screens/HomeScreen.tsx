@@ -81,6 +81,23 @@ export function HomeScreen(): React.JSX.Element {
   // after the Blitz teaser dismisses).
   const handleTeaserClose = useCallback(() => {}, []);
 
+  // Phase 7A.8 CP8 — "Try Blitz/Mirror" navigation hand-off. The
+  // teaser modal has already done the promotional unlock + token gift
+  // + seen flag; HomeScreen owns navigation, so it routes into the
+  // mode. Mirrors playMode's tutorial gate: unseen → ModeTutorial
+  // (its CTA replaces into Matchmaking), seen → Matchmaking directly.
+  // `navigate` (push) since we're on Home, not replacing a modal
+  // route. The teaser unmounts as markSeen flips its `show*` gate.
+  const routeAfterTeaserUnlock = useCallback(
+    (modeId: number) => {
+      const tutorialSeen = useUserStore.getState().modeTutorialsSeen[modeId] === true;
+      navigation.navigate(tutorialSeen ? 'Matchmaking' : 'ModeTutorial', { modeId });
+    },
+    [navigation],
+  );
+  const onTryBlitz = useCallback(() => routeAfterTeaserUnlock(4), [routeAfterTeaserUnlock]);
+  const onTryMirror = useCallback(() => routeAfterTeaserUnlock(7), [routeAfterTeaserUnlock]);
+
   // Phase 7A.5 Codex finding 3 fix — `today` is now mutable. The
   // pre-fix code captured the date once at mount, so a player who
   // left the app open across midnight (or backgrounded it past
@@ -341,8 +358,16 @@ export function HomeScreen(): React.JSX.Element {
         </View>
       </ScrollView>
 
-      <BlitzTeaserModal visible={showBlitzTeaser} onClose={handleTeaserClose} />
-      <MirrorTeaserModal visible={showMirrorTeaser} onClose={handleTeaserClose} />
+      <BlitzTeaserModal
+        visible={showBlitzTeaser}
+        onClose={handleTeaserClose}
+        onTry={onTryBlitz}
+      />
+      <MirrorTeaserModal
+        visible={showMirrorTeaser}
+        onClose={handleTeaserClose}
+        onTry={onTryMirror}
+      />
 
       <JITTooltipHost />
     </Screen>

@@ -1504,5 +1504,39 @@ describe('useUserStore', () => {
         expect(after.modeUnlocked[7]).toBe(false);
       });
     });
+
+    describe('grantModeUnlock action (CP8 promotional)', () => {
+      it('unlocks the mode WITHOUT spending tokens', () => {
+        useUserStore.setState({ tokens: 100 }); // far below the 1000 cost
+        const result = useUserStore.getState().grantModeUnlock(4);
+        expect(result).toEqual({ success: true, alreadyUnlocked: false });
+        expect(useUserStore.getState().modeUnlocked[4]).toBe(true);
+        // No cost charged — the promotional grant is free.
+        expect(useUserStore.getState().tokens).toBe(100);
+      });
+
+      it('is a no-op on an already-unlocked mode (alreadyUnlocked: true)', () => {
+        useUserStore.setState({
+          tokens: 100,
+          modeUnlocked: { ...USER_STORE_DEFAULTS.modeUnlocked, 7: true },
+        });
+        const result = useUserStore.getState().grantModeUnlock(7);
+        expect(result).toEqual({ success: true, alreadyUnlocked: true });
+        expect(useUserStore.getState().modeUnlocked[7]).toBe(true);
+        expect(useUserStore.getState().tokens).toBe(100);
+      });
+
+      it('rejects Mode 1 (always unlocked, nothing to grant)', () => {
+        const result = useUserStore.getState().grantModeUnlock(1);
+        expect(result).toEqual({ success: false, error: 'invalid_mode' });
+      });
+
+      it.each([0, 8, -1, 2.5, NaN])('rejects invalid mode id %p with no mutation', (bad) => {
+        useUserStore.setState({ modeUnlocked: { ...USER_STORE_DEFAULTS.modeUnlocked } });
+        const result = useUserStore.getState().grantModeUnlock(bad);
+        expect(result).toEqual({ success: false, error: 'invalid_mode' });
+        expect(useUserStore.getState().modeUnlocked).toEqual(USER_STORE_DEFAULTS.modeUnlocked);
+      });
+    });
   });
 });
