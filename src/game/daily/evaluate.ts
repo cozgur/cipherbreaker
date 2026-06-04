@@ -21,7 +21,7 @@
  * to a shared module then; do not anticipate the move.
  */
 
-import type { NormalizedFeedback } from '@game/types';
+import type { DigitTileVisualState, NormalizedFeedback } from '@game/types';
 
 export function evaluateDailyGuess(guess: string, secret: string): NormalizedFeedback {
   const length = secret.length;
@@ -54,4 +54,48 @@ export function evaluateDailyGuess(guess: string, secret: string): NormalizedFee
     minus,
     isWin: plus === length,
   };
+}
+
+/**
+ * Phase 7A.8 CP9 — length-generic Wordle colour-state computer for
+ * Daily Mode 1 (Color Match) days.
+ *
+ * Production Mode 1 (`src/game/modes/mode1/evaluate.ts`) hardcodes
+ * `SECRET_LENGTH = 4`; the Daily runs 4 / 5 / 6-digit tiers, so this
+ * is the multiset-permitting, length-generic replica — the same
+ * relationship `evaluateDailyGuess` has to Mode 3's
+ * `evaluatePrecision`. Two-pass `used[]` ledger: pass 1 paints exact-
+ * position greens and consumes the slot; pass 2 paints yellows
+ * against still-unconsumed slots so duplicate digits never double-
+ * count (parity with the production evaluator's `used[]` trick).
+ *
+ * Recomputed at render time from the persisted `(guess, secret)` —
+ * the `DailyGuessRecord` schema stores no colour states, so adding
+ * Mode 1 days needs no store migration.
+ */
+export function colorMatchStates(guess: string, secret: string): DigitTileVisualState[] {
+  const length = secret.length;
+  const states: DigitTileVisualState[] = Array.from({ length }, () => 'gray');
+  const used: boolean[] = Array.from({ length }, () => false);
+
+  for (let i = 0; i < length; i += 1) {
+    if (guess[i] === secret[i]) {
+      states[i] = 'green';
+      used[i] = true;
+    }
+  }
+
+  for (let i = 0; i < length; i += 1) {
+    if (states[i] === 'green') continue;
+    for (let j = 0; j < length; j += 1) {
+      if (used[j]) continue;
+      if (guess[i] === secret[j]) {
+        states[i] = 'yellow';
+        used[j] = true;
+        break;
+      }
+    }
+  }
+
+  return states;
 }

@@ -9,6 +9,7 @@
 
 import { act, fireEvent } from '@testing-library/react-native';
 
+import { DigitTile } from '@components/DigitTile';
 import type { DailyChallengeState } from '@game/daily/types';
 import { useDailyChallengeStore } from '@state/dailyChallengeStore';
 import {
@@ -48,6 +49,31 @@ function pressEachDigit(
   }
 }
 
+/**
+ * Build a Date mock that pins `new Date()` (zero-arg) to `fixedTime`
+ * while passing every other constructor arity through to the real
+ * Date. Factored out (Phase 7A.8 CP9) so the mode-rotation suite can
+ * re-pin to a different calendar day — the day index drives which
+ * board (Mode 1 vs Mode 3) the screen renders.
+ */
+function buildMockDate(real: typeof Date, fixedTime: number): typeof Date {
+  function MockDate(this: Date, ...args: unknown[]) {
+    if (!new.target) {
+      return new (real as DateConstructor)().toString();
+    }
+    if (args.length === 0) {
+      return new (real as DateConstructor)(fixedTime);
+    }
+    // @ts-expect-error pass-through to native Date constructor
+    return new (real as DateConstructor)(...args);
+  }
+  MockDate.prototype = real.prototype;
+  MockDate.now = () => fixedTime;
+  MockDate.parse = real.parse.bind(real);
+  MockDate.UTC = real.UTC.bind(real);
+  return MockDate as unknown as typeof Date;
+}
+
 describe('DailyMatchScreen', () => {
   let originalDate: typeof Date;
 
@@ -60,23 +86,10 @@ describe('DailyMatchScreen', () => {
     // Other Date constructor arities (e.g. `new Date(year, month, day)`)
     // pass through unchanged.
     originalDate = global.Date;
+    // May 1 2026 = LAUNCH_EPOCH = Day 1 (odd) → Mode 3, so the
+    // file-default board matches every pre-CP9 assertion.
     const fixedTime = new originalDate(2026, 4, 1, 12, 0, 0).getTime();
-    function MockDate(this: Date, ...args: unknown[]) {
-      if (!new.target) {
-        return new (originalDate as DateConstructor)().toString();
-      }
-      if (args.length === 0) {
-        return new (originalDate as DateConstructor)(fixedTime);
-      }
-      // @ts-expect-error pass-through to native Date constructor
-      return new (originalDate as DateConstructor)(...args);
-    }
-    MockDate.prototype = originalDate.prototype;
-    MockDate.now = () => fixedTime;
-    MockDate.parse = originalDate.parse.bind(originalDate);
-    MockDate.UTC = originalDate.UTC.bind(originalDate);
-    // @ts-expect-error mock substitution for the global Date constructor
-    global.Date = MockDate;
+    global.Date = buildMockDate(originalDate, fixedTime);
   });
 
   afterEach(() => {
@@ -295,6 +308,78 @@ describe('DailyMatchScreen', () => {
       expect(list.props).toBeTruthy();
       // `horizontal` prop is undefined-or-false on a vertical ScrollView.
       expect(list.props.horizontal).not.toBe(true);
+    });
+  });
+
+  describe('mode rotation — Phase 7A.8 CP9', () => {
+    // The outer beforeEach pins May 1 (Day 1, odd → Mode 3). Mode 1
+    // days re-pin to May 2 (Day 2, even → Mode 1); the outer afterEach
+    // restores the real Date regardless.
+    function pinDay(month0: number, day: number): void {
+      const fixedTime = new originalDate(2026, month0, day, 12, 0, 0).getTime();
+      global.Date = buildMockDate(originalDate, fixedTime);
+    }
+
+    function seedGuess(date: string): void {
+      useDailyChallengeStore.setState({
+        currentAttempt: {
+          date,
+          secret: '1234',
+          digits: 4,
+          turnLimit: 10,
+          guesses: [{ guess: '1567', plus: 1, minus: 0, isWin: false }],
+          hintsUsed: 0,
+          revealedPositions: [],
+          revealedDigits: [],
+          probedDigits: [],
+        },
+      });
+    }
+
+    it('Mode 3 day (Day 1) renders the Precision header + the +N/−M chip', () => {
+      seedGuess(FIXED_TODAY);
+      const utils = renderWithNavigation('Daily', { Daily: DailyMatchScreen });
+      expect(utils.getByLabelText('Daily Challenge — Precision')).toBeTruthy();
+      expect(utils.getByText('Precision')).toBeTruthy();
+      // PrecisionCounter renders the +N chip; '+1' is unique to it.
+      expect(utils.getByText('+1')).toBeTruthy();
+    });
+
+    it('Mode 1 day (Day 2) renders the Color Match header + omits the precision chip', () => {
+      pinDay(4, 2); // 2026-05-02 → Day 2 → Mode 1
+      seedGuess('2026-05-02');
+      const utils = renderWithNavigation('Daily', { Daily: DailyMatchScreen });
+      expect(utils.getByLabelText('Daily Challenge — Color Match')).toBeTruthy();
+      expect(utils.getByText('Color Match')).toBeTruthy();
+      // Mode1Row paints colour tiles instead of the +N/−M counter.
+      expect(utils.queryByText('+1')).toBeNull();
+      // Positively confirm the colour wiring: guess '1567' vs secret
+      // '1234' lands pos 0 ('1') green. Asserting the semantic `state`
+      // prop (not a palette colour string) keeps this robust to theme
+      // changes. Draft tiles are neutral (no reveals), so a green tile
+      // can only come from the painted Mode 1 history row.
+      const tileStates = utils.UNSAFE_getAllByType(DigitTile).map((t) => t.props.state);
+      expect(tileStates).toContain('green');
+    });
+
+    it('Mode 1 day preserves the digit tier (Day 2 still seeds 4 digits / 10 turns)', () => {
+      pinDay(4, 2);
+      renderWithNavigation('Daily', { Daily: DailyMatchScreen });
+      const attempt = useDailyChallengeStore.getState().currentAttempt;
+      expect(attempt).not.toBeNull();
+      expect(attempt!.digits).toBe(4);
+      expect(attempt!.turnLimit).toBe(10);
+    });
+
+    it('Mode 1 day still renders the shared Hint + Probe UI scaffold', () => {
+      pinDay(4, 2);
+      seedGuess('2026-05-02');
+      useUserStore.setState({
+        dailyChallenge: { ...DAILY_CHALLENGE_DEFAULTS, earnedHints: 2 },
+      });
+      const utils = renderWithNavigation('Daily', { Daily: DailyMatchScreen });
+      expect(utils.getByLabelText('Hint button')).toBeTruthy();
+      expect(utils.getByLabelText('Probe button')).toBeTruthy();
     });
   });
 

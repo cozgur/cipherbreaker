@@ -11,8 +11,9 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
 
+import { evaluateColorMatch } from '../../modes/mode1/evaluate';
 import { evaluatePrecision } from '../../modes/mode3/evaluate';
-import { evaluateDailyGuess } from '../evaluate';
+import { colorMatchStates, evaluateDailyGuess } from '../evaluate';
 
 describe('evaluateDailyGuess — multiset edge cases (advisor hand-computed)', () => {
   it("a) secret '1233' + guess '3213' → +2 -2 (advisor reference re-derived)", () => {
@@ -128,6 +129,59 @@ describe('evaluateDailyGuess — Mode 3 parity (unique inputs produce identical 
     const daily = evaluateDailyGuess(guess, secret);
     const mode3 = evaluatePrecision(guess, secret);
     expect(daily).toEqual(mode3);
+  });
+});
+
+describe('colorMatchStates — Phase 7A.8 CP9 (Mode 1 Daily days)', () => {
+  it('matches the SPEC §3.2 worked example: secret=1122, guess=1919 → green,gray,yellow,gray', () => {
+    expect(colorMatchStates('1919', '1122')).toEqual(['green', 'gray', 'yellow', 'gray']);
+  });
+
+  it('paints every position green on an exact match', () => {
+    expect(colorMatchStates('1234', '1234')).toEqual(['green', 'green', 'green', 'green']);
+  });
+
+  it('used[] ledger prevents duplicate over-claiming: secret=1122, guess=1111 → green,green,gray,gray', () => {
+    // Only two '1's exist in the secret; pos 0 takes the green, pos 1
+    // takes the other '1' as green, the remaining two '1's find no
+    // unconsumed slot → gray (not yellow).
+    expect(colorMatchStates('1111', '1122')).toEqual(['green', 'green', 'gray', 'gray']);
+  });
+
+  it('parity with the production length-4 evaluateColorMatch on unique + multiset pairs', () => {
+    const pairs: ReadonlyArray<readonly [string, string]> = [
+      ['1919', '1122'],
+      ['1234', '4321'],
+      ['5678', '1234'],
+      ['1111', '1122'],
+      ['1221', '1212'],
+      ['0000', '0000'],
+    ];
+    for (const [guess, secret] of pairs) {
+      const fb = evaluateColorMatch(guess, secret);
+      if (fb.kind !== 'colorMatch') throw new Error(`expected colorMatch, got ${fb.kind}`);
+      expect(colorMatchStates(guess, secret)).toEqual(fb.states);
+    }
+  });
+
+  it('is length-generic across the Daily 4 / 5 / 6 tiers', () => {
+    expect(colorMatchStates('12345', '12345')).toHaveLength(5);
+    expect(colorMatchStates('123456', '123456')).toHaveLength(6);
+    expect(colorMatchStates('123456', '123456').every((s) => s === 'green')).toBe(true);
+  });
+
+  it('agrees with evaluateDailyGuess on the win condition (all green ⟺ plus === length)', () => {
+    const pairs: ReadonlyArray<readonly [string, string]> = [
+      ['1234', '1234'],
+      ['1243', '1234'],
+      ['122122', '122122'],
+    ];
+    for (const [guess, secret] of pairs) {
+      const allGreen = colorMatchStates(guess, secret).every((s) => s === 'green');
+      const precision = evaluateDailyGuess(guess, secret);
+      if (precision.kind !== 'precision') throw new Error('expected precision');
+      expect(allGreen).toBe(precision.isWin);
+    }
   });
 });
 

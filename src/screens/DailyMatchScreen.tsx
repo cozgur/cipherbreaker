@@ -46,10 +46,13 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import * as haptics from '@/lib/haptics';
 import { DigitKeypad, type DigitKeypadIndicator } from '@components/DigitKeypad';
 import { DigitTile } from '@components/DigitTile';
+import { Mode1Row } from '@components/game/rows/Mode1Row';
 import { Mode3Row } from '@components/game/rows/Mode3Row';
 import { Screen } from '@components/Screen';
 import { calendarDayIndex, getDailyConfig } from '@game/daily/dailyConfig';
 import { formatDailyDate } from '@game/daily/dailyDate';
+import { colorMatchStates } from '@game/daily/evaluate';
+import { dailyModeForDate, dailyModeLabel, type DailyMode } from '@game/daily/dailyMode';
 import {
   analyzeHintCandidates,
   canProbeDigit,
@@ -101,6 +104,11 @@ export function DailyMatchScreen(): React.JSX.Element {
   const [today] = useState(() => formatDailyDate(new Date()));
   const config = useMemo(() => getDailyConfig(today, dailyState), [today, dailyState]);
   const dayNumber = useMemo(() => calendarDayIndex(today), [today]);
+  // Phase 7A.8 CP9 — today's mode is a pure function of the day index
+  // (deterministic alternation Mode 1 ↔ Mode 3). Re-derived on render,
+  // never persisted — the attempt only stores `date`.
+  const mode = useMemo<DailyMode>(() => dailyModeForDate(today), [today]);
+  const modeLabel = useMemo(() => dailyModeLabel(mode), [mode]);
 
   useEffect(() => {
     useDailyChallengeStore.getState().startToday(today, config);
@@ -315,6 +323,12 @@ export function DailyMatchScreen(): React.JSX.Element {
       <View style={styles.body}>
         <View style={styles.headerStack}>
           <Text style={styles.title}>DAILY</Text>
+          <Text
+            style={styles.modeLabel}
+            accessibilityLabel={`Daily Challenge — ${modeLabel}`}
+          >
+            {modeLabel}
+          </Text>
           <Text style={styles.subtitle}>
             {config.digits} digits · {turnsRemaining}/{config.turnLimit} turns left
           </Text>
@@ -327,9 +341,14 @@ export function DailyMatchScreen(): React.JSX.Element {
           accessibilityLabel="Daily guess history"
           showsVerticalScrollIndicator={false}
         >
-          {guesses.map((entry, idx) => (
-            <Mode3Row key={idx} {...buildRowProps(entry, username)} />
-          ))}
+          {guesses.map((entry, idx) => {
+            const rowProps = buildRowProps(entry, username, mode, currentAttempt?.secret ?? '');
+            return mode === 1 ? (
+              <Mode1Row key={idx} {...rowProps} />
+            ) : (
+              <Mode3Row key={idx} {...rowProps} />
+            );
+          })}
           {guesses.length === 0 ? (
             <Text style={styles.placeholder}>
               Crack today&apos;s code in {config.turnLimit} guesses or fewer.
@@ -555,7 +574,29 @@ function composeDraft(
   return out;
 }
 
-function buildRowProps(record: DailyGuessRecord, avatar: string): GuessRowProps {
+function buildRowProps(
+  record: DailyGuessRecord,
+  avatar: string,
+  mode: DailyMode,
+  secret: string,
+): GuessRowProps {
+  // Mode 1 (Color Match) days paint each digit green / yellow / gray,
+  // recomputed from the persisted (guess, secret). Mode 3 (Precision)
+  // days keep neutral digits + the +N/−M chip the row already shows.
+  if (mode === 1) {
+    const states = colorMatchStates(record.guess, secret);
+    const digits = Array.from({ length: record.guess.length }, (_, i) => ({
+      val: Number.parseInt(record.guess[i] as string, 10),
+      state: states[i] ?? 'neutral',
+    }));
+    const feedback: NormalizedFeedback = {
+      kind: 'colorMatch',
+      states,
+      isWin: record.isWin,
+    };
+    return { side: 'right', avatar, digits, feedback };
+  }
+
   const digits = Array.from({ length: record.guess.length }, (_, i) => ({
     val: Number.parseInt(record.guess[i] as string, 10),
     state: 'neutral' as const,
@@ -666,6 +707,14 @@ const styles = StyleSheet.create({
     fontSize: 32,
     color: colors.text,
     letterSpacing: -0.4,
+  },
+  modeLabel: {
+    marginTop: 2,
+    fontFamily: fonts.bodySemibold,
+    fontSize: 13,
+    letterSpacing: 1.2,
+    color: colors.violet,
+    textTransform: 'uppercase',
   },
   subtitle: {
     marginTop: 4,

@@ -50,6 +50,19 @@ Each item lists: scope, why it was deferred, and (where applicable) what would u
 
 **Unblocks.** Phase 7B / 8 retention data + qualitative feedback from TestFlight.
 
+### Daily Challenge Mode 2 (High & Low) integration
+
+**Scope.** Add Mode 2 (High & Low) to the Daily Challenge mode rotation. Phase 7A.8 CP9 shipped a deterministic per-day rotation between Mode 1 (Color Match) and Mode 3 (Precision) only; Mode 2 was deliberately excluded. Taking it on requires:
+- A bespoke whole-number bisection board for Daily. Unlike Mode 1 (reuses `Mode1Row` + recomputed color states) and Mode 3 (the Daily's original board), Mode 2's high/low mechanic (`evaluateHighLow` compares whole-number values and emits a single direction) has **no** equivalent in the Daily play surface — `DailyMatchScreen` is built around per-position input + `+N/−M` / color feedback. It is not a config swap on the existing Mastermind board.
+- A Mode 2-specific Daily secret generator path (the existing `getDailySecret` is fine for digit secrets, but the high/low UX needs a bisection-oriented presentation).
+- Mode 2-specific turn-limit handling if the bisection mechanic warrants a different budget than the shared 4/5/6-digit → 10/12/14-turn tier ladder.
+- A **"Narrow Range" hint** (200 tokens, reveals a 1000-band around the secret). Designed during CP9 sealing but unused while there is no Mode 2 day; build it alongside the Mode 2 board. The existing Reveal (100) / Probe (50) hints stay; Narrow Range is the Mode-2-shaped third hint.
+- Extend `pickDailyMode` from `{1, 3}` to `{1, 2, 3}` and update the rotation tests + the `dailyModeLabel` coverage.
+
+**Why deferred.** CP9 scope decision (D): shipping the honest {1, 3} rotation delivers real day-to-day variety now without the multi-surface Mode 2 board build that would have deferred the release. Per the CP4 mechanic-vs-copy rule, a literal {1, 2, 3} relabel onto the existing Mastermind board (showing a "High & Low" header over a `+N/−M` board) was explicitly rejected — Mode 2 needs its own board, not a relabel.
+
+**Unblocks.** A dedicated CP (~1 CP scope) once the Phase 9 illustrator/polish pass frees design bandwidth; can be built alongside or after it. The CP9 groundwork (`pickDailyMode`, `dailyModeForDate`, `dailyModeLabel`, mode-aware `buildRowProps` in `DailyMatchScreen`) is the extension seam.
+
 ---
 
 ### Sound asset polish
