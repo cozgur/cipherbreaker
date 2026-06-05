@@ -2,9 +2,9 @@
   "expo": {
     "name": "CipherBreaker",
     "slug": "cipherbreaker",
-    "version": "0.1.0",
+    "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/icon/app-icon-1024.png",
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
     "splash": {
@@ -13,11 +13,16 @@
       "backgroundColor": "#0a0b1e"
     },
     "ios": {
-      "supportsTablet": true,
-      "bundleIdentifier": "com.cipherbreaker.app"
+      "supportsTablet": false,
+      "bundleIdentifier": "com.ozgurcetintas.cipherbreaker",
+      "buildNumber": "1",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
+        "LSApplicationCategoryType": "public.app-category.puzzle-games"
+      }
     },
     "android": {
-      "package": "com.cipherbreaker.app",
+      "package": "com.ozgurcetintas.cipherbreaker",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0a0b1e"

@@ -88,6 +88,12 @@ Each item lists: scope, why it was deferred, and (where applicable) what would u
 
 **Implementation today.** CP1 ships the Flux Pro Ultra round 2 versions as the canonical assets. CP2 + CP4 integrate them. If launch readiness needs the polish before TestFlight, the illustrator brief can run in parallel with subsequent CPs.
 
+### App icon polish — gold/token accent + finish consistency
+
+**Scope.** The Phase 8.3 launch icon (`assets/icon/app-icon-1024.png`, fal.ai Flux Pro 1.1 Ultra round 4b — a full-bleed dark-gradient 2x2 glossy tile mosaic) is launch-acceptable. The magenta/teal/coral/purple palette is brand-adjacent but **missing the gold/token accent** that signals the game's economy element. A professional illustrator could: recolor one tile **gold** to mirror the token chip, tighten the **metallic-finish consistency** across the four tiles, and possibly add a subtle brand mark. Re-generation can also be iterated cheaply with `scripts/generate-app-icon.ts`.
+
+**Why deferred.** The round-4b icon clears every hard requirement (full-bleed square, opaque, no text, legible at 60×60, premium) and is fine to ship. The gold accent + finish refinement is polish, not a blocker. Total fal.ai spend on the launch icon: **$0.30** (5 generations across 4 directions).
+
 ### Per-mode tutorial copy review
 
 **Scope.** Native-English / UX-writer pass over the slide titles and bodies in `src/components/modeTutorial/mode<2..7>.tsx`. Headlines and microcopy were authored by the Phase 7A.7 CP4-CP6 design conversation, not by a copywriter.
