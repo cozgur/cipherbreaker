@@ -33,6 +33,7 @@ import { useNavigation, useRoute, type RouteProp } from '@react-navigation/nativ
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import * as haptics from '@/lib/haptics';
+import { formatNumber } from '@/lib/formatNumber';
 import { Button } from '@components/Button';
 import { GlassCard } from '@components/GlassCard';
 import { ModeIcon } from '@components/ModeIcon';
@@ -49,10 +50,22 @@ type RouteParams = RouteProp<RootStackParamList, 'Unlock'>;
 export function UnlockModal(): React.JSX.Element | null {
   const navigation = useNavigation<Nav>();
   const route = useRoute<RouteParams>();
-  const { modeId } = route.params;
+  const { modeId, promotionalCost } = route.params;
 
   const mode = useMemo(() => findMode(modeId), [modeId]);
-  const cost = MODE_UNLOCK_COSTS[modeId] ?? 0;
+  const regularCost = MODE_UNLOCK_COSTS[modeId] ?? 0;
+  // Phase 7A.8 CP10 — a teaser promo applies only when it's a valid
+  // price strictly below the regular cost; otherwise the modal behaves
+  // exactly as a normal ModeCard unlock.
+  const hasPromo =
+    typeof promotionalCost === 'number' &&
+    Number.isFinite(promotionalCost) &&
+    promotionalCost >= 0 &&
+    promotionalCost < regularCost;
+  const cost = hasPromo ? promotionalCost : regularCost;
+  const discountPercent = hasPromo
+    ? Math.round(((regularCost - promotionalCost) / regularCost) * 100)
+    : 0;
   const tokens = useUserStore((s) => s.tokens);
   const unlockMode = useUserStore((s) => s.unlockMode);
 
@@ -63,7 +76,9 @@ export function UnlockModal(): React.JSX.Element | null {
 
   const handleUnlock = useCallback(() => {
     haptics.impact('medium');
-    const result = unlockMode(modeId);
+    // Charge the effective price — the promo discount when present,
+    // else the catalog cost.
+    const result = unlockMode(modeId, { cost });
     if (!result.success) {
       // Defensive — the affordable gate above should make
       // insufficient_balance unreachable here, but if it (or an
@@ -99,7 +114,7 @@ export function UnlockModal(): React.JSX.Element | null {
     } else {
       navigation.replace('Matchmaking', { modeId });
     }
-  }, [unlockMode, modeId, navigation, mode]);
+  }, [unlockMode, modeId, navigation, mode, cost]);
 
   // Fail-safe — a corrupt modeId with no catalog entry must not leave
   // the player stranded on a transparent, undismissable modal. Bounce
@@ -160,19 +175,32 @@ export function UnlockModal(): React.JSX.Element | null {
               {mode.meta.description}
             </Text>
 
-            <View style={styles.costChip}>
-              <TokenCoin size={16} />
-              <Text style={styles.costText}>{cost.toLocaleString()} TOKENS</Text>
-            </View>
+            {hasPromo ? (
+              <View style={styles.promoWrap}>
+                <View style={styles.promoBadge}>
+                  <Text style={styles.promoBadgeText}>PROMO · {discountPercent}% OFF</Text>
+                </View>
+                <View style={[styles.costChip, styles.costChipInPromo]}>
+                  <TokenCoin size={16} />
+                  <Text style={styles.costStrike}>{formatNumber(regularCost)}</Text>
+                  <Text style={styles.costText}>{formatNumber(cost)} TOKENS</Text>
+                </View>
+              </View>
+            ) : (
+              <View style={styles.costChip}>
+                <TokenCoin size={16} />
+                <Text style={styles.costText}>{formatNumber(cost)} TOKENS</Text>
+              </View>
+            )}
 
-            <Text style={styles.balance}>You have {tokens.toLocaleString()} tokens</Text>
+            <Text style={styles.balance}>You have {formatNumber(tokens)} tokens</Text>
 
             <View style={styles.actions}>
               {affordable ? (
                 <Button onPress={handleUnlock}>Unlock</Button>
               ) : (
                 <Button variant="outline" onPress={handleNeedMore}>
-                  Need {shortfall.toLocaleString()} more tokens
+                  Need {formatNumber(shortfall)} more tokens
                 </Button>
               )}
               <Button variant="outline" onPress={close}>
@@ -254,6 +282,38 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: 0.8,
     color: colors.gold,
+  },
+  // Phase 7A.8 CP10 — promotional discount presentation.
+  promoWrap: {
+    alignItems: 'center',
+    marginTop: 18,
+  },
+  // The chip already carries its own top margin for the non-promo
+  // layout; inside the promo wrapper the badge owns the spacing.
+  costChipInPromo: {
+    marginTop: 0,
+  },
+  promoBadge: {
+    marginBottom: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+    backgroundColor: colors.gold,
+  },
+  promoBadgeText: {
+    fontFamily: fonts.bodySemibold,
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 1,
+    color: colors.bgBase,
+    textTransform: 'uppercase',
+  },
+  costStrike: {
+    fontFamily: fonts.body,
+    fontSize: 13,
+    letterSpacing: 0.4,
+    color: colors.textSecondary,
+    textDecorationLine: 'line-through',
   },
   balance: {
     marginTop: 10,

@@ -35,8 +35,15 @@ import type { DailyResultSummary } from './types';
 /** Placeholder marketing URL — see ARCHITECTURE Phase 7A backlog. */
 const SHARE_URL = 'cipherbreaker.app';
 
-export function formatDailyShare(result: DailyResultSummary): string {
-  const day = calendarDayIndex(result.date);
+/**
+ * Build the share payload. `epoch` is the player's first-play date
+ * (CP9.1 per-user index) so "Day #N" matches the headline the player
+ * saw in-app. Callers pass `firstPlayedDate ?? result.date` — a player
+ * who has a result necessarily has a stamped epoch, the coalesce is
+ * just defensive.
+ */
+export function formatDailyShare(result: DailyResultSummary, epoch: string): string {
+  const day = calendarDayIndex(result.date, epoch);
   const headline = `CipherBreaker Day #${day}  ${result.turnsUsed}/${result.turnLimit}`;
   const lines = result.feedbackTrail.map((entry, idx) => {
     const isLast = idx === result.feedbackTrail.length - 1;

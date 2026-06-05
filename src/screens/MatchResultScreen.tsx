@@ -428,6 +428,16 @@ export function MatchResultScreen(): React.JSX.Element {
     isEnginePath && reward > 0 && (outcome === 'victory' || outcome === 'draw');
   useEffect(() => {
     if (!isWinWithReward) return undefined;
+    // Phase 7A.8 CP10 (BUG 2) — defer while the "Double with ad" CTA is
+    // up. The tooltip is bottom-anchored, and `doubleEligible` makes the
+    // footer two rows tall, so firing now would overlap the CTA and its
+    // box-none Pressable would steal the reward tap. `doubleEligible` is
+    // a strict subset of `isWinWithReward`, so they always co-occur on a
+    // first-earn win. Tapping Skip clears `doubleEligible` and this
+    // effect re-runs to fire the tooltip into the vacated space; when
+    // the ad cap is already closed, `doubleEligible` is false and the
+    // tooltip fires on mount as before.
+    if (doubleEligible) return undefined;
     const seenSnap = useUserStore.getState();
     if (!seenSnap.hasOnboarded) return undefined;
     if (seenSnap.jitTooltipsSeen.firstTokenEarn) return undefined;
@@ -435,7 +445,7 @@ export function MatchResultScreen(): React.JSX.Element {
       fireJITTooltip('TOKEN_EARN');
     }, 500);
     return () => clearTimeout(id);
-  }, [isWinWithReward]);
+  }, [isWinWithReward, doubleEligible]);
 
   const revealSecret = routeSecret ?? secretFor(modeId);
   const digits = useMemo(

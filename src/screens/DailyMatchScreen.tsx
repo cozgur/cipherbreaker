@@ -103,11 +103,14 @@ export function DailyMatchScreen(): React.JSX.Element {
 
   const [today] = useState(() => formatDailyDate(new Date()));
   const config = useMemo(() => getDailyConfig(today, dailyState), [today, dailyState]);
-  const dayNumber = useMemo(() => calendarDayIndex(today), [today]);
+  // Phase 7A.8 CP9.1 — per-user day index. Before the first play
+  // `firstPlayedDate` is null, so today IS the epoch → Day 1.
+  const epoch = dailyState.firstPlayedDate ?? today;
+  const dayNumber = useMemo(() => calendarDayIndex(today, epoch), [today, epoch]);
   // Phase 7A.8 CP9 — today's mode is a pure function of the day index
   // (deterministic alternation Mode 1 ↔ Mode 3). Re-derived on render,
   // never persisted — the attempt only stores `date`.
-  const mode = useMemo<DailyMode>(() => dailyModeForDate(today), [today]);
+  const mode = useMemo<DailyMode>(() => dailyModeForDate(today, epoch), [today, epoch]);
   const modeLabel = useMemo(() => dailyModeLabel(mode), [mode]);
 
   useEffect(() => {

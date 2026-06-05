@@ -18,22 +18,16 @@
  * push the player below the entry tier; the streak module enforces
  * that invariant at write time.
  *
- * `LAUNCH_EPOCH` is a fixed string constant — the calendar day index
- * is `dayDifferenceLocal(parseDailyDate(LAUNCH_EPOCH), parseDailyDate(today)) + 1`.
- * Day 1 = launch day. Pre-launch dates yield non-positive indices
- * which the tier formula floors to 4.
+ * Phase 7A.8 CP9.1 — the day index is now PER-USER. `calendarDayIndex(
+ * date, epoch)` measures days since the player's own first-play date
+ * (`dailyChallenge.firstPlayedDate`), so Day 1 = the player's first
+ * Daily and the tier/mode ramp starts fresh for everyone. There is no
+ * global launch-date constant anymore; the epoch is threaded in from
+ * the persisted per-user state.
  */
 
 import type { DailyChallengeConfig, DailyChallengeState } from './types';
 import { dayDifferenceLocal, parseDailyDate } from './dailyDate';
-
-/**
- * The first day Daily Challenge is live. Day index 1 is this date.
- * Frozen as a string — when the real launch date is known the value
- * here updates and every per-player history re-aligns under the new
- * epoch. (Pre-launch dates floor to tier-4, so the rebase is safe.)
- */
-export const LAUNCH_EPOCH = '2026-05-01';
 
 /**
  * Turn budgets — Phase 7A.4 CP5 iOS-test correction. Original draft
@@ -77,21 +71,27 @@ export function effectiveDigitTier(effectiveDay: number): DailyChallengeConfig {
 }
 
 /**
- * Compute the calendar-day index for `date` relative to
- * `LAUNCH_EPOCH`. Day 1 = launch day; Day 2 = day after; etc. Pure
- * function of the date strings — DST-immune via `dayDifferenceLocal`.
+ * Compute the day index for `date` relative to `epoch` (the player's
+ * first-play date). Day 1 = the epoch date; Day 2 = the day after;
+ * etc. Pure function of the date strings — DST-immune via
+ * `dayDifferenceLocal`. Dates before the epoch yield non-positive
+ * indices which the tier formula floors to 4.
  */
-export function calendarDayIndex(date: string): number {
-  const epoch = parseDailyDate(LAUNCH_EPOCH);
+export function calendarDayIndex(date: string, epoch: string): number {
+  const epochDate = parseDailyDate(epoch);
   const today = parseDailyDate(date);
-  return dayDifferenceLocal(epoch, today) + 1;
+  return dayDifferenceLocal(epochDate, today) + 1;
 }
 
 export function getDailyConfig(
   date: string,
   dailyState: DailyChallengeState,
 ): DailyChallengeConfig {
-  const calendarDay = calendarDayIndex(date);
+  // Per-user epoch (CP9.1): before the first play `firstPlayedDate`
+  // is null, so the date being indexed IS the epoch → Day 1 / tier-4.
+  // Once stamped, the tier ramps from the player's own first day.
+  const epoch = dailyState.firstPlayedDate ?? date;
+  const calendarDay = calendarDayIndex(date, epoch);
   const effectiveDay = calendarDay - dailyState.effectiveDayOffset;
   return effectiveDigitTier(effectiveDay);
 }

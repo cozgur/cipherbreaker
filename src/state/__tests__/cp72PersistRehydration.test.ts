@@ -229,4 +229,56 @@ describe('Phase 7A.6 CP7.2 — onboarding actions survive persist rehydration', 
       expect(typeof after.isModeUnlocked).toBe('function');
     });
   });
+
+  describe('Phase 7A.8 CP9.1 — Daily firstPlayedDate backfill (v7 → v8) on rehydrate', () => {
+    it('a v7 blob with daily history backfills firstPlayedDate from the earliest history date', async () => {
+      // v7-on-disk: dailyChallenge predates the CP9.1 firstPlayedDate
+      // field. The v7 → v8 migration must anchor the per-user epoch to
+      // the earliest known play so the player's tier/streak don't snap
+      // back to Day 1 on upgrade.
+      const { firstPlayedDate: _omit, ...v7Daily } = USER_STORE_DEFAULTS.dailyChallenge;
+      await AsyncStorage.setItem(
+        PERSIST_KEY,
+        JSON.stringify({
+          state: {
+            ...USER_STORE_DEFAULTS,
+            dailyChallenge: {
+              ...v7Daily,
+              lastPlayedDate: '2026-05-12',
+              currentStreak: 3,
+              longestStreak: 5,
+              history: [
+                { date: '2026-05-10', digits: 4, turns: 3, success: true, hintsUsed: 0 },
+                { date: '2026-05-12', digits: 4, turns: 4, success: true, hintsUsed: 0 },
+              ],
+            },
+          },
+          version: 7,
+        }),
+      );
+      await useUserStore.persist.rehydrate();
+
+      const after = useUserStore.getState();
+      expect(after.dailyChallenge.firstPlayedDate).toBe('2026-05-10');
+      expect(after.dailyChallenge.currentStreak).toBe(3);
+      // The epoch-stamping action is wired post-rehydrate.
+      expect(typeof after.markDailyFirstPlayed).toBe('function');
+    });
+
+    it('a v7 blob with no daily history rehydrates firstPlayedDate as null', async () => {
+      // A fresh-ish player who never played Daily: nothing to anchor
+      // to, so Day 1 stays open until their first post-upgrade play.
+      const { firstPlayedDate: _omit, ...v7Daily } = USER_STORE_DEFAULTS.dailyChallenge;
+      await AsyncStorage.setItem(
+        PERSIST_KEY,
+        JSON.stringify({
+          state: { ...USER_STORE_DEFAULTS, dailyChallenge: { ...v7Daily } },
+          version: 7,
+        }),
+      );
+      await useUserStore.persist.rehydrate();
+
+      expect(useUserStore.getState().dailyChallenge.firstPlayedDate).toBeNull();
+    });
+  });
 });

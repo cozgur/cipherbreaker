@@ -19,7 +19,7 @@
  *     (no reward; streak < 3).
  */
 
-import { act } from '@testing-library/react-native';
+import { act, fireEvent } from '@testing-library/react-native';
 
 import { __resetMockUserForTests, mockUser } from '@data/mockUser';
 import type { RootStackParamList } from '@navigation/routes';
@@ -71,8 +71,12 @@ describe('JIT tooltip triggers (Phase 7A.8 CP3)', () => {
   });
 
   describe('TOKEN_EARN trigger (MatchResultScreen)', () => {
-    it('fires after the 500ms delay on a post-onboarding engine-path win', () => {
+    it('fires after the 500ms delay on a win when the Double-with-ad CTA is not eligible', () => {
       mockUser.tokens = 1000;
+      // Phase 7A.8 CP10 (BUG 2) — exhaust the daily ad cap so the
+      // "Double with ad" CTA is NOT offered; otherwise the tooltip
+      // defers behind it. System time is pinned to 2026-05-01.
+      useUserStore.setState({ adsWatchedToday: 10, adsWatchedLastDate: '2026-05-01' });
       renderMatchResult({
         modeId: 1,
         outcome: 'victory',
@@ -83,6 +87,35 @@ describe('JIT tooltip triggers (Phase 7A.8 CP3)', () => {
         xpGain: 30,
       });
       expect(useJITTooltipQueue.getState().active).toBeNull();
+      act(() => {
+        jest.advanceTimersByTime(500);
+      });
+      expect(useJITTooltipQueue.getState().active).toBe('TOKEN_EARN');
+      expect(useUserStore.getState().jitTooltipsSeen.firstTokenEarn).toBe(true);
+    });
+
+    it('defers while the "Double with ad" CTA is eligible, then fires after Skip (CP10 BUG 2)', () => {
+      mockUser.tokens = 1000;
+      // Ad cap available (defaults) → Double CTA eligible → the
+      // bottom-anchored tooltip must NOT fire over it.
+      const utils = renderMatchResult({
+        modeId: 1,
+        outcome: 'victory',
+        opponentId: 'opp-1',
+        secret: '1234',
+        guessCount: 4,
+        reward: 100,
+        xpGain: 30,
+      });
+      act(() => {
+        jest.advanceTimersByTime(2_000);
+      });
+      expect(useJITTooltipQueue.getState().active).toBeNull();
+      // Skip dismisses the Double CTA; the tooltip then fires into the
+      // vacated footer space after its 500ms delay.
+      act(() => {
+        fireEvent.press(utils.getByText('Skip'));
+      });
       act(() => {
         jest.advanceTimersByTime(500);
       });

@@ -271,6 +271,14 @@ export interface UserStoreActions {
    */
   recordMissedDay(today: string): void;
   /**
+   * Phase 7A.8 CP9.1 — stamp the per-user Daily epoch on first play.
+   * Idempotent: sets `dailyChallenge.firstPlayedDate` to `date` only
+   * when it is currently null, so Day 1 anchors to the player's very
+   * first `startToday`. Called by `dailyChallengeStore.startToday`
+   * when a fresh attempt is seeded.
+   */
+  markDailyFirstPlayed(date: string): void;
+  /**
    * Phase 7A.4 admin — wipe game-side stats so the user looks like a
    * fresh player. Clears `stats` (gamesPlayed, winRate, streaks,
    * avgTurns, totalTokensEarned, recentMatches), zeroes `perMode`
@@ -442,8 +450,17 @@ export interface UserStoreActions {
    *   - `insufficient_balance`— wallet < cost; NO state mutation.
    * Idempotent on the failure paths (no mutation); success flips the
    * flag exactly once.
+   *
+   * Phase 7A.8 CP10 — optional `cost` override for the teaser
+   * promotional discount (e.g. Blitz 1000 → 300). When omitted the
+   * regular `MODE_UNLOCK_COSTS[modeId]` applies. A negative / non-finite
+   * override is ignored (falls back to the regular cost) so a bad param
+   * can never mint a free or negative-priced unlock.
    */
-  unlockMode(modeId: number): {
+  unlockMode(
+    modeId: number,
+    options?: { readonly cost?: number },
+  ): {
     readonly success: boolean;
     readonly error?: 'invalid_mode' | 'already_unlocked' | 'insufficient_balance';
   };
@@ -473,6 +490,7 @@ export interface UserStoreActions {
 }
 
 export const DAILY_CHALLENGE_DEFAULTS: DailyChallengeState = {
+  firstPlayedDate: null,
   lastPlayedDate: null,
   currentStreak: 0,
   longestStreak: 0,
@@ -594,7 +612,7 @@ export const USER_STORE_DEFAULTS: UserStoreState = {
   modeUnlocked: { ...MODE_UNLOCKED_DEFAULTS },
 };
 
-const STORE_VERSION = 7;
+const STORE_VERSION = 8;
 
 /**
  * Migrate persisted state across `STORE_VERSION` bumps. The persist
@@ -643,6 +661,12 @@ const STORE_VERSION = 7;
  *     defaults (Mode 1 free, 2-7 locked — NO retroactive unlock) and
  *     strip the dead `onboarding.tokenWalkthroughSeen` field (see
  *     `migrateV6ToV7`).
+ *   v7 → v8 (Phase 7A.8 CP9.1): backfill `dailyChallenge.firstPlayedDate`
+ *     (per-user Daily epoch). Earliest known date wins —
+ *     `history[0]?.date ?? lastPlayedDate ?? null` — so an existing
+ *     player's tier/streak don't snap back to Day 1 on upgrade. Fresh
+ *     installs never run this; they get `null` from defaults and Day 1
+ *     anchors on their first play (see `migrateV7ToV8`).
  */
 
 // Loose v1 shape — only the fields the v1→v2 mapper inspects.
@@ -678,6 +702,16 @@ type V5State = Omit<UserStoreState, V7A7Fields | V7A8Fields>;
 // rather than reflected in this alias (the alias uses the current,
 // already-cleaned `OnboardingState`).
 type V6State = Omit<UserStoreState, V7A8Fields>;
+
+// v7 shape — the full current UserStoreState, except the persisted
+// `dailyChallenge` predates the CP9.1 `firstPlayedDate` field (it's
+// optional on disk; the v7 → v8 mapper backfills it).
+type V7DailyChallenge = Omit<DailyChallengeState, 'firstPlayedDate'> & {
+  readonly firstPlayedDate?: string | null;
+};
+type V7State = Omit<UserStoreState, 'dailyChallenge'> & {
+  readonly dailyChallenge: V7DailyChallenge;
+};
 
 function migrateV1ToV2(persisted: unknown): V2State {
   const v1 = (persisted ?? {}) as V1State;
@@ -788,7 +822,7 @@ function migrateV5ToV6(persisted: unknown): V6State {
  * the same CP, but those are actions — zustand persists state, not
  * functions, so their removal needs no migration handling.
  */
-function migrateV6ToV7(persisted: unknown): UserStoreState {
+function migrateV6ToV7(persisted: unknown): V7State {
   const v6 = (persisted ?? {}) as V6State;
   const ob = v6.onboarding ?? ONBOARDING_DEFAULTS;
   return {
@@ -802,6 +836,27 @@ function migrateV6ToV7(persisted: unknown): UserStoreState {
       completedAt: ob.completedAt ?? null,
     },
     modeUnlocked: { ...MODE_UNLOCKED_DEFAULTS },
+  };
+}
+
+/**
+ * Phase 7A.8 CP9.1 — v7 → v8: backfill the per-user Daily epoch.
+ * `firstPlayedDate` anchors Day 1; for an upgrading player we infer it
+ * from the earliest date we know they engaged (the oldest history
+ * entry, else `lastPlayedDate`) so their digit tier and streak
+ * regression stay continuous instead of snapping back to Day 1 / tier
+ * 4. A player with no daily history keeps `null` — Day 1 anchors on
+ * their first play post-upgrade. Defensive `?? {}` + optional chaining
+ * tolerate a malformed blob.
+ */
+function migrateV7ToV8(persisted: unknown): UserStoreState {
+  const v7 = (persisted ?? {}) as V7State;
+  const dc = v7.dailyChallenge ?? DAILY_CHALLENGE_DEFAULTS;
+  const firstPlayedDate =
+    dc.firstPlayedDate ?? dc.history?.[0]?.date ?? dc.lastPlayedDate ?? null;
+  return {
+    ...v7,
+    dailyChallenge: { ...DAILY_CHALLENGE_DEFAULTS, ...dc, firstPlayedDate },
   };
 }
 
@@ -838,6 +893,9 @@ function migrateUserStore(persisted: unknown, version: number): UserStoreState {
     } else if (v === 6) {
       current = migrateV6ToV7(current);
       v = 7;
+    } else if (v === 7) {
+      current = migrateV7ToV8(current);
+      v = 8;
     } else {
       // Defensive — the bounds check above should prevent reaching
       // this branch, but it keeps the loop total in case the bound
@@ -960,6 +1018,11 @@ export const useUserStore = create<UserStoreState & UserStoreActions>()(
           return {
             dailyChallenge: {
               ...prev,
+              // CP9.1 — guarantee the per-user epoch invariant
+              // (lastPlayedDate set ⟹ firstPlayedDate set). `startToday`
+              // normally stamps this first; the coalesce defends the
+              // path where a result lands without a prior stamp.
+              firstPlayedDate: prev.firstPlayedDate ?? result.date,
               lastPlayedDate: result.date,
               currentStreak: streakUpdate.currentStreak,
               longestStreak: streakUpdate.longestStreak,
@@ -1014,8 +1077,14 @@ export const useUserStore = create<UserStoreState & UserStoreActions>()(
               dailyChallenge: { ...prev, lastPlayedDate: today },
             };
           }
+          // Per-user epoch (CP9.1): same absolute tier formula as
+          // `getDailyConfig`, so it indexes off `firstPlayedDate`
+          // (guaranteed stamped here — `lastPlayedDate` is non-null),
+          // never today. `?? prev.lastPlayedDate` is a defensive
+          // self-consistent fallback for a corrupt blob.
+          const epoch = prev.firstPlayedDate ?? prev.lastPlayedDate;
           const lastTierEffectiveDay =
-            calendarDayIndex(prev.lastPlayedDate) - prev.effectiveDayOffset;
+            calendarDayIndex(prev.lastPlayedDate, epoch) - prev.effectiveDayOffset;
           const lastTier = effectiveDigitTier(lastTierEffectiveDay);
           let regressionDelta = 0;
           if (lastTier.digits === 6) regressionDelta = TIER_5_PERIOD;
@@ -1032,6 +1101,18 @@ export const useUserStore = create<UserStoreState & UserStoreActions>()(
               earnedHints: 0,
               lastHintEarnedAtStreak: 0,
             },
+          };
+        });
+      },
+
+      markDailyFirstPlayed: (date) => {
+        set((s) => {
+          // Idempotent — only the first call (firstPlayedDate still
+          // null) anchors the per-user Daily epoch. Subsequent plays
+          // no-op so Day 1 never drifts.
+          if (s.dailyChallenge.firstPlayedDate !== null) return {};
+          return {
+            dailyChallenge: { ...s.dailyChallenge, firstPlayedDate: date },
           };
         });
       },
@@ -1122,7 +1203,7 @@ export const useUserStore = create<UserStoreState & UserStoreActions>()(
         });
       },
 
-      unlockMode: (modeId) => {
+      unlockMode: (modeId, options) => {
         // Guard order matters: validate the id, then reject an
         // already-unlocked mode (Mode 1 falls in here — it's
         // default-unlocked and has cost 0, but "unlocking" it is a
@@ -1136,7 +1217,20 @@ export const useUserStore = create<UserStoreState & UserStoreActions>()(
         if (state.modeUnlocked[modeId]) {
           return { success: false, error: 'already_unlocked' };
         }
-        const cost = MODE_UNLOCK_COSTS[modeId] ?? 0;
+        const regularCost = MODE_UNLOCK_COSTS[modeId] ?? 0;
+        // CP10 — honour a promotional override only when it's a valid
+        // discount: a finite, non-negative number strictly BELOW the
+        // catalog cost. Anything else (negative, NaN/Infinity, or
+        // >= regular) falls back to the catalog cost, so a malformed or
+        // over-priced param can never mint a cheap unlock or overcharge.
+        const override = options?.cost;
+        const cost =
+          typeof override === 'number' &&
+          Number.isFinite(override) &&
+          override >= 0 &&
+          override < regularCost
+            ? override
+            : regularCost;
         if (state.tokens < cost) {
           return { success: false, error: 'insufficient_balance' };
         }

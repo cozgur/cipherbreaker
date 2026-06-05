@@ -36,6 +36,7 @@ import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, Text, type TextStyle } from 'react-native';
 
 import { useReducedMotion } from '@/lib/useReducedMotion';
+import { formatNumber } from '@/lib/formatNumber';
 
 interface AnimatedTokenCounterProps {
   /** Target token amount. Animates from the previously displayed value. */
@@ -171,7 +172,7 @@ export function AnimatedTokenCounter({
       accessibilityLabel={accessibilityLabel}
     >
       {prefix}
-      {displayValue.toLocaleString()}
+      {formatNumber(displayValue)}
     </Text>
   );
 }

@@ -3,12 +3,17 @@ import {
   calendarDayIndex,
   effectiveDigitTier,
   getDailyConfig,
-  LAUNCH_EPOCH,
   TIER_4_PERIOD,
   TIER_5_PERIOD,
 } from '../dailyConfig';
 
+// Phase 7A.8 CP9.1 — the day index is per-user now. These suites pin a
+// concrete first-play epoch so the tier-ramp assertions read off a
+// stable Day 1; a player's own first daily is `EPOCH`.
+const EPOCH = '2026-05-01';
+
 const FRESH_STATE: DailyChallengeState = {
+  firstPlayedDate: null,
   lastPlayedDate: null,
   currentStreak: 0,
   longestStreak: 0,
@@ -19,27 +24,52 @@ const FRESH_STATE: DailyChallengeState = {
   lastHintEarnedAtStreak: 0,
 };
 
-const stateWithOffset = (offset: number): DailyChallengeState => ({
+// A player who started on EPOCH (firstPlayedDate set), no regression.
+const playerState = (overrides: Partial<DailyChallengeState> = {}): DailyChallengeState => ({
   ...FRESH_STATE,
-  effectiveDayOffset: offset,
+  firstPlayedDate: EPOCH,
+  ...overrides,
 });
 
-describe('LAUNCH_EPOCH + calendarDayIndex', () => {
-  it('Day 1 is the launch epoch itself', () => {
-    expect(calendarDayIndex(LAUNCH_EPOCH)).toBe(1);
+const stateWithOffset = (offset: number): DailyChallengeState =>
+  playerState({ effectiveDayOffset: offset });
+
+describe('calendarDayIndex — per-user epoch', () => {
+  it('Day 1 is the epoch itself', () => {
+    expect(calendarDayIndex(EPOCH, EPOCH)).toBe(1);
   });
 
   it('Day 2 is the day after the epoch', () => {
-    expect(calendarDayIndex('2026-05-02')).toBe(2);
+    expect(calendarDayIndex('2026-05-02', EPOCH)).toBe(2);
   });
 
   it('Day 30 is 29 days after the epoch', () => {
-    expect(calendarDayIndex('2026-05-30')).toBe(30);
+    expect(calendarDayIndex('2026-05-30', EPOCH)).toBe(30);
   });
 
-  it('pre-launch dates produce non-positive indices', () => {
-    expect(calendarDayIndex('2026-04-30')).toBe(0);
-    expect(calendarDayIndex('2026-04-25')).toBe(-5);
+  it('pre-epoch dates produce non-positive indices', () => {
+    expect(calendarDayIndex('2026-04-30', EPOCH)).toBe(0);
+    expect(calendarDayIndex('2026-04-25', EPOCH)).toBe(-5);
+  });
+});
+
+describe('getDailyConfig — per-user Day 1 (firstPlayedDate null)', () => {
+  it('a never-played user is Day 1 / tier-4 on ANY date', () => {
+    // firstPlayedDate null → epoch coalesces to the indexed date → Day 1.
+    expect(getDailyConfig('2026-05-01', FRESH_STATE)).toEqual({ digits: 4, turnLimit: 10 });
+    expect(getDailyConfig('2026-12-31', FRESH_STATE)).toEqual({ digits: 4, turnLimit: 10 });
+  });
+
+  it('tier ramps from the player s own first day, not a global epoch', () => {
+    // Two players, different first days, both on THEIR day 8 → tier 5.
+    expect(getDailyConfig('2026-05-08', playerState({ firstPlayedDate: '2026-05-01' }))).toEqual({
+      digits: 5,
+      turnLimit: 12,
+    });
+    expect(getDailyConfig('2026-07-08', playerState({ firstPlayedDate: '2026-07-01' }))).toEqual({
+      digits: 5,
+      turnLimit: 12,
+    });
   });
 });
 
@@ -80,16 +110,16 @@ describe('effectiveDigitTier — pure tier mapping', () => {
 });
 
 describe('getDailyConfig — user-aware (Reading A + effectiveDayOffset)', () => {
-  it('fresh user, calendar Day 7 → tier 4 (no offset to apply)', () => {
-    expect(getDailyConfig('2026-05-07', FRESH_STATE)).toEqual({ digits: 4, turnLimit: 10 });
+  it('player on their Day 7 → tier 4 (no offset to apply)', () => {
+    expect(getDailyConfig('2026-05-07', playerState())).toEqual({ digits: 4, turnLimit: 10 });
   });
 
-  it('fresh user, calendar Day 8 → tier 5 (calendar promotion)', () => {
-    expect(getDailyConfig('2026-05-08', FRESH_STATE)).toEqual({ digits: 5, turnLimit: 12 });
+  it('player on their Day 8 → tier 5 (calendar promotion)', () => {
+    expect(getDailyConfig('2026-05-08', playerState())).toEqual({ digits: 5, turnLimit: 12 });
   });
 
-  it('fresh user, calendar Day 18 → tier 6 (calendar promotion)', () => {
-    expect(getDailyConfig('2026-05-18', FRESH_STATE)).toEqual({ digits: 6, turnLimit: 14 });
+  it('player on their Day 18 → tier 6 (calendar promotion)', () => {
+    expect(getDailyConfig('2026-05-18', playerState())).toEqual({ digits: 6, turnLimit: 14 });
   });
 
   it('regressed user (offset 7), calendar Day 18 → effective Day 11 → tier 5', () => {
@@ -139,7 +169,7 @@ describe('getDailyConfig — user-aware (Reading A + effectiveDayOffset)', () =>
     });
   });
 
-  it('pre-launch date floors to tier-4 even with offset zero', () => {
-    expect(getDailyConfig('2026-04-30', FRESH_STATE)).toEqual({ digits: 4, turnLimit: 10 });
+  it('pre-epoch date floors to tier-4 even with offset zero', () => {
+    expect(getDailyConfig('2026-04-30', playerState())).toEqual({ digits: 4, turnLimit: 10 });
   });
 });

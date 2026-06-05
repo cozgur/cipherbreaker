@@ -185,6 +185,7 @@ describe('Daily Challenge — streak break + tier regression', () => {
     useUserStore.setState({
       dailyChallenge: {
         ...DAILY_CHALLENGE_DEFAULTS,
+        firstPlayedDate: LAUNCH_EPOCH, // CP9.1 — anchor Day 1 so 2026-05-22 = Day 22
         lastPlayedDate: '2026-05-22',
         currentStreak: 21,
         longestStreak: 21,
@@ -325,6 +326,7 @@ describe('Daily Challenge — multi-tier progression + regression accumulation',
     useUserStore.setState({
       dailyChallenge: {
         ...DAILY_CHALLENGE_DEFAULTS,
+        firstPlayedDate: LAUNCH_EPOCH, // CP9.1 — anchor Day 1 so 2026-05-17 = Day 17
         lastPlayedDate: '2026-05-17',
         currentStreak: 17,
         longestStreak: 17,
@@ -342,6 +344,7 @@ describe('Daily Challenge — multi-tier progression + regression accumulation',
     useUserStore.setState({
       dailyChallenge: {
         ...DAILY_CHALLENGE_DEFAULTS,
+        firstPlayedDate: LAUNCH_EPOCH, // CP9.1 — anchor Day 1 so 2026-05-09 = Day 9
         lastPlayedDate: '2026-05-09',
         currentStreak: 8,
         longestStreak: 8,

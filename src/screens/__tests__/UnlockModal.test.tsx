@@ -7,7 +7,7 @@ import { renderWithNavigation } from '@/test-utils/renderWithNavigation';
 
 // Render with Home as the root so Cancel/goBack has somewhere to land,
 // then push the Unlock modal with the given modeId.
-function renderUnlock(modeId: number) {
+function renderUnlock(modeId: number, promotionalCost?: number) {
   const utils = renderWithNavigation('Home', {
     Home: RouteStubScreen,
     Unlock: UnlockModal,
@@ -16,7 +16,10 @@ function renderUnlock(modeId: number) {
     InsufficientTokens: RouteStubScreen,
   });
   act(() => {
-    utils.navRef.current?.navigate('Unlock', { modeId });
+    utils.navRef.current?.navigate(
+      'Unlock',
+      promotionalCost === undefined ? { modeId } : { modeId, promotionalCost },
+    );
   });
   return utils;
 }
@@ -147,5 +150,58 @@ describe('UnlockModal', () => {
     expect(route(utils)?.params).toEqual({ modeId: 2 });
     // No unlock happened.
     expect(useUserStore.getState().modeUnlocked[2]).toBe(false);
+  });
+
+  // ── Phase 7A.8 CP10 — teaser promotional discount ───────────
+  describe('promotional discount (CP10)', () => {
+    it('renders the PROMO badge, strikethrough regular cost, and discounted price', () => {
+      useUserStore.setState({ tokens: 1000 });
+      const utils = renderUnlock(4, 300); // Blitz: 1000 → 300 (70% off)
+
+      expect(utils.getByText('PROMO · 70% OFF')).toBeTruthy();
+      // Strikethrough original + discounted price both shown.
+      expect(utils.getByText('1,000')).toBeTruthy();
+      expect(utils.getByText('300 TOKENS')).toBeTruthy();
+    });
+
+    it('UNLOCK charges the promotional cost, not the full catalog price', () => {
+      useUserStore.setState({ tokens: 1000, modeTutorialsSeen: { 4: true } });
+      const utils = renderUnlock(4, 300);
+
+      act(() => {
+        fireEvent.press(utils.getByText('Unlock'));
+      });
+
+      const state = useUserStore.getState();
+      // Charged 300 (promo), not 1000 (regular).
+      expect(state.tokens).toBe(700);
+      expect(state.modeUnlocked[4]).toBe(true);
+    });
+
+    it('affordability uses the promo price — 300 tokens unlocks the 1000-token Mode 4', () => {
+      useUserStore.setState({ tokens: 300, modeTutorialsSeen: { 4: true } });
+      const utils = renderUnlock(4, 300);
+      // Affordable at the promo price → UNLOCK shown, not the shortfall CTA.
+      expect(utils.getByText('Unlock')).toBeTruthy();
+      expect(utils.queryByText(/more tokens/)).toBeNull();
+
+      act(() => {
+        fireEvent.press(utils.getByText('Unlock'));
+      });
+      expect(useUserStore.getState().modeUnlocked[4]).toBe(true);
+      expect(useUserStore.getState().tokens).toBe(0);
+    });
+
+    it('ignores a bogus promo (>= regular cost) and charges full price, no badge', () => {
+      useUserStore.setState({ tokens: 1500, modeTutorialsSeen: { 4: true } });
+      const utils = renderUnlock(4, 1200); // 1200 >= 1000 → not a discount
+
+      expect(utils.queryByText(/PROMO/)).toBeNull();
+      act(() => {
+        fireEvent.press(utils.getByText('Unlock'));
+      });
+      // Full catalog price charged (1000), not the bogus 1200.
+      expect(useUserStore.getState().tokens).toBe(500);
+    });
   });
 });

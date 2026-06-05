@@ -9,10 +9,10 @@
  *
  * Two exit paths:
  *   - "Try Mirror →" CTA → `addTokens(50, 'mirror_teaser_gift')` +
- *     `markMirrorTeaserSeen()` + `onClose`. The 50-token gift
- *     partially covers Mirror's 75 stake — the spec accepts the
- *     partial-cover (a paying decision: tokens make Mirror
- *     reachable but not free).
+ *     `markMirrorTeaserSeen()` + `onTry`. Phase 7A.8 CP10 — the CTA no
+ *     longer grants Mode 7 for free (CP8 gave away a 2000-token mode);
+ *     the parent opens the UnlockModal at the promotional 70%-off
+ *     price. The 50-token gift is a partial cover of Mirror's 75 stake.
  *   - "Skip" → `markMirrorTeaserSeen()` only (no token grant) +
  *     `onClose`.
  *
@@ -40,7 +40,6 @@ import { useUserStore } from '@state/userStore';
 import { colors, fonts, withAlpha } from '@theme/tokens';
 
 const MIRROR_TEASER_GIFT_TOKENS = 50;
-const MIRROR_MODE_ID = 7;
 
 // Phase 7A.8 CP4 — AI hero asset (Flux Pro Ultra). Sole hero
 // visual; replaced the legacy inline split-board mockup.
@@ -51,11 +50,10 @@ interface MirrorTeaserModalProps {
   /** Skip / backdrop dismiss — no unlock, no gift. */
   readonly onClose: () => void;
   /**
-   * Phase 7A.8 CP8 — "Try Mirror" accepted. The modal handles the
-   * promotional unlock + token gift + seen flag; `onTry` hands
-   * navigation to the parent (HomeScreen routes Mode 7 to
-   * ModeTutorial / Matchmaking). Split from `onClose` so Skip never
-   * navigates.
+   * Phase 7A.8 CP10 — "Try Mirror" accepted. The modal grants the
+   * 50-token gift + flips the seen flag, then calls `onTry` so the
+   * parent (HomeScreen) opens the UnlockModal at the promotional
+   * Mode 7 price. Split from `onClose` so Skip never navigates.
    */
   readonly onTry: () => void;
 }
@@ -67,7 +65,6 @@ export function MirrorTeaserModal({
 }: MirrorTeaserModalProps): React.JSX.Element | null {
   const insets = useSafeAreaInsets();
   const addTokens = useUserStore((s) => s.addTokens);
-  const grantModeUnlock = useUserStore((s) => s.grantModeUnlock);
   const markMirrorTeaserSeen = useUserStore((s) => s.markMirrorTeaserSeen);
 
   // Phase 7A.7 CP1 — open haptic, same pattern as BlitzTeaser.
@@ -86,10 +83,10 @@ export function MirrorTeaserModal({
   const handleTry = (): void => {
     haptics.impact('medium');
     sound.earn();
-    // Phase 7A.8 CP8 — promotional unlock for Mode 7 (idempotent) +
-    // the separate 50-token gift (partial cover of Mirror's 75 stake,
-    // unchanged from CP5). Navigation is the parent's job.
-    grantModeUnlock(MIRROR_MODE_ID);
+    // Phase 7A.8 CP10 — no free Mode 7 unlock here anymore. Keep the
+    // 50-token gift (partial cover of Mirror's 75 stake) + flip the
+    // seen gate, then hand off to the parent, which opens the
+    // UnlockModal at the promotional 70%-off price.
     addTokens(MIRROR_TEASER_GIFT_TOKENS, 'mirror_teaser_gift');
     markMirrorTeaserSeen();
     onTry();
@@ -138,7 +135,7 @@ export function MirrorTeaserModal({
             </Text>
           </View>
 
-          <Button onPress={handleTry} size="lg" style={styles.cta}>
+          <Button onPress={handleTry} size="lg" style={styles.cta} fullWidth={false}>
             Try Mirror →
           </Button>
         </View>

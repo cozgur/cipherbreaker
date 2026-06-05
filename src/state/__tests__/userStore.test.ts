@@ -356,7 +356,7 @@ describe('useUserStore', () => {
     });
   });
 
-  describe('migration — chained v1 → v2 → v3 → v4 → v5 → v6 → v7', () => {
+  describe('migration — chained v1 → v2 → v3 → v4 → v5 → v6 → v7 → v8', () => {
     // Phase 7A.4 CP3 + Phase 7A.5 CP1: chained migration pattern.
     // A v1 blob hydrates through every upgrade step to land at v4;
     // a v3 blob takes the v3 → v4 step alone; v4 is identity. Each
@@ -396,6 +396,7 @@ describe('useUserStore', () => {
       // — the in-progress attempt lives in `dailyChallengeStore`
       // (matchStore-pattern split, Phase 7A.4 CP4 schema cleanup).
       expect(next.dailyChallenge).toEqual({
+        firstPlayedDate: null,
         lastPlayedDate: null,
         currentStreak: 0,
         longestStreak: 0,
@@ -458,9 +459,39 @@ describe('useUserStore', () => {
       expect(next.dailyChallenge.lastResult).toBeNull();
     });
 
-    it('v7 is idempotent — current-version state passes through unchanged', () => {
-      const next = __migrateUserStoreForTests(USER_STORE_DEFAULTS, 7);
+    it('v8 is idempotent — current-version state passes through unchanged', () => {
+      const next = __migrateUserStoreForTests(USER_STORE_DEFAULTS, 8);
       expect(next).toBe(USER_STORE_DEFAULTS);
+    });
+
+    // Phase 7A.8 CP9.1 — v7 → v8 backfills the per-user Daily epoch.
+    it('v7 → v8: backfills firstPlayedDate from the earliest daily history date', () => {
+      const v7State = {
+        ...USER_STORE_DEFAULTS,
+        dailyChallenge: {
+          // v7-on-disk shape: no firstPlayedDate field.
+          lastPlayedDate: '2026-05-12',
+          currentStreak: 3,
+          longestStreak: 5,
+          effectiveDayOffset: 0,
+          lastResult: null,
+          history: [
+            { date: '2026-05-10', digits: 4, turns: 3, success: true, hintsUsed: 0 },
+            { date: '2026-05-12', digits: 4, turns: 4, success: true, hintsUsed: 0 },
+          ],
+          earnedHints: 0,
+          lastHintEarnedAtStreak: 0,
+        },
+      };
+      const next = __migrateUserStoreForTests(v7State, 7);
+      // Earliest history date wins so the tier/streak don't reset.
+      expect(next.dailyChallenge.firstPlayedDate).toBe('2026-05-10');
+      expect(next.dailyChallenge.currentStreak).toBe(3);
+    });
+
+    it('v7 → v8: a player with no daily history keeps firstPlayedDate null', () => {
+      const next = __migrateUserStoreForTests(USER_STORE_DEFAULTS, 7);
+      expect(next.dailyChallenge.firstPlayedDate).toBeNull();
     });
 
     it('v3 → v4: preserves every v3 field and seeds the four Phase 7A.5 economy fields', () => {
@@ -1491,6 +1522,36 @@ describe('useUserStore', () => {
         expect(result).toEqual({ success: false, error: 'invalid_mode' });
         expect(useUserStore.getState().tokens).toBe(9999);
       });
+
+      // Phase 7A.8 CP10 — promotional cost override.
+      it('cost override charges the promo price instead of the catalog cost', () => {
+        useUserStore.setState({ tokens: 500 });
+        const result = useUserStore.getState().unlockMode(4, { cost: 300 }); // Blitz 1000 → 300
+        expect(result).toEqual({ success: true });
+        expect(useUserStore.getState().tokens).toBe(200);
+        expect(useUserStore.getState().modeUnlocked[4]).toBe(true);
+      });
+
+      it('cost override affordability is checked against the override, not the catalog cost', () => {
+        // 300 tokens cannot afford Mode 4 (1000) normally, but can at the promo.
+        useUserStore.setState({ tokens: 300 });
+        expect(useUserStore.getState().unlockMode(4, { cost: 300 }).success).toBe(true);
+        expect(useUserStore.getState().tokens).toBe(0);
+      });
+
+      // Negative / non-finite are invalid; a finite value >= the catalog
+      // cost is not a discount (1200 > 1000, 1000 == 1000) so it must NOT
+      // overcharge — all fall back to the catalog 1000.
+      it.each([-50, NaN, Infinity, 1200, 1000])(
+        'a non-discount cost override %p falls back to the catalog cost (no cheap unlock, no overcharge)',
+        (bad) => {
+          useUserStore.setState({ tokens: 1000 });
+          const result = useUserStore.getState().unlockMode(4, { cost: bad });
+          expect(result).toEqual({ success: true });
+          // Charged the full catalog 1000, not the bogus/over-priced override.
+          expect(useUserStore.getState().tokens).toBe(0);
+        },
+      );
 
       it('debit + flag flip are a single atomic update (no partial state observable)', () => {
         useUserStore.setState({ tokens: 1200 });

@@ -137,7 +137,10 @@ describe('Daily Challenge E2E — banner → match → win → share → home', 
     });
     expect(shareSpy).toHaveBeenCalledTimes(1);
     const arg = shareSpy.mock.calls[0]?.[0] as { message?: string } | undefined;
-    expect(arg?.message).toBe(formatDailyShare(lastResult!));
+    // CP9.1 — per-user epoch is stamped on first play (here = 2026-05-01),
+    // so the share indexes off it just like DailyResultScreen does.
+    const epoch = useUserStore.getState().dailyChallenge.firstPlayedDate ?? lastResult!.date;
+    expect(arg?.message).toBe(formatDailyShare(lastResult!, epoch));
     // Spot-check the format — Day #1, 1/10, pure skill, share URL.
     expect(arg?.message).toContain('CipherBreaker Day #1');
     expect(arg?.message).toContain('1/10');

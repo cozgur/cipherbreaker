@@ -140,7 +140,9 @@ describe('DailyResultScreen', () => {
       });
       expect(shareSpy).toHaveBeenCalledTimes(1);
       const arg = shareSpy.mock.calls[0]?.[0] as { message?: string } | undefined;
-      expect(arg?.message).toBe(formatDailyShare(successResult));
+      // CP9.1 — no firstPlayedDate stamped in this fixture, so the
+      // screen coalesces the epoch to the result date (→ Day 1).
+      expect(arg?.message).toBe(formatDailyShare(successResult, successResult.date));
     });
 
     it('SHARE swallows a Share.share rejection (iOS user-cancel path)', async () => {
@@ -192,7 +194,7 @@ describe('DailyResultScreen', () => {
         fireEvent.press(utils.getByLabelText('SHARE'));
       });
       const arg = shareSpy.mock.calls[0]?.[0] as { message?: string } | undefined;
-      expect(arg?.message).toBe(formatDailyShare(failureResult));
+      expect(arg?.message).toBe(formatDailyShare(failureResult, failureResult.date));
       expect(arg?.message).toContain('10/10');
     });
 

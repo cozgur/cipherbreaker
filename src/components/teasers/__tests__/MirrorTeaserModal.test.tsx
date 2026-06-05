@@ -82,7 +82,7 @@ describe('MirrorTeaserModal', () => {
     expect(utils.onTry).not.toHaveBeenCalled();
   });
 
-  it('"Try Mirror" CTA promotionally unlocks Mode 7, grants 50 tokens, flips seen, fires onTry (CP8)', () => {
+  it('"Try Mirror" CTA grants 50 tokens + flips seen + fires onTry, but does NOT unlock Mode 7 (CP10 promo)', () => {
     const utils = renderModal();
     const before = useUserStore.getState();
     expect(before.modeUnlocked[7]).toBe(false);
@@ -92,26 +92,14 @@ describe('MirrorTeaserModal', () => {
     });
 
     const after = useUserStore.getState();
-    expect(after.modeUnlocked[7]).toBe(true);
+    // CP10 — no free Mode 7 unlock here; the parent opens the
+    // UnlockModal at the promotional price. Mode 7 stays LOCKED until
+    // the player buys there.
+    expect(after.modeUnlocked[7]).toBe(false);
     expect(after.tokens).toBe(before.tokens + 50);
     expect(after.onboarding.mirrorTeaserSeen).toBe(true);
     expect(utils.onTry).toHaveBeenCalledTimes(1);
     expect(utils.onClose).not.toHaveBeenCalled();
-  });
-
-  it('"Try Mirror" is defensive — already-unlocked Mode 7 still grants 50 + fires onTry', () => {
-    useUserStore.setState({ modeUnlocked: { ...USER_STORE_DEFAULTS.modeUnlocked, 7: true } });
-    const utils = renderModal();
-    const before = useUserStore.getState();
-
-    act(() => {
-      fireEvent.press(utils.getByText('Try Mirror →'));
-    });
-
-    const after = useUserStore.getState();
-    expect(after.modeUnlocked[7]).toBe(true);
-    expect(after.tokens).toBe(before.tokens + 50);
-    expect(utils.onTry).toHaveBeenCalledTimes(1);
   });
 
   it('exposes the modal a11y semantics on the inner card', () => {

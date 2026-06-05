@@ -22,7 +22,7 @@ import { SectionLabel } from '@components/SectionLabel';
 import { BlitzTeaserModal } from '@components/teasers/BlitzTeaserModal';
 import { MirrorTeaserModal } from '@components/teasers/MirrorTeaserModal';
 import { TokenBadge } from '@components/TokenBadge';
-import { modeCatalog, MODE_UNLOCK_COSTS } from '@data/modeCatalog';
+import { modeCatalog, MODE_UNLOCK_COSTS, TEASER_PROMO_UNLOCK_COSTS } from '@data/modeCatalog';
 import { useMockUser } from '@data/mockUser';
 import {
   buildBannerCopy,
@@ -71,8 +71,13 @@ export function HomeScreen(): React.JSX.Element {
   // imperative isModeUnlocked method) so a card re-renders / flips its
   // lock overlay when the user returns from an unlock.
   const modeUnlocked = useUserStore((s) => s.modeUnlocked);
-  const showBlitzTeaser = matchesCount === 3 && !blitzTeaserSeen;
-  const showMirrorTeaser = matchesCount === 5 && !mirrorTeaserSeen;
+  // Phase 7A.8 CP10 — also suppress the teaser when the mode is already
+  // owned. CP10 routes the teaser CTA into the UnlockModal (promotional
+  // price); teasing a mode the player already bought would open a
+  // purchase modal for an owned mode that dead-ends on `already_unlocked`.
+  // (Near-unreachable from the 100-token start, but cheap to gate out.)
+  const showBlitzTeaser = matchesCount === 3 && !blitzTeaserSeen && !modeUnlocked[4];
+  const showMirrorTeaser = matchesCount === 5 && !mirrorTeaserSeen && !modeUnlocked[7];
   // No-op onClose: the modal's CTA / Skip handlers flip the
   // corresponding seen flag inside userStore, which makes the
   // derived boolean above flip to false, which makes the modal
@@ -81,22 +86,21 @@ export function HomeScreen(): React.JSX.Element {
   // after the Blitz teaser dismisses).
   const handleTeaserClose = useCallback(() => {}, []);
 
-  // Phase 7A.8 CP8 — "Try Blitz/Mirror" navigation hand-off. The
-  // teaser modal has already done the promotional unlock + token gift
-  // + seen flag; HomeScreen owns navigation, so it routes into the
-  // mode. Mirrors playMode's tutorial gate: unseen → ModeTutorial
-  // (its CTA replaces into Matchmaking), seen → Matchmaking directly.
-  // `navigate` (push) since we're on Home, not replacing a modal
-  // route. The teaser unmounts as markSeen flips its `show*` gate.
-  const routeAfterTeaserUnlock = useCallback(
-    (modeId: number) => {
-      const tutorialSeen = useUserStore.getState().modeTutorialsSeen[modeId] === true;
-      navigation.navigate(tutorialSeen ? 'Matchmaking' : 'ModeTutorial', { modeId });
-    },
+  // Phase 7A.8 CP10 — "Try Blitz/Mirror" navigation hand-off. The
+  // teaser modal has granted its 50-token gift + flipped the seen
+  // flag; HomeScreen opens the UnlockModal at the promotional 70%-off
+  // price (replacing CP8's free grant). The modal shows the discount,
+  // charges it on Unlock, and routes into the mode (or back to Home on
+  // Cancel — gift kept, mode still locked). `navigate` (push) since
+  // we're on Home; the teaser unmounts as markSeen flips its gate.
+  const onTryBlitz = useCallback(
+    () => navigation.navigate('Unlock', { modeId: 4, promotionalCost: TEASER_PROMO_UNLOCK_COSTS[4] }),
     [navigation],
   );
-  const onTryBlitz = useCallback(() => routeAfterTeaserUnlock(4), [routeAfterTeaserUnlock]);
-  const onTryMirror = useCallback(() => routeAfterTeaserUnlock(7), [routeAfterTeaserUnlock]);
+  const onTryMirror = useCallback(
+    () => navigation.navigate('Unlock', { modeId: 7, promotionalCost: TEASER_PROMO_UNLOCK_COSTS[7] }),
+    [navigation],
+  );
 
   // Phase 7A.5 Codex finding 3 fix — `today` is now mutable. The
   // pre-fix code captured the date once at mount, so a player who
@@ -107,7 +111,10 @@ export function HomeScreen(): React.JSX.Element {
   // an AppState listener catches the foreground-return case for
   // backgrounded apps that miss the in-app tick entirely.
   const [today, setToday] = useState(() => formatDailyDate(new Date()));
-  const dayNumber = useMemo(() => calendarDayIndex(today), [today]);
+  // Phase 7A.8 CP9.1 — per-user day index (days since the player's
+  // first play). Null epoch (never played) coalesces to today → Day 1.
+  const dailyEpoch = dailyState.firstPlayedDate ?? today;
+  const dayNumber = useMemo(() => calendarDayIndex(today, dailyEpoch), [today, dailyEpoch]);
   const dailyConfig = useMemo(() => getDailyConfig(today, dailyState), [today, dailyState]);
   const bannerState: DailyBannerState = getDailyBannerState(today, dailyState.lastResult);
 

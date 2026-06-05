@@ -1,7 +1,15 @@
 import type { DailyChallengeState, DailyResultSummary } from '../types';
 import { computeNextDailyStreakState } from '../streak';
 
+// Phase 7A.8 CP9.1 — the regression branch computes the player's last
+// tier from `calendarDayIndex(lastPlayedDate, firstPlayedDate)`, so the
+// fixtures anchor a first-play epoch. The "Day N" comments below are
+// days since EPOCH (e.g. 2026-05-10 = Day 10), matching the pre-CP9.1
+// global-epoch assertions.
+const EPOCH = '2026-05-01';
+
 const FRESH: DailyChallengeState = {
+  firstPlayedDate: null,
   lastPlayedDate: null,
   currentStreak: 0,
   longestStreak: 0,
@@ -29,6 +37,7 @@ const stateAt = (
   overrides: Partial<DailyChallengeState> = {},
 ): DailyChallengeState => ({
   ...FRESH,
+  firstPlayedDate: EPOCH,
   lastPlayedDate,
   ...overrides,
 });

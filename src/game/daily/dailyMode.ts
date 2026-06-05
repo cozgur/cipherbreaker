@@ -8,17 +8,17 @@
  * board). See docs/PHASE-9-BACKLOG.md.
  *
  * Determinism mirrors `getDailySecret`: the day's mode is a pure
- * function of the calendar day index, so every device shows the same
- * mode for "today" with zero persistence. The attempt stores only
- * `date`; the mode is re-derived on render. No `DailyInProgress`
- * schema change, no store migration.
+ * function of the day index, so the mode is re-derived on render with
+ * zero persistence. The attempt stores only `date`; no `DailyInProgress`
+ * schema change, no store migration. Phase 7A.8 CP9.1 — the index is
+ * now per-user (days since the player's first play), so the epoch is
+ * threaded in.
  *
  * `daySeed % 2` yields strict alternation (Mode 1 / 3 / 1 / 3 …)
  * rather than hashed pseudo-randomness — chosen on purpose: it
  * guarantees both modes recur on a tight cadence (no long droughts a
- * hash could produce) and reads naturally. Launch day (Day 1, odd)
- * resolves to Mode 3, preserving the existing Daily behaviour for
- * every test and every player who started before this CP.
+ * hash could produce) and reads naturally. Day 1 (odd) resolves to
+ * Mode 3, so every player's first Daily is Precision.
  */
 
 import { findMode } from '@data/modeCatalog';
@@ -36,9 +36,12 @@ export function pickDailyMode(daySeed: number): DailyMode {
   return daySeed % 2 === 0 ? 1 : 3;
 }
 
-/** Convenience: the Daily mode for a 'YYYY-MM-DD' calendar date. */
-export function dailyModeForDate(date: string): DailyMode {
-  return pickDailyMode(calendarDayIndex(date));
+/**
+ * Convenience: the Daily mode for a 'YYYY-MM-DD' calendar date,
+ * relative to the player's first-play `epoch` (CP9.1 per-user index).
+ */
+export function dailyModeForDate(date: string, epoch: string): DailyMode {
+  return pickDailyMode(calendarDayIndex(date, epoch));
 }
 
 /**

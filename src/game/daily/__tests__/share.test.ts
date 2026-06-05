@@ -8,6 +8,11 @@ const baseTrail = [
   { guess: '4231', plus: 4, minus: 0, isWin: true },
 ];
 
+// Phase 7A.8 CP9.1 — share day index is per-user. Pin the player's
+// first-play epoch to the base result date so "Day #1" holds (and the
+// Day #30 case below indexes off the same epoch).
+const EPOCH = '2026-05-01';
+
 const baseResult = (overrides: Partial<DailyResultSummary> = {}): DailyResultSummary => ({
   date: '2026-05-01',
   digits: 4,
@@ -37,7 +42,7 @@ describe('formatHintSuffix', () => {
 
 describe('formatDailyShare', () => {
   it('emits the canonical success payload (Day #1, pure-skill suffix)', () => {
-    const out = formatDailyShare(baseResult());
+    const out = formatDailyShare(baseResult(), EPOCH);
     const lines = out.split('\n');
     expect(lines[0]).toBe('CipherBreaker Day #1  4/10');
     expect(lines[1]).toBe('+1 -2');
@@ -49,7 +54,7 @@ describe('formatDailyShare', () => {
   });
 
   it('with hints — replaces the suffix line, trail unchanged', () => {
-    const out = formatDailyShare(baseResult({ hintsUsed: 2 }));
+    const out = formatDailyShare(baseResult({ hintsUsed: 2 }), EPOCH);
     expect(out).toContain('(2 hints used)');
     expect(out).not.toContain('pure skill');
   });
@@ -68,6 +73,7 @@ describe('formatDailyShare', () => {
         feedbackTrail: failureTrail,
         hintsUsed: 1,
       }),
+      EPOCH,
     );
     const lines = out.split('\n');
     expect(lines[0]).toBe('CipherBreaker Day #1  10/10');
@@ -77,12 +83,12 @@ describe('formatDailyShare', () => {
   });
 
   it('header date scales with calendarDayIndex (Day #30 example)', () => {
-    const out = formatDailyShare(baseResult({ date: '2026-05-30' }));
+    const out = formatDailyShare(baseResult({ date: '2026-05-30' }), EPOCH);
     expect(out.split('\n')[0]).toBe('CipherBreaker Day #30  4/10');
   });
 
   it('always ends with the share URL placeholder', () => {
-    const out = formatDailyShare(baseResult());
+    const out = formatDailyShare(baseResult(), EPOCH);
     expect(out.split('\n').at(-1)).toBe('cipherbreaker.app');
   });
 });

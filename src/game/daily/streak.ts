@@ -117,8 +117,17 @@ export function computeNextDailyStreakState(
 
   // Branch 4 — gap >= 2 (or negative — clock went backwards somehow,
   // treat as a missed-day reset). Streak breaks. Apply regression.
+  //
+  // Per-user epoch (CP9.1): this is the same absolute `calendarDay -
+  // offset → tier` formula `getDailyConfig` uses, so it MUST index off
+  // the player's `firstPlayedDate`, not coalesce to today (that would
+  // re-epoch the tier math and corrupt the regression). This branch
+  // only runs with `lastPlayedDate` set, so `firstPlayedDate` is
+  // guaranteed stamped; `?? prev.lastPlayedDate` is a defensive,
+  // self-consistent fallback for a corrupt blob, never `today`.
+  const epoch = prev.firstPlayedDate ?? prev.lastPlayedDate;
   const lastTierEffectiveDay =
-    calendarDayIndex(prev.lastPlayedDate) - previousOffset;
+    calendarDayIndex(prev.lastPlayedDate, epoch) - previousOffset;
   const lastTier = effectiveDigitTier(lastTierEffectiveDay);
   let regressionDelta = 0;
   if (lastTier.digits === 6) {

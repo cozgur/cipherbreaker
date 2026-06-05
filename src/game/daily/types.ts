@@ -157,6 +157,18 @@ export interface DailyResultSummary {
  * truth per concept, no cross-store hydration race.
  */
 export interface DailyChallengeState {
+  /**
+   * Phase 7A.8 CP9.1 — per-user Daily epoch. The local-calendar date
+   * ('YYYY-MM-DD') of the player's first Daily Challenge attempt. Day 1
+   * is this date, and the digit tier + mode rotation ramp from here, so
+   * every player starts at tier-4 / Mode 3 on their own Day 1 rather
+   * than inheriting a global launch-date offset. `null` until the first
+   * `startToday` stamps it; read sites at the display / config boundary
+   * coalesce a null epoch to the date being indexed (→ Day 1), while
+   * streak/regression sites (which only run once `lastPlayedDate` is
+   * set, so the epoch is guaranteed present) must NOT coalesce to today.
+   */
+  readonly firstPlayedDate: string | null;
   readonly lastPlayedDate: string | null;
   readonly currentStreak: number;
   readonly longestStreak: number;

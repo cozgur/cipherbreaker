@@ -1812,3 +1812,131 @@ Phase 7A.7 is programmatic-green at `1514/1514` tests, manual-sanity verified en
 - Mode 7's race ecosystem as a reference for future asymmetric-mode polish
 - A discipline scoreboard demonstrating the verification protocol's value (any future mechanic-adjacent design conversation should run the protocol BEFORE committing to copy)
 - Phase 9 backlog updated with deferred CP8 polish items (VS ceremony, milestone copy, BotTypingFooter verb) + Phase 7B test infrastructure + tutorial copy native-English review
+
+## Phase 7A.8 — Onboarding rework + AI assets + bot illusion + mode unlock + Daily rotation
+
+Pre-launch polish phase: replaced the multi-slide onboarding with a single hero
+slide, generated AI brand illustrations, tightened the matchmaking "bot illusion,"
+shipped a token-priced mode-unlock economy, and made the Daily Challenge rotate
+modes. CP10 sealed the phase with a bug-fix bundle + docs + tag, preceded by a
+per-user Daily day-index redesign (CP9.1) that surfaced during the seal.
+
+### CP timeline
+
+| CP | Commit | What |
+|---|---|---|
+| CP1 | `9dd5bc8` | fal.ai asset-generation pipeline + 4 hero illustrations |
+| CP2 | `13f4600` | onboarding rework — 3 intro slides + walkthrough → 1 hero slide |
+| CP3 | `531ac4e` | JIT tooltips — token-earn / hint-spend / streak-milestone |
+| CP4 | `3353adc` | 3 modal AI-asset integration (variant 'a') |
+| CP5 | `963569b` | bot-illusion matchmaking polish — skewed duration + progressive messages |
+| CP5.1 | `078e348` | matchmaking threshold tuning — 10s→12s, drop the 15s stage |
+| CP6 | `568d79f` | mode-unlock state schema + migration v6→v7 |
+| CP7 | `4bea39f` | mode-unlock UI — HomeScreen lock visualization + UnlockModal |
+| CP8 | `2cf4c17` | teaser promotional unlock integration |
+| CP9 | `beb611d` | Daily Challenge mode rotation — Mode 1 + Mode 3 |
+| CP9.1 | _this PR_ | per-user Daily day index (`firstPlayedDate` epoch + migration v7→v8) |
+| CP10 | _this PR_ | seal — bug-fix bundle + ARCHITECTURE + backlog + tag |
+
+Test surface across the phase: `1514 → 1620` (+106 net).
+
+### CP9.1 — per-user Daily day index
+
+The sealed Daily design indexed "Day #N" off a single global `LAUNCH_EPOCH`
+constant, which (a) showed a brand-new player "Day 35" on first launch (the
+placeholder epoch was a month in the past) and (b) dropped every fresh player
+straight into whatever global difficulty tier the calendar had reached. CP9.1
+reframed the day index as **per-user**: `dailyChallenge.firstPlayedDate` (stamped
+on the first `startToday`, backfilled for upgraders from the earliest history
+date) is the epoch, so everyone starts at Day 1 / tier-4 (4 digits) / Mode 3 and
+the difficulty + mode rotation ramp from their own first day.
+
+- `calendarDayIndex(date, epoch)` and `dailyModeForDate(date, epoch)` now take the
+  epoch explicitly; `getDailyConfig(date, dailyState)` reads it from
+  `dailyState.firstPlayedDate ?? date`.
+- **Epoch-consistency invariant:** the streak/regression math
+  (`streak.ts`, `userStore.recordMissedDay`) computes an *absolute*
+  `calendarDayIndex(lastPlayedDate) - effectiveDayOffset → tier`, NOT a difference
+  of two indices, so it must index off `firstPlayedDate` (never coalesce to
+  `today`, which would silently re-epoch the tier). Those paths only run once
+  `lastPlayedDate` is set, so `firstPlayedDate` is guaranteed stamped; a corrupt
+  null defensively falls back to `lastPlayedDate`, never `today`.
+- The daily *secret* stays keyed to the calendar date (`getDailySecret(date,
+  digits)`), so the Daily is now an explicitly personal progression rather than a
+  globally-shared puzzle — difficulty already varied per-user via streak
+  regression, so this only completes the model.
+- Migration `v7→v8` backfills `firstPlayedDate = history[0]?.date ??
+  lastPlayedDate ?? null` so an upgrading player's tier/streak don't snap back to
+  Day 1.
+
+### CP10 — bug-fix bundle
+
+| Bug | Root cause | Fix |
+|---|---|---|
+| BUG 1 — Daily "Day 35" | global `LAUNCH_EPOCH = '2026-05-01'` placeholder | superseded by CP9.1 per-user epoch |
+| BUG 2 — TOKEN_EARN tooltip overlaps "Double with ad" CTA | tooltip bottom-anchored at `insets.bottom+96`; `doubleEligible` makes the footer two rows (~`+146`), so they overlap and the tooltip's `box-none` Pressable steals the reward tap. `doubleEligible ⊂ isWinWithReward`, so they always co-occur. | defer the trigger effect while `doubleEligible` (`MatchResultScreen`); it fires after Skip, or immediately when the ad cap is closed |
+| BUG 3 — "TRY BLITZ/MIRROR →" right edge clipped | shared `Button` defaults to `fullWidth` (`width:'100%'`) + teaser `cta` `marginHorizontal:18` → Yoga renders `100% + 36px`, and the card's `overflow:'hidden'` clips the pill | `fullWidth={false}` on both CTAs (root keeps `alignSelf:'stretch'` → fills card minus margins) |
+| BUG 5 — promotional unlock overpaid | CP8 teaser CTAs called `grantModeUnlock` (free) on Modes 4/7 (1000/2000-token modes) for reaching 3 matches | replaced with a **promotional discount**: teaser gifts +50 + opens `UnlockModal` at `promotionalCost` (Blitz 1000→300, Mirror 2000→600, 70% off); the player buys or cancels there |
+| Pre-existing red suites | `LevelBar` / `TokenRewardFloater` / `AnimatedTokenCounter` used bare `.toLocaleString()` → device-locale separators (`2.340` on a Turkish machine) vs the tests' `2,340` | pinned to `en-US` via a shared `formatNumber` helper |
+
+BUG 4 (Mode 4 tutorial static timer) was confirmed intentional design and dropped.
+
+### Iteration lessons
+
+- **AI asset generation (CP1, 4 rounds) does not reach professional-illustrator
+  parity** at Flux Pro Ultra + Recraft v3. The assets are acceptable in modal
+  context; an illustrator polish pass is budgeted in Phase 9.
+- **The "TestFlight cohort" assumption was wrong — there is no existing user
+  base** (CP6's sealed migration design assumed one). Recon caught that
+  `perMode.gamesPlayed` doesn't exist; the simplified migration adopted defaults.
+  CP9.1's `v7→v8` backfill is still written correctly for upgraders, but the
+  practical risk is a dev/QA device, not production.
+- **A sealed design premise can be mechanically misaligned with the code.** The
+  Daily "Mode 1/2/3 rotation" (CP9) was reduced to an honest `{1, 3}` because
+  Daily is the Mode 3 mechanic end-to-end (Mode 2 deferred to Phase 9). The global
+  Daily epoch (CP9 sealed) was redesigned to per-user (CP9.1) once it was clear
+  the day index drives difficulty + mode, not just a label. **Validate sealed
+  premises against the code before implementing; surface behavioral mismatches.**
+- **The CP8 promotional-unlock calibration overpaid** — giving away 1000/2000-token
+  modes for 3 matches broke the unlock economy. CP10 honors the teaser's intent
+  (nudge the player to try a new mode) while preserving economy semantics
+  (the mode still costs tokens, just 70% less for this one offer).
+- **A bug brief's diagnosis is a hypothesis, not a finding.** CP10's brief guessed
+  the three red suites were "jest fake-timer + Animated.timing" failures; they were
+  pure locale. It assumed a "Continue" button on MatchResult (there is only Skip)
+  and that BUG 3 was the arrow glyph (it was Yoga margin overflow). Each was
+  corrected at pre-impl read time.
+
+### Patterns documented
+
+- **Per-user mode-derived state without a bespoke schema for the day index** —
+  `firstPlayedDate` is the only new persisted field; the day number, difficulty
+  tier, and mode are all pure functions of `(date, epoch, offset)` re-derived on
+  render (CP9 / CP9.1).
+- **Promotional discount via a route param, not a state flag** — `Unlock`'s
+  optional `promotionalCost` carries the discount; `unlockMode(modeId, { cost })`
+  honors a valid override and ignores a bogus one (negative/NaN/≥regular → falls
+  back to catalog price). The discount lives only in the nav param, so a later
+  ModeCard tap naturally pays full price (CP10 BUG 5).
+- **Locale-stable formatting helper** — `formatNumber` pins `en-US` grouping so
+  player-facing numbers render identically on every device and the suites pass on
+  any contributor's locale (CP10).
+- **Defer-not-reposition for overlapping transient UI** — BUG 2 gates the tooltip
+  trigger on the competing CTA's eligibility rather than moving the anchor, so the
+  bottom-anchor design (which avoids the screen's top header) is preserved.
+- Schema migrations are now applied through `v8` (v1→v2→…→v7→v8). The chained
+  pattern (per-version mapper + type-alias bookkeeping + `STORE_VERSION` bump +
+  upgrader backfill) held across the new step.
+
+### Phase 9 candidates surfaced
+
+- AI asset replacement by a professional illustrator (incl. the Blitz/Mirror
+  teaser heroes — acceptable in modal context today).
+- Daily **Mode 2 (High & Low)** integration — needs a bespoke whole-number
+  bisection board + Narrow-Range hint (200 tokens) + a Mode-2-specific turn limit.
+  Single-CP scope when prioritized; the `{1, 3}` rotation covers Daily variety
+  meanwhile.
+- Mode 4 Blitz tutorial: evaluate whether the static timer needs a clarifying
+  micro-label (post-CP10; may not be needed).
+- `jitTooltipManager` queue-behavior audit once empirical data on simultaneous
+  trigger events exists.

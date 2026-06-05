@@ -275,9 +275,7 @@ exports[`MirrorTeaserModal matches the visible-state snapshot 1`] = `
                         "shadowOpacity": 1,
                         "shadowRadius": 20,
                       },
-                      {
-                        "width": "100%",
-                      },
+                      null,
                       null,
                       null,
                       {

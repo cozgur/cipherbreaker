@@ -41,15 +41,17 @@ describe('pickDailyMode', () => {
   });
 });
 
-describe('dailyModeForDate', () => {
-  it('resolves launch day (Day 1, odd) to Mode 3 — preserves pre-CP9 Daily behaviour', () => {
-    // 2026-05-01 is LAUNCH_EPOCH → calendarDayIndex 1 (odd) → Mode 3.
-    expect(dailyModeForDate('2026-05-01')).toBe(3);
+describe('dailyModeForDate — per-user epoch (CP9.1)', () => {
+  const EPOCH = '2026-05-01';
+
+  it('resolves the player s Day 1 (odd) to Mode 3 — every player s first Daily is Precision', () => {
+    // date === epoch → calendarDayIndex 1 (odd) → Mode 3.
+    expect(dailyModeForDate(EPOCH, EPOCH)).toBe(3);
   });
 
   it('resolves Day 2 (even) to Mode 1 and Day 3 (odd) back to Mode 3', () => {
-    expect(dailyModeForDate('2026-05-02')).toBe(1);
-    expect(dailyModeForDate('2026-05-03')).toBe(3);
+    expect(dailyModeForDate('2026-05-02', EPOCH)).toBe(1);
+    expect(dailyModeForDate('2026-05-03', EPOCH)).toBe(3);
   });
 });
 

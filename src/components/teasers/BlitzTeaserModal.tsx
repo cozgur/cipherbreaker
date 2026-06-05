@@ -10,9 +10,11 @@
  *
  * Two exit paths:
  *   - "Try Blitz →" CTA → `addTokens(50, 'blitz_teaser_gift')` +
- *     `markBlitzTeaserSeen()` + `onClose` (HomeScreen handles the
- *     downstream navigation if any — current scope hands control
- *     back to Home, mode-card highlight is post-CP8 polish).
+ *     `markBlitzTeaserSeen()` + `onTry`. Phase 7A.8 CP10 — the CTA no
+ *     longer grants Mode 4 for free (CP8 gave away a 1000-token mode
+ *     for reaching 3 matches, breaking the unlock economy). The parent
+ *     (HomeScreen) opens the UnlockModal at the promotional 70%-off
+ *     price; the player still chooses to buy or cancel.
  *   - "Skip" → `markBlitzTeaserSeen()` only (no token grant) +
  *     `onClose`.
  *
@@ -39,7 +41,6 @@ import { useUserStore } from '@state/userStore';
 import { colors, fonts, withAlpha } from '@theme/tokens';
 
 const BLITZ_TEASER_GIFT_TOKENS = 50;
-const BLITZ_MODE_ID = 4;
 
 // Phase 7A.8 CP4 — AI hero asset (Flux Pro Ultra). Sole hero
 // visual; replaced the legacy inline clock + mini-board mockup.
@@ -50,11 +51,10 @@ interface BlitzTeaserModalProps {
   /** Skip / backdrop dismiss — no unlock, no gift. */
   readonly onClose: () => void;
   /**
-   * Phase 7A.8 CP8 — "Try Blitz" accepted. The modal handles the
-   * promotional unlock + token gift + seen flag itself; `onTry` is
-   * the navigation hand-off to the parent (HomeScreen owns nav and
-   * routes to ModeTutorial / Matchmaking for Mode 4). Split out from
-   * `onClose` so Skip never navigates.
+   * Phase 7A.8 CP10 — "Try Blitz" accepted. The modal grants the
+   * 50-token gift + flips the seen flag, then calls `onTry` so the
+   * parent (HomeScreen) opens the UnlockModal at the promotional
+   * Mode 4 price. Split out from `onClose` so Skip never navigates.
    */
   readonly onTry: () => void;
 }
@@ -66,7 +66,6 @@ export function BlitzTeaserModal({
 }: BlitzTeaserModalProps): React.JSX.Element | null {
   const insets = useSafeAreaInsets();
   const addTokens = useUserStore((s) => s.addTokens);
-  const grantModeUnlock = useUserStore((s) => s.grantModeUnlock);
   const markBlitzTeaserSeen = useUserStore((s) => s.markBlitzTeaserSeen);
 
   // Phase 7A.7 CP1 — open haptic. Fires when the modal becomes
@@ -88,11 +87,11 @@ export function BlitzTeaserModal({
   const handleTry = (): void => {
     haptics.impact('medium');
     sound.earn();
-    // Phase 7A.8 CP8 — promotional unlock: free flag flip for Mode 4
-    // (idempotent if somehow already unlocked), plus the separate
-    // 50-token gift (unchanged from CP5). markSeen flips the gate so
-    // the teaser never re-shows. Navigation is the parent's job.
-    grantModeUnlock(BLITZ_MODE_ID);
+    // Phase 7A.8 CP10 — no free Mode 4 unlock here anymore. Keep the
+    // 50-token gift (covers Blitz's 50 stake) and flip the seen gate so
+    // the teaser never re-shows, then hand off to the parent, which
+    // opens the UnlockModal at the promotional 70%-off price. The
+    // player buys or cancels there; cancelling keeps the gift.
     addTokens(BLITZ_TEASER_GIFT_TOKENS, 'blitz_teaser_gift');
     markBlitzTeaserSeen();
     onTry();
@@ -141,7 +140,7 @@ export function BlitzTeaserModal({
             </Text>
           </View>
 
-          <Button onPress={handleTry} size="lg" style={styles.cta}>
+          <Button onPress={handleTry} size="lg" style={styles.cta} fullWidth={false}>
             Try Blitz →
           </Button>
         </View>

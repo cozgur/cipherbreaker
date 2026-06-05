@@ -104,6 +104,12 @@ Each item lists: scope, why it was deferred, and (where applicable) what would u
 
 **Bundled with copy:** the `Start match →` / `Continue →` footer wording in `ModeTutorialScreen.tsx` and the per-mode CTA tone (e.g., "Bisect to crack it" intentionally hints at strategy — modes 5 Blackout / 7 Mirror should get a similar strategy hook on slide 3 if the language pass agrees with the framing).
 
+### Mode 4 Blitz tutorial — static-timer micro-label (post-CP10 evaluation)
+
+**Scope.** The Mode 4 tutorial renders a static decorative timer ("1:00", neutral, never ticks) so the tutorial UI matches production without invoking the chess-clock (Phase 7A.7 CP7.1, confirmed intentional in CP10 as BUG 4 — dropped from the fix bundle). Evaluate whether a small clarifying micro-label (e.g. "your clock starts in the real match") would reduce any "why isn't the timer moving?" confusion, or whether it's a non-issue.
+
+**Why deferred.** This is a judgment call best made against real user feedback or a UX-writer pass, not speculatively — the static timer is a deliberate mechanic-isolation choice and may need no label at all. Bundle with the per-mode tutorial copy review above.
+
 ### HomeScreen gate ordering — tutorial-before-balance for first-time mode access?
 
 **Scope.** CP7's `playMode` runs the balance gate first (`tokens < stake → InsufficientTokens`) and the tutorial gate second (`!modeTutorialsSeen[modeId] → ModeTutorial`). For a user with insufficient balance tapping Mode 2-7 for the first time, this means they see the InsufficientTokens modal before they ever see the mode's tutorial — they may not understand what they're being asked to stake on.
@@ -215,6 +221,18 @@ Each migration follows the same 5-step pattern (type-alias chain, explicit migra
 **Status.** Removed in CP7 (`f0f75bb`) — file, test, snapshot, route registration, route param all cleaned up. Zero orphan references at sealing time.
 
 **Note for history.** The legacy screen lived in the codebase from Phase 1B through Phase 7A.5; CP3.1 flagged it for removal because its hardcoded "You start with 500 tokens" copy contradicted the post-CP3.1 starting balance of 100. CP7 was the natural place to remove it because the conditional flow finally replaced its routing role. Mentioned here only as a historical record; nothing to action.
+
+### `grantModeUnlock` is dead after Phase 7A.8 CP10 (BUG 5)
+
+**Scope.** CP10 replaced the teaser free-grant with a promotional discount routed through `UnlockModal` (`unlockMode(modeId, { cost })`). The two former callers — `BlitzTeaserModal`/`MirrorTeaserModal` `handleTry` — no longer call `grantModeUnlock`. The action + its declaration + its tests remain in `src/state/userStore.ts` but have **no production caller**.
+
+**Why deferred.** The action is harmless (pure, tested, no caller can't misuse it) and intentionally kept this CP to avoid widening the seal diff. If no future feature needs a cost-free unlock (e.g. an admin "grant mode" debug action, or a reward path), delete `grantModeUnlock` + its declaration + its `grantModeUnlock action (CP8 promotional)` test block in a focused tech-debt CP. Combine with the CP2 dead-code cleanup above (same file, same "kept the surface to avoid churn" rationale).
+
+### `jitTooltipManager` queue-behavior audit (post-launch)
+
+**Scope.** The JIT tooltip queue (`src/lib/jitTooltipManager.ts`) serializes simultaneous triggers, but the real-world frequency of concurrent trigger events (e.g. a token-earn + streak-milestone landing in the same session moment) is unknown pre-launch. CP10 (BUG 2) already had to defer the TOKEN_EARN trigger behind the "Double with ad" CTA — a hint that trigger-vs-trigger and trigger-vs-CTA timing has more edge cases than the queue currently models.
+
+**Why deferred.** Needs empirical user data — there's no point speculatively tuning queue UX (debounce windows, priority ordering, suppression rules) without telemetry on how often tooltips actually contend. Revisit once Phase 7B analytics land the tooltip-shown/queued events.
 
 ---
 

@@ -315,6 +315,14 @@ describe('DailyMatchScreen', () => {
     // The outer beforeEach pins May 1 (Day 1, odd → Mode 3). Mode 1
     // days re-pin to May 2 (Day 2, even → Mode 1); the outer afterEach
     // restores the real Date regardless.
+    //
+    // Phase 7A.8 CP9.1 — the day index is per-user, so anchor the
+    // first-play epoch at May 1; otherwise a null epoch coalesces to
+    // the pinned date and every day reads as Day 1.
+    beforeEach(() => {
+      setUserDailyState({ firstPlayedDate: FIXED_TODAY });
+    });
+
     function pinDay(month0: number, day: number): void {
       const fixedTime = new originalDate(2026, month0, day, 12, 0, 0).getTime();
       global.Date = buildMockDate(originalDate, fixedTime);

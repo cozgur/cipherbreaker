@@ -45,6 +45,16 @@ describe('dailyChallengeStore.startToday', () => {
     expect(attempt!.secret).toBe(getDailySecret('2026-05-10', 4));
   });
 
+  // Phase 7A.8 CP9.1 — first play anchors the per-user Daily epoch.
+  it('stamps firstPlayedDate on the first attempt, then never shifts it', () => {
+    expect(useUserStore.getState().dailyChallenge.firstPlayedDate).toBeNull();
+    useDailyChallengeStore.getState().startToday('2026-05-10', FRESH_CONFIG);
+    expect(useUserStore.getState().dailyChallenge.firstPlayedDate).toBe('2026-05-10');
+    // A later day (fresh attempt seeded) must NOT move Day 1.
+    useDailyChallengeStore.getState().startToday('2026-05-11', FRESH_CONFIG);
+    expect(useUserStore.getState().dailyChallenge.firstPlayedDate).toBe('2026-05-10');
+  });
+
   it('returns false (resume) when an in-progress attempt is for the same date', () => {
     useDailyChallengeStore.getState().startToday('2026-05-10', FRESH_CONFIG);
     // Pretend the user submitted one guess.
@@ -244,7 +254,8 @@ describe('userStore — recordMissedDay tier regression', () => {
     useUserStore.setState({
       dailyChallenge: {
         ...DAILY_CHALLENGE_DEFAULTS,
-        lastPlayedDate: '2026-05-10', // calendar Day 10 → tier 5
+        firstPlayedDate: '2026-05-01', // CP9.1 — epoch anchors Day N
+        lastPlayedDate: '2026-05-10', // Day 10 → tier 5
         currentStreak: 5,
         longestStreak: 8,
         effectiveDayOffset: 0,
@@ -262,6 +273,7 @@ describe('userStore — recordMissedDay tier regression', () => {
     useUserStore.setState({
       dailyChallenge: {
         ...DAILY_CHALLENGE_DEFAULTS,
+        firstPlayedDate: '2026-05-01', // CP9.1 — epoch anchors Day N
         lastPlayedDate: '2026-05-22', // Day 22 → tier 6
         currentStreak: 12,
         longestStreak: 12,
@@ -278,6 +290,7 @@ describe('userStore — recordMissedDay tier regression', () => {
     useUserStore.setState({
       dailyChallenge: {
         ...DAILY_CHALLENGE_DEFAULTS,
+        firstPlayedDate: '2026-05-01', // CP9.1 — epoch anchors Day N
         lastPlayedDate: '2026-05-04', // Day 4 → tier 4
         currentStreak: 3,
         longestStreak: 3,

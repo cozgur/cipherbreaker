@@ -189,3 +189,17 @@ export const MODE_UNLOCK_COSTS: Readonly<Record<number, number>> = {
   6: 1200,
   7: 2000,
 };
+
+/**
+ * Phase 7A.8 CP10 — teaser promotional unlock prices (70% off the
+ * regular `MODE_UNLOCK_COSTS`). Offered once via the Blitz/Mirror
+ * teaser "Try" CTA, which routes into the UnlockModal carrying this as
+ * `promotionalCost`. Replaces the CP8 free-grant (which gave away the
+ * two highest-tier modes for reaching 3 matches — broke the unlock
+ * economy). The discount lives only in the teaser nav param: any later
+ * ModeCard tap pays the full `MODE_UNLOCK_COSTS` price.
+ */
+export const TEASER_PROMO_UNLOCK_COSTS: Readonly<Record<number, number>> = {
+  4: 300, // Blitz — 70% off 1000
+  7: 600, // Mirror — 70% off 2000
+};

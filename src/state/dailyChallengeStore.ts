@@ -198,6 +198,11 @@ export const useDailyChallengeStore = create<
           probedDigits: [],
         };
         set({ currentAttempt: fresh, isSubmitting: false });
+        // Phase 7A.8 CP9.1 — anchor the per-user Daily epoch on the
+        // first ever attempt. Idempotent (set-if-null), so resumes and
+        // later days never shift Day 1. Runs after the userStore-side
+        // recordMissedDay above (deterministic single-thread order).
+        useUserStore.getState().markDailyFirstPlayed(today);
         return true;
       },
 

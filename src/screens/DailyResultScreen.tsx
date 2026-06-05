@@ -36,6 +36,7 @@ export function DailyResultScreen(): React.JSX.Element {
   const navigation = useNavigation<Nav>();
   const insets = useSafeAreaInsets();
   const lastResult = useUserStore((s) => s.dailyChallenge.lastResult);
+  const firstPlayedDate = useUserStore((s) => s.dailyChallenge.firstPlayedDate);
   const currentStreak = useUserStore((s) => s.dailyChallenge.currentStreak);
   const longestStreak = useUserStore((s) => s.dailyChallenge.longestStreak);
 
@@ -85,11 +86,13 @@ export function DailyResultScreen(): React.JSX.Element {
     // screen quiet on both paths.
     if (lastResult === null) return;
     try {
-      await Share.share({ message: formatDailyShare(lastResult) });
+      await Share.share({
+        message: formatDailyShare(lastResult, firstPlayedDate ?? lastResult.date),
+      });
     } catch {
       // intentionally silent — see note above.
     }
-  }, [lastResult]);
+  }, [lastResult, firstPlayedDate]);
 
   // Defensive — direct navigation to this screen with no recorded
   // result is a programmer error in production but handled cleanly
@@ -106,7 +109,9 @@ export function DailyResultScreen(): React.JSX.Element {
     );
   }
 
-  const dayNumber = calendarDayIndex(lastResult.date);
+  // Phase 7A.8 CP9.1 — per-user day index. A recorded result implies a
+  // stamped epoch; `?? lastResult.date` is defensive.
+  const dayNumber = calendarDayIndex(lastResult.date, firstPlayedDate ?? lastResult.date);
   const headline = lastResult.success
     ? `Cracked in ${lastResult.turnsUsed}/${lastResult.turnLimit}`
     : 'Day not cracked';

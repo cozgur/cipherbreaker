@@ -25,6 +25,7 @@ import { useEffect, useState } from 'react';
 import { StyleSheet, Text, View, type ViewStyle } from 'react-native';
 
 import { useReducedMotion } from '@/lib/useReducedMotion';
+import { formatNumber } from '@/lib/formatNumber';
 import { colors, fonts, withAlpha } from '@theme/tokens';
 
 interface TokenRewardFloaterProps {
@@ -96,7 +97,7 @@ export function TokenRewardFloater({
       pointerEvents="none"
       accessibilityLabel={`Reward earned: +${amount} tokens`}
     >
-      <Text style={styles.label}>+{amount.toLocaleString()}</Text>
+      <Text style={styles.label}>+{formatNumber(amount)}</Text>
     </View>
   );
 }

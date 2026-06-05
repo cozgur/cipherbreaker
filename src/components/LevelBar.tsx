@@ -2,6 +2,7 @@ import { Platform, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { colors, fonts, withAlpha } from '@theme/tokens';
+import { formatNumber } from '@/lib/formatNumber';
 import { SectionLabel } from './SectionLabel';
 
 interface LevelBarProps {
@@ -25,7 +26,7 @@ export function LevelBar({ level, currentXP, targetXP }: LevelBarProps): React.J
       <View style={styles.header}>
         <SectionLabel>LEVEL {level}</SectionLabel>
         <Text style={styles.counter}>
-          {currentXP.toLocaleString()} / {targetXP.toLocaleString()} XP
+          {formatNumber(currentXP)} / {formatNumber(targetXP)} XP
         </Text>
       </View>
       <View style={styles.track}>

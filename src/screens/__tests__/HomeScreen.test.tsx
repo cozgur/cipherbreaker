@@ -293,10 +293,16 @@ describe('HomeScreen', () => {
     });
   });
 
-  // ── Phase 7A.8 CP8 — teaser promotional unlock ───────────────
+  // ── Phase 7A.8 CP10 — teaser promotional DISCOUNT unlock ─────
+  // CP8 gave Modes 4/7 away for free; CP10 replaced that with a
+  // 70%-off offer routed through the UnlockModal. The teaser now only
+  // gifts 50 tokens + flips its seen flag, then opens the UnlockModal
+  // carrying the promotional cost. The mode stays LOCKED until the
+  // player buys there (post-unlock tutorial routing is UnlockModal's
+  // job, covered by UnlockModal.test).
 
-  describe('teaser promotional unlock (CP8)', () => {
-    it('"Try Blitz" promotionally unlocks Mode 4, gifts 50, and routes to ModeTutorial when unseen', () => {
+  describe('teaser promotional discount unlock (CP10)', () => {
+    it('"Try Blitz" gifts 50 + flips seen + opens UnlockModal at the 300-token promo (Mode 4 NOT yet unlocked)', () => {
       mockUser.tokens = 100;
       // Blitz teaser shows at exactly 3 post-onboarding matches, unseen.
       useUserStore.setState({
@@ -307,8 +313,7 @@ describe('HomeScreen', () => {
       });
       const utils = renderWithNavigation('Home', {
         Home: HomeScreen,
-        ModeTutorial: RouteStubScreen,
-        Matchmaking: RouteStubScreen,
+        Unlock: RouteStubScreen,
       });
       const tokensBefore = useUserStore.getState().tokens;
 
@@ -317,15 +322,19 @@ describe('HomeScreen', () => {
       });
 
       const state = useUserStore.getState();
-      expect(state.modeUnlocked[4]).toBe(true);
+      // Gift granted + seen flipped, but NO free unlock.
+      expect(state.modeUnlocked[4]).toBe(false);
       expect(state.tokens).toBe(tokensBefore + 50);
       expect(state.onboarding.blitzTeaserSeen).toBe(true);
+      // Routed into the UnlockModal carrying the 70%-off promo cost.
       const current = utils.navRef.current?.getCurrentRoute();
-      expect(current?.name).toBe('ModeTutorial');
-      expect(current?.params).toEqual({ modeId: 4 });
+      expect(current?.name).toBe('Unlock');
+      expect(current?.params).toEqual({ modeId: 4, promotionalCost: 300 });
     });
 
-    it('"Try Blitz" routes to Matchmaking when the Mode 4 tutorial is already seen', () => {
+    it('teaser hand-off always opens the UnlockModal regardless of tutorial-seen state', () => {
+      // CP10 moved the post-unlock tutorial routing into UnlockModal, so
+      // a seen tutorial no longer changes where the teaser CTA lands.
       mockUser.tokens = 100;
       useUserStore.setState({
         matchesCompletedSinceOnboarding: 3,
@@ -335,8 +344,7 @@ describe('HomeScreen', () => {
       });
       const utils = renderWithNavigation('Home', {
         Home: HomeScreen,
-        ModeTutorial: RouteStubScreen,
-        Matchmaking: RouteStubScreen,
+        Unlock: RouteStubScreen,
       });
 
       act(() => {
@@ -344,11 +352,11 @@ describe('HomeScreen', () => {
       });
 
       const current = utils.navRef.current?.getCurrentRoute();
-      expect(current?.name).toBe('Matchmaking');
-      expect(current?.params).toEqual({ modeId: 4 });
+      expect(current?.name).toBe('Unlock');
+      expect(current?.params).toEqual({ modeId: 4, promotionalCost: 300 });
     });
 
-    it('"Try Mirror" promotionally unlocks Mode 7, gifts 50, and routes to ModeTutorial when unseen', () => {
+    it('"Try Mirror" gifts 50 + flips seen + opens UnlockModal at the 600-token promo (Mode 7 NOT yet unlocked)', () => {
       mockUser.tokens = 100;
       // Mirror teaser shows at exactly 5 post-onboarding matches, unseen.
       useUserStore.setState({
@@ -359,8 +367,7 @@ describe('HomeScreen', () => {
       });
       const utils = renderWithNavigation('Home', {
         Home: HomeScreen,
-        ModeTutorial: RouteStubScreen,
-        Matchmaking: RouteStubScreen,
+        Unlock: RouteStubScreen,
       });
       const tokensBefore = useUserStore.getState().tokens;
 
@@ -369,12 +376,27 @@ describe('HomeScreen', () => {
       });
 
       const state = useUserStore.getState();
-      expect(state.modeUnlocked[7]).toBe(true);
+      expect(state.modeUnlocked[7]).toBe(false);
       expect(state.tokens).toBe(tokensBefore + 50);
       expect(state.onboarding.mirrorTeaserSeen).toBe(true);
       const current = utils.navRef.current?.getCurrentRoute();
-      expect(current?.name).toBe('ModeTutorial');
-      expect(current?.params).toEqual({ modeId: 7 });
+      expect(current?.name).toBe('Unlock');
+      expect(current?.params).toEqual({ modeId: 7, promotionalCost: 600 });
+    });
+
+    it('does NOT show the teaser for an already-owned mode (no dead-end UnlockModal)', () => {
+      // Edge: the player already bought Mode 4 before hitting the
+      // 3-match threshold. CP10 routes Try into the UnlockModal, which
+      // would dead-end on `already_unlocked`, so the teaser must not show.
+      mockUser.tokens = 100;
+      useUserStore.setState({
+        matchesCompletedSinceOnboarding: 3,
+        onboarding: { ...USER_STORE_DEFAULTS.onboarding },
+        modeUnlocked: { ...USER_STORE_DEFAULTS.modeUnlocked, 4: true },
+        modeTutorialsSeen: {},
+      });
+      const utils = renderWithNavigation('Home', { Home: HomeScreen, Unlock: RouteStubScreen });
+      expect(utils.queryByText('Try Blitz →')).toBeNull();
     });
   });
 
@@ -542,6 +564,13 @@ describe('HomeScreen', () => {
 
     it('60s tick re-evaluates today; banner state recomputes when calendar string flips', () => {
       jest.useFakeTimers();
+      // Phase 7A.8 CP9.1 — the day index is per-user. Anchor the
+      // first-play epoch at May 1 (this models a player who played
+      // that day and returns the next); without it a never-played
+      // user's banner floats at Day #1 every calendar day.
+      useUserStore.setState({
+        dailyChallenge: { ...DAILY_CHALLENGE_DEFAULTS, firstPlayedDate: '2026-05-01' },
+      });
       // Mount on May 1 — banner shows Day #1.
       const original = applyMockDate(2026, 4, 1, 23, 59);
       try {

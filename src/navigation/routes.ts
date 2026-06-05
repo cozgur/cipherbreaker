@@ -108,8 +108,16 @@ export type RootStackParamList = {
    * `replace`s into ModeTutorial (tutorial unseen) or Matchmaking
    * (seen) so the unlock feels like one continuous "try this mode"
    * action with no Home re-tap.
+   *
+   * Phase 7A.8 CP10 — `promotionalCost` is the optional discounted
+   * price offered via the Blitz/Mirror teaser CTA (70% off the regular
+   * `MODE_UNLOCK_COSTS[modeId]`). When present the modal renders the
+   * strikethrough original + discounted price + PROMO badge and charges
+   * the discount; absent (a normal ModeCard tap), the regular cost
+   * applies. The discount lives only in this nav param, so cancelling
+   * and re-tapping the ModeCard falls back to full price.
    */
-  Unlock: { modeId: number };
+  Unlock: { modeId: number; promotionalCost?: number };
   ChangeUsername: undefined;
   /**
    * Phase 7A.4 — Daily Challenge anchor feature. No params: the

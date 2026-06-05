@@ -83,7 +83,7 @@ describe('BlitzTeaserModal', () => {
     expect(utils.onTry).not.toHaveBeenCalled();
   });
 
-  it('"Try Blitz" CTA promotionally unlocks Mode 4, grants 50 tokens, flips seen, fires onTry (CP8)', () => {
+  it('"Try Blitz" CTA grants 50 tokens + flips seen + fires onTry, but does NOT unlock Mode 4 (CP10 promo)', () => {
     const utils = renderModal();
     const before = useUserStore.getState();
     expect(before.modeUnlocked[4]).toBe(false);
@@ -93,29 +93,16 @@ describe('BlitzTeaserModal', () => {
     });
 
     const after = useUserStore.getState();
-    // Promotional unlock — flag flipped, NO unlock cost charged
-    // (only the +50 gift moved the balance).
-    expect(after.modeUnlocked[4]).toBe(true);
+    // CP10 — the teaser no longer grants Mode 4 for free. It gifts 50
+    // tokens and hands off to the parent, which opens the UnlockModal
+    // at the promotional price; the unlock only happens if the player
+    // buys there. So Mode 4 stays LOCKED at this point.
+    expect(after.modeUnlocked[4]).toBe(false);
     expect(after.tokens).toBe(before.tokens + 50);
     expect(after.onboarding.blitzTeaserSeen).toBe(true);
     // Navigation is delegated to the parent via onTry (not onClose).
     expect(utils.onTry).toHaveBeenCalledTimes(1);
     expect(utils.onClose).not.toHaveBeenCalled();
-  });
-
-  it('"Try Blitz" is defensive — already-unlocked Mode 4 still grants 50 + fires onTry, no double charge', () => {
-    useUserStore.setState({ modeUnlocked: { ...USER_STORE_DEFAULTS.modeUnlocked, 4: true } });
-    const utils = renderModal();
-    const before = useUserStore.getState();
-
-    act(() => {
-      fireEvent.press(utils.getByText('Try Blitz →'));
-    });
-
-    const after = useUserStore.getState();
-    expect(after.modeUnlocked[4]).toBe(true);
-    expect(after.tokens).toBe(before.tokens + 50);
-    expect(utils.onTry).toHaveBeenCalledTimes(1);
   });
 
   it('exposes the modal a11y semantics on the inner card (not the outer wrapper, per CP3 lesson)', () => {
