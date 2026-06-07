@@ -7,16 +7,24 @@
  * singleton (matching `sound.ts` / `jitTooltipManager.ts`): exactly one
  * StoreKit connection per app session.
  *
- * Scope this sub-phase is *foundation only*:
+ * Surface:
  *   - `initialize`  — connect + fetch the catalog's products
  *   - `getProducts` — read the cached StoreKit products
- *   - `addTransactionListener` — subscribe to purchase updates/errors
+ *   - `addTransactionListener` — general purchase update/error subscription
+ *   - `setPurchaseHandler` — route the ONE persistent purchase listener to
+ *     a handler (8.5.3 — `purchaseFlow` uses this; 8.5.6 keeps it set for
+ *     re-delivery grants)
+ *   - `purchase` / `finishPurchase` — initiate + finalize a transaction
  *   - `dispose`     — tear down listeners + connection
  *
+ * `iapManager` is a transport layer: it owns the StoreKit connection and
+ * the event plumbing but holds NO purchase business logic and mutates NO
+ * app state. Validation, grant, and idempotency live in `purchaseFlow` /
+ * `userStore` (8.5.3 / 8.5.4+).
+ *
  * Explicitly NOT here (later sub-phases):
- *   - purchase flow + receipt validation (8.5.3)
  *   - token grant / `iapHistory` (8.5.4 / 8.5.6)
- *   - Restore Purchases (8.5.7)
+ *   - Restore Purchases UI + entitlement application (8.5.7)
  *
  * Errors surface as typed `IapError`s so callers can branch on `.code`
  * instead of string-matching native messages.
@@ -26,6 +34,8 @@ import {
   initConnection,
   endConnection,
   fetchProducts,
+  requestPurchase,
+  finishTransaction,
   purchaseUpdatedListener,
   purchaseErrorListener,
   type Product as StoreProduct,
@@ -72,6 +82,12 @@ export interface TransactionListeners {
   readonly onError?: (error: PurchaseError) => void;
 }
 
+/** Handler the single persistent purchase listener routes events to. */
+export interface PurchaseHandler {
+  readonly onPurchase: (purchase: Purchase) => void;
+  readonly onError: (error: PurchaseError) => void;
+}
+
 // ── module-singleton state ───────────────────────────────────────────
 /** Native store connection is open (initConnection succeeded). */
 let storeConnected = false;
@@ -79,6 +95,14 @@ let storeConnected = false;
 let initialized = false;
 let products: readonly StoreProduct[] = [];
 const subscriptions: Subscription[] = [];
+
+/** The current purchase handler, or null. Swapping this is a cheap
+ *  variable assignment — we do NOT re-register expo-iap listeners per
+ *  purchase (that would risk StoreKit re-emitting unfinished
+ *  transactions onto a freshly-attached listener). */
+let purchaseHandler: PurchaseHandler | null = null;
+/** Set once the persistent purchase listener pair is attached. */
+let purchaseListenerAttached = false;
 
 /**
  * Connect to StoreKit and fetch the catalog's products. Idempotent: a
@@ -168,6 +192,61 @@ export function addTransactionListener(listeners: TransactionListeners): Subscri
 }
 
 /**
+ * Attach the single persistent purchase listener pair (idempotent). It
+ * forwards every event to the *current* `purchaseHandler`; an event that
+ * arrives with no handler set (StoreKit re-delivery of an unfinished
+ * transaction, e.g. after an app kill) is logged and dropped here —
+ * 8.5.6 will keep a handler installed to grant on re-delivery.
+ */
+function ensurePurchaseListener(): void {
+  if (purchaseListenerAttached) return;
+
+  const update = purchaseUpdatedListener((purchase) => {
+    if (purchaseHandler) purchaseHandler.onPurchase(purchase);
+    else console.log('[iap] purchase update with no handler (re-delivery?)', { id: purchase.id });
+  });
+  const error = purchaseErrorListener((err) => {
+    if (purchaseHandler) purchaseHandler.onError(err);
+    else console.log('[iap] purchase error with no handler', { code: err.code });
+  });
+
+  subscriptions.push(update, error);
+  purchaseListenerAttached = true;
+}
+
+/**
+ * Route the persistent purchase listener to `handler` (or clear it with
+ * `null`). Attaches the listener on first use. `purchaseFlow` sets a
+ * handler for the duration of a purchase and clears it on settle.
+ */
+export function setPurchaseHandler(handler: PurchaseHandler | null): void {
+  ensurePurchaseListener();
+  purchaseHandler = handler;
+}
+
+/**
+ * Initiate a purchase for a wire SKU. expo-iap's `requestPurchase` is
+ * event-based — the OS payment sheet drives it and the result arrives on
+ * the persistent listener (success → `onPurchase`, failure → `onError`).
+ * This call resolves once the request is *submitted*; it may still reject
+ * synchronously if the store rejects the request outright.
+ */
+export async function purchase(wireSku: string): Promise<void> {
+  await requestPurchase({ request: { apple: { sku: wireSku } }, type: 'in-app' });
+}
+
+/**
+ * Finalize a transaction so StoreKit stops re-delivering it. MUST be
+ * called only *after* the grant succeeds (8.5.6) — finishing before
+ * granting would lose the entitlement on a crash. `isConsumable` decides
+ * whether StoreKit keeps it in `currentEntitlements` (non-consumables) or
+ * drops it (consumables); derive it from the catalog product type.
+ */
+export async function finishPurchase(purchase: Purchase, isConsumable: boolean): Promise<void> {
+  await finishTransaction({ purchase, isConsumable });
+}
+
+/**
  * Tear everything down: remove all tracked listeners and close the store
  * connection. Safe to call when never initialized (no-op). Resets state
  * so a later `initialize` starts clean.
@@ -175,6 +254,8 @@ export function addTransactionListener(listeners: TransactionListeners): Subscri
 export async function dispose(): Promise<void> {
   for (const sub of subscriptions) sub.remove();
   subscriptions.length = 0;
+  purchaseHandler = null;
+  purchaseListenerAttached = false;
 
   // Close the native connection even if init half-failed (connected but
   // products never fetched), so nothing is left dangling.

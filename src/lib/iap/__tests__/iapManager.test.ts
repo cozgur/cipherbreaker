@@ -1,7 +1,7 @@
 /**
- * Phase 8.5.2 — IAP manager skeleton (expo-iap mocked).
+ * Phase 8.5.2 + 8.5.3 — IAP manager (expo-iap mocked).
  *
- * Covers the foundation lifecycle only (no purchase/restore yet):
+ * Covers the transport layer:
  *   - initialize: connects, fetches the catalog SKUs as 'in-app',
  *     caches the result; idempotent on a second call; surfaces typed
  *     CONNECTION_FAILED / PRODUCTS_FETCH_FAILED; null fetch → [].
@@ -11,12 +11,18 @@
  *     removes just its own registrations.
  *   - dispose: removes tracked listeners, ends the connection, and
  *     resets state so getProducts throws again.
+ *   - 8.5.3 — purchase()/finishPurchase() wrap requestPurchase/
+ *     finishTransaction; setPurchaseHandler attaches ONE persistent
+ *     listener (idempotently) and routes events to the current handler;
+ *     dispose clears the handler so a later attach re-registers.
  */
 
 import {
   initConnection,
   endConnection,
   fetchProducts,
+  requestPurchase,
+  finishTransaction,
   purchaseUpdatedListener,
   purchaseErrorListener,
 } from 'expo-iap';
@@ -25,6 +31,9 @@ import {
   initialize,
   getProducts,
   addTransactionListener,
+  setPurchaseHandler,
+  purchase,
+  finishPurchase,
   dispose,
   IapError,
 } from '../iapManager';
@@ -34,6 +43,8 @@ jest.mock('expo-iap', () => ({
   initConnection: jest.fn(),
   endConnection: jest.fn(),
   fetchProducts: jest.fn(),
+  requestPurchase: jest.fn(),
+  finishTransaction: jest.fn(),
   purchaseUpdatedListener: jest.fn(),
   purchaseErrorListener: jest.fn(),
 }));
@@ -41,6 +52,8 @@ jest.mock('expo-iap', () => ({
 const mockInitConnection = initConnection as unknown as jest.Mock;
 const mockEndConnection = endConnection as unknown as jest.Mock;
 const mockFetchProducts = fetchProducts as unknown as jest.Mock;
+const mockRequestPurchase = requestPurchase as unknown as jest.Mock;
+const mockFinishTransaction = finishTransaction as unknown as jest.Mock;
 const mockPurchaseUpdated = purchaseUpdatedListener as unknown as jest.Mock;
 const mockPurchaseError = purchaseErrorListener as unknown as jest.Mock;
 
@@ -52,6 +65,8 @@ beforeEach(() => {
   mockInitConnection.mockReset().mockResolvedValue(true);
   mockEndConnection.mockReset().mockResolvedValue(undefined);
   mockFetchProducts.mockReset().mockResolvedValue(SAMPLE_PRODUCTS);
+  mockRequestPurchase.mockReset().mockResolvedValue(null);
+  mockFinishTransaction.mockReset().mockResolvedValue(undefined);
   mockPurchaseUpdated.mockReset().mockReturnValue({ remove: jest.fn() });
   mockPurchaseError.mockReset().mockReturnValue({ remove: jest.fn() });
 });
@@ -174,5 +189,77 @@ describe('iapManager.dispose', () => {
   it('is a no-op (no endConnection) when never initialized', async () => {
     await dispose();
     expect(mockEndConnection).not.toHaveBeenCalled();
+  });
+});
+
+describe('iapManager.purchase / finishPurchase', () => {
+  it('purchase() submits an in-app requestPurchase for the wire SKU', async () => {
+    await purchase('com.ozgurcetintas.cipherbreaker.tokens_500');
+    expect(mockRequestPurchase).toHaveBeenCalledWith({
+      request: { apple: { sku: 'com.ozgurcetintas.cipherbreaker.tokens_500' } },
+      type: 'in-app',
+    });
+  });
+
+  it('finishPurchase() forwards the purchase + isConsumable flag', async () => {
+    const fakePurchase = { id: 'txn-1' } as never;
+    await finishPurchase(fakePurchase, true);
+    expect(mockFinishTransaction).toHaveBeenCalledWith({
+      purchase: fakePurchase,
+      isConsumable: true,
+    });
+  });
+});
+
+describe('iapManager.setPurchaseHandler', () => {
+  it('attaches the persistent listener once, no matter how many handlers are set', () => {
+    setPurchaseHandler({ onPurchase: jest.fn(), onError: jest.fn() });
+    setPurchaseHandler({ onPurchase: jest.fn(), onError: jest.fn() });
+    expect(mockPurchaseUpdated).toHaveBeenCalledTimes(1);
+    expect(mockPurchaseError).toHaveBeenCalledTimes(1);
+  });
+
+  it('routes purchase + error events to the current handler', () => {
+    let updateCb: ((p: unknown) => void) | undefined;
+    let errorCb: ((e: unknown) => void) | undefined;
+    mockPurchaseUpdated.mockImplementation((cb: (p: unknown) => void) => {
+      updateCb = cb;
+      return { remove: jest.fn() };
+    });
+    mockPurchaseError.mockImplementation((cb: (e: unknown) => void) => {
+      errorCb = cb;
+      return { remove: jest.fn() };
+    });
+
+    const onPurchase = jest.fn();
+    const onError = jest.fn();
+    setPurchaseHandler({ onPurchase, onError });
+
+    updateCb?.({ id: 'txn-1' });
+    errorCb?.({ code: 'network-error' });
+    expect(onPurchase).toHaveBeenCalledWith({ id: 'txn-1' });
+    expect(onError).toHaveBeenCalledWith({ code: 'network-error' });
+  });
+
+  it('drops events when no handler is set (re-delivery with handler cleared)', () => {
+    let updateCb: ((p: unknown) => void) | undefined;
+    mockPurchaseUpdated.mockImplementation((cb: (p: unknown) => void) => {
+      updateCb = cb;
+      return { remove: jest.fn() };
+    });
+    const onPurchase = jest.fn();
+    setPurchaseHandler({ onPurchase, onError: jest.fn() });
+    setPurchaseHandler(null);
+
+    expect(() => updateCb?.({ id: 'orphan' })).not.toThrow();
+    expect(onPurchase).not.toHaveBeenCalled();
+  });
+
+  it('re-attaches the listener after dispose clears it', async () => {
+    setPurchaseHandler({ onPurchase: jest.fn(), onError: jest.fn() });
+    expect(mockPurchaseUpdated).toHaveBeenCalledTimes(1);
+    await dispose();
+    setPurchaseHandler({ onPurchase: jest.fn(), onError: jest.fn() });
+    expect(mockPurchaseUpdated).toHaveBeenCalledTimes(2);
   });
 });
