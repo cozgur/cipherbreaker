@@ -281,4 +281,35 @@ describe('Phase 7A.6 CP7.2 — onboarding actions survive persist rehydration', 
       expect(useUserStore.getState().dailyChallenge.firstPlayedDate).toBeNull();
     });
   });
+
+  describe('Phase 8.5.4 — iapHistory seed (v8 → v9) on rehydrate', () => {
+    it('a v8 blob lacking iapHistory rehydrates to v9 with an empty audit trail', async () => {
+      // v8-on-disk: an engaged player (tokens, a bought mode) whose
+      // persist blob predates the IAP audit trail. The v8 → v9 migration
+      // seeds iapHistory: [] without disturbing the existing fields.
+      const { iapHistory: _omit, ...v8 } = USER_STORE_DEFAULTS;
+      await AsyncStorage.setItem(
+        PERSIST_KEY,
+        JSON.stringify({
+          state: {
+            ...v8,
+            tokens: 4242,
+            adsRemoved: true,
+            modeUnlocked: { ...USER_STORE_DEFAULTS.modeUnlocked, 5: true },
+          },
+          version: 8,
+        }),
+      );
+      await useUserStore.persist.rehydrate();
+
+      const after = useUserStore.getState();
+      expect(after.iapHistory).toEqual([]);
+      // Existing fields survive untouched.
+      expect(after.tokens).toBe(4242);
+      expect(after.adsRemoved).toBe(true);
+      expect(after.modeUnlocked[5]).toBe(true);
+      // The new action is wired post-rehydrate.
+      expect(typeof after.grantIAPTokens).toBe('function');
+    });
+  });
 });

@@ -2,7 +2,16 @@ import { __resetRegistryForTests, modeRegistry } from '@game/modeRegistry';
 import { mode1ColorMatch } from '@game/modes/mode1ColorMatch';
 import { MODE_UNLOCK_COSTS } from '@data/modeCatalog';
 import { useMatchStore } from '@state/matchStore';
-import { __migrateUserStoreForTests, ONBOARDING_DEFAULTS, USER_STORE_DEFAULTS, useUserStore } from '../userStore';
+import {
+  __migrateUserStoreForTests,
+  hasPurchasedSelector,
+  iapHistorySelector,
+  ONBOARDING_DEFAULTS,
+  USER_STORE_DEFAULTS,
+  useUserStore,
+} from '../userStore';
+import type { VerifiedTransaction } from '@lib/iap/purchaseFlow';
+import type { ProductId } from '@lib/iap/productCatalog';
 
 describe('useUserStore', () => {
   beforeEach(() => {
@@ -459,8 +468,8 @@ describe('useUserStore', () => {
       expect(next.dailyChallenge.lastResult).toBeNull();
     });
 
-    it('v8 is idempotent — current-version state passes through unchanged', () => {
-      const next = __migrateUserStoreForTests(USER_STORE_DEFAULTS, 8);
+    it('v9 is idempotent — current-version state passes through unchanged', () => {
+      const next = __migrateUserStoreForTests(USER_STORE_DEFAULTS, 9);
       expect(next).toBe(USER_STORE_DEFAULTS);
     });
 
@@ -1598,6 +1607,176 @@ describe('useUserStore', () => {
         expect(result).toEqual({ success: false, error: 'invalid_mode' });
         expect(useUserStore.getState().modeUnlocked).toEqual(USER_STORE_DEFAULTS.modeUnlocked);
       });
+    });
+  });
+});
+
+describe('Phase 8.5.4 — IAP audit trail (schema v8→v9)', () => {
+  beforeEach(() => {
+    useUserStore.setState({ ...USER_STORE_DEFAULTS });
+  });
+
+  function makeVerified(overrides: Partial<VerifiedTransaction> = {}): VerifiedTransaction {
+    return {
+      transactionId: 'txn-1',
+      originalTransactionId: 'orig-1',
+      productId: 'tokens_500',
+      purchaseDate: 1_700_000_000_000,
+      environment: 'Production',
+      ...overrides,
+    };
+  }
+
+  describe('migration v8 → v9', () => {
+    it('seeds iapHistory with an empty array (defaults-only)', () => {
+      const { iapHistory: _omit, ...v8 } = USER_STORE_DEFAULTS;
+      const next = __migrateUserStoreForTests(v8, 8);
+      expect(next.iapHistory).toEqual([]);
+    });
+
+    it('preserves all existing fields through the migration', () => {
+      const { iapHistory: _omit, ...v8base } = USER_STORE_DEFAULTS;
+      const v8 = {
+        ...v8base,
+        tokens: 777,
+        adsRemoved: true,
+        modeUnlocked: { ...USER_STORE_DEFAULTS.modeUnlocked, 3: true },
+      };
+      const next = __migrateUserStoreForTests(v8, 8);
+      expect(next.tokens).toBe(777);
+      expect(next.adsRemoved).toBe(true);
+      expect(next.modeUnlocked[3]).toBe(true);
+      expect(next.iapHistory).toEqual([]);
+    });
+
+    it('chains v7 → v9, reaching iapHistory: [] from a v7 blob', () => {
+      const { firstPlayedDate: _f, ...v7Daily } = USER_STORE_DEFAULTS.dailyChallenge;
+      const { iapHistory: _i, ...v7base } = USER_STORE_DEFAULTS;
+      const next = __migrateUserStoreForTests(
+        { ...v7base, dailyChallenge: { ...v7Daily } },
+        7,
+      );
+      expect(next.iapHistory).toEqual([]);
+      expect(next.dailyChallenge.firstPlayedDate).toBeNull();
+    });
+  });
+
+  describe('grantIAPTokens', () => {
+    it('credits a consumable and appends history atomically', () => {
+      const result = useUserStore.getState().grantIAPTokens(makeVerified());
+      expect(result.success).toBe(true);
+      const after = useUserStore.getState();
+      expect(after.tokens).toBe(100 + 500);
+      expect(after.iapHistory).toHaveLength(1);
+      expect(after.iapHistory[0]?.tokensGranted).toBe(500);
+    });
+
+    it('returns the recorded transaction on success', () => {
+      const result = useUserStore.getState().grantIAPTokens(makeVerified());
+      if (!result.success) throw new Error('expected success');
+      expect(result.transaction).toBe(useUserStore.getState().iapHistory[0]);
+    });
+
+    it('credits the catalog amount for a larger pack (not hardcoded)', () => {
+      useUserStore
+        .getState()
+        .grantIAPTokens(makeVerified({ transactionId: 'mega', productId: 'tokens_15000' }));
+      expect(useUserStore.getState().tokens).toBe(100 + 15000);
+      expect(useUserStore.getState().iapHistory[0]?.tokensGranted).toBe(15000);
+    });
+
+    it('applies a non-consumable (Remove Ads) without crediting tokens', () => {
+      const result = useUserStore
+        .getState()
+        .grantIAPTokens(makeVerified({ transactionId: 'txn-ra', productId: 'remove_ads' }));
+      expect(result.success).toBe(true);
+      const after = useUserStore.getState();
+      expect(after.adsRemoved).toBe(true);
+      expect(after.tokens).toBe(100); // unchanged
+      expect(after.iapHistory).toHaveLength(1);
+      expect(after.iapHistory[0]?.tokensGranted).toBe(0);
+    });
+
+    it('rejects a duplicate transactionId with no mutation', () => {
+      useUserStore.getState().grantIAPTokens(makeVerified());
+      const tokensAfterFirst = useUserStore.getState().tokens;
+
+      const dup = useUserStore.getState().grantIAPTokens(makeVerified());
+      expect(dup).toEqual({ success: false, error: 'duplicate' });
+      expect(useUserStore.getState().tokens).toBe(tokensAfterFirst);
+      expect(useUserStore.getState().iapHistory).toHaveLength(1);
+    });
+
+    it('rejects an unknown product with no mutation', () => {
+      const result = useUserStore
+        .getState()
+        .grantIAPTokens(makeVerified({ productId: 'tokens_999' as ProductId }));
+      expect(result).toEqual({ success: false, error: 'invalid_product' });
+      expect(useUserStore.getState().tokens).toBe(100);
+      expect(useUserStore.getState().iapHistory).toHaveLength(0);
+    });
+
+    it('records the full audit-trail shape', () => {
+      useUserStore.getState().grantIAPTokens(makeVerified());
+      const entry = useUserStore.getState().iapHistory[0];
+      expect(entry).toMatchObject({
+        transactionId: 'txn-1',
+        originalTransactionId: 'orig-1',
+        productId: 'tokens_500',
+        tokensGranted: 500,
+        purchaseDate: 1_700_000_000_000,
+        expirationDate: null,
+        environment: 'Production',
+      });
+      expect(typeof entry?.timestamp).toBe('number');
+      expect(entry?.timestamp).toBeGreaterThan(0);
+    });
+
+    it('captures a Sandbox environment', () => {
+      useUserStore.getState().grantIAPTokens(makeVerified({ environment: 'Sandbox' }));
+      expect(useUserStore.getState().iapHistory[0]?.environment).toBe('Sandbox');
+    });
+
+    it('normalises an unknown environment string to Production', () => {
+      useUserStore.getState().grantIAPTokens(makeVerified({ environment: 'unknown' }));
+      expect(useUserStore.getState().iapHistory[0]?.environment).toBe('Production');
+    });
+
+    it('preserves appAccountToken when present and omits it when absent', () => {
+      useUserStore
+        .getState()
+        .grantIAPTokens(makeVerified({ transactionId: 'with', appAccountToken: 'acct-9' }));
+      useUserStore.getState().grantIAPTokens(makeVerified({ transactionId: 'without' }));
+      const [withTok, withoutTok] = useUserStore.getState().iapHistory;
+      expect(withTok?.appAccountToken).toBe('acct-9');
+      expect(withoutTok && 'appAccountToken' in withoutTok).toBe(false);
+    });
+
+    it('appends in grant order', () => {
+      useUserStore.getState().grantIAPTokens(makeVerified({ transactionId: 'a' }));
+      useUserStore.getState().grantIAPTokens(makeVerified({ transactionId: 'b' }));
+      expect(useUserStore.getState().iapHistory.map((t) => t.transactionId)).toEqual(['a', 'b']);
+    });
+  });
+
+  describe('selectors', () => {
+    it('iapHistorySelector returns the audit trail', () => {
+      useUserStore.getState().grantIAPTokens(makeVerified());
+      expect(iapHistorySelector(useUserStore.getState())).toHaveLength(1);
+    });
+
+    it('hasPurchasedSelector is true only for a purchased product', () => {
+      useUserStore
+        .getState()
+        .grantIAPTokens(makeVerified({ transactionId: 'ra', productId: 'remove_ads' }));
+      const state = useUserStore.getState();
+      expect(hasPurchasedSelector('remove_ads')(state)).toBe(true);
+      expect(hasPurchasedSelector('tokens_5000')(state)).toBe(false);
+    });
+
+    it('hasPurchasedSelector is true for a purchased consumable', () => {
+      useUserStore.getState().grantIAPTokens(makeVerified({ productId: 'tokens_500' }));
+      expect(hasPurchasedSelector('tokens_500')(useUserStore.getState())).toBe(true);
     });
   });
 });

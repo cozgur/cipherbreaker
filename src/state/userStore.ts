@@ -30,6 +30,11 @@ import { AD_REWARD_TOKENS } from '@game/economy/constants';
 import { rewardForCompletedMatch } from '@game/economy/matchReward';
 import { modeRegistry } from '@game/modeRegistry';
 import { MODE_UNLOCK_COSTS } from '@data/modeCatalog';
+import { getProductById, type ProductId } from '@lib/iap/productCatalog';
+// Type-only — erased at compile time, so userStore never pulls the
+// expo-iap native module (purchaseFlow → iapManager → expo-iap) into its
+// runtime graph. purchaseFlow consumes nothing from userStore (no cycle).
+import type { VerifiedTransaction } from '@lib/iap/purchaseFlow';
 import type { MatchResultOutcome } from '@navigation/routes';
 import { useMatchStore } from './matchStore';
 
@@ -181,6 +186,43 @@ export interface UserStoreState {
    * consume this; CP6 ships state only.
    */
   readonly modeUnlocked: Readonly<Record<number, boolean>>;
+  /**
+   * Phase 8.5.4 — IAP audit trail. One append-only record per granted
+   * purchase, keyed for idempotency by `transactionId` (StoreKit
+   * re-delivers and Restore re-presents the same id; `grantIAPTokens`
+   * rejects a repeat so a purchase is granted exactly once). Empty on
+   * fresh install and for the pre-IAP cohort (the v8 → v9 migration
+   * seeds `[]` — there are no historical purchases to synthesise).
+   * Linear `some()` idempotency scan is fine at the expected single-user
+   * volume; revisit (Set/Map) only if a player's history grows large.
+   */
+  readonly iapHistory: readonly IAPTransaction[];
+}
+
+/**
+ * Phase 8.5.4 — persisted IAP grant record (the audit-trail entry).
+ * Built by `grantIAPTokens` from an 8.5.3 `VerifiedTransaction` plus the
+ * catalog-derived token amount. All fields are JSON-serialisable
+ * (millisecond epochs, no Date objects) so Zustand persists it cleanly.
+ */
+export interface IAPTransaction {
+  /** Apple's per-transaction id — the idempotency key. */
+  readonly transactionId: string;
+  /** Apple's original transaction id (stable across restores/renewals). */
+  readonly originalTransactionId: string;
+  /** Short catalog id (NOT the wire SKU). */
+  readonly productId: ProductId;
+  /** Tokens credited — the catalog amount for consumables, 0 otherwise. */
+  readonly tokensGranted: number;
+  /** When the grant was recorded (ms epoch). */
+  readonly timestamp: number;
+  /** Apple's purchase date (ms epoch). */
+  readonly purchaseDate: number;
+  /** Subscription expiry; always null here (no subscription products). */
+  readonly expirationDate: number | null;
+  readonly environment: 'Production' | 'Sandbox';
+  /** Present only when StoreKit reported a user-binding token. */
+  readonly appAccountToken?: string;
 }
 
 /**
@@ -487,6 +529,22 @@ export interface UserStoreActions {
     readonly alreadyUnlocked?: boolean;
     readonly error?: 'invalid_mode';
   };
+  /**
+   * Phase 8.5.4 — record a verified IAP purchase and apply its
+   * entitlement. Atomic (single `set`) and idempotent on
+   * `transactionId`:
+   *   - unknown product (not in catalog) → `invalid_product`, no mutation
+   *   - `transactionId` already in `iapHistory` → `duplicate`, no mutation
+   *   - consumable → credit `tokenAmount` + append history
+   *   - non-consumable (Remove Ads) → set `adsRemoved` + append history
+   * The caller (8.5.6) finishes the StoreKit transaction only AFTER a
+   * `success` result, so a crash mid-grant re-delivers rather than
+   * losing the entitlement; the `duplicate` guard makes that re-delivery
+   * safe.
+   */
+  grantIAPTokens(transaction: VerifiedTransaction):
+    | { readonly success: true; readonly transaction: IAPTransaction }
+    | { readonly success: false; readonly error: 'duplicate' | 'invalid_product' };
 }
 
 export const DAILY_CHALLENGE_DEFAULTS: DailyChallengeState = {
@@ -610,9 +668,11 @@ export const USER_STORE_DEFAULTS: UserStoreState = {
   jitTooltipsSeen: JIT_TOOLTIPS_SEEN_DEFAULTS,
   // Phase 7A.8 CP6 — fresh-install: Mode 1 free, 2-7 locked.
   modeUnlocked: { ...MODE_UNLOCKED_DEFAULTS },
+  // Phase 8.5.4 — fresh-install: no IAP purchases recorded.
+  iapHistory: [],
 };
 
-const STORE_VERSION = 8;
+const STORE_VERSION = 9;
 
 /**
  * Migrate persisted state across `STORE_VERSION` bumps. The persist
@@ -667,6 +727,9 @@ const STORE_VERSION = 8;
  *     player's tier/streak don't snap back to Day 1 on upgrade. Fresh
  *     installs never run this; they get `null` from defaults and Day 1
  *     anchors on their first play (see `migrateV7ToV8`).
+ *   v8 → v9 (Phase 8.5.4): seed `iapHistory` with `[]`. Defaults-only —
+ *     no pre-IAP cohort has historical purchases to synthesise (see
+ *     `migrateV8ToV9`).
  */
 
 // Loose v1 shape — only the fields the v1→v2 mapper inspects.
@@ -677,41 +740,49 @@ type V7A5Fields = 'adsWatchedToday' | 'adsWatchedLastDate' | 'matchesSinceLastIn
 type V7A6Fields = 'onboarding' | 'matchesCompletedSinceOnboarding';
 type V7A7Fields = 'modeTutorialsSeen';
 type V7A8Fields = 'modeUnlocked';
+// Phase 8.5.4 — field added at v9. Every pre-v9 shape excludes it.
+type Phase85Fields = 'iapHistory';
 type V1State = Omit<
   UserStoreState,
-  'stats' | 'dailyChallenge' | V7A5Fields | V7A6Fields | V7A7Fields | V7A8Fields
+  'stats' | 'dailyChallenge' | V7A5Fields | V7A6Fields | V7A7Fields | V7A8Fields | Phase85Fields
 > & {
   readonly stats?: V1Stats;
 };
 
 // v2 shape — UserStoreState minus dailyChallenge + every later-phase field.
-type V2State = Omit<UserStoreState, 'dailyChallenge' | V7A5Fields | V7A6Fields | V7A7Fields | V7A8Fields>;
+type V2State = Omit<
+  UserStoreState,
+  'dailyChallenge' | V7A5Fields | V7A6Fields | V7A7Fields | V7A8Fields | Phase85Fields
+>;
 
-// v3 shape — UserStoreState minus the Phase 7A.5 / 7A.6 / 7A.7 / 7A.8 fields.
-type V3State = Omit<UserStoreState, V7A5Fields | V7A6Fields | V7A7Fields | V7A8Fields>;
+// v3 shape — UserStoreState minus the Phase 7A.5 / 7A.6 / 7A.7 / 7A.8 / 8.5 fields.
+type V3State = Omit<UserStoreState, V7A5Fields | V7A6Fields | V7A7Fields | V7A8Fields | Phase85Fields>;
 
-// v4 shape — UserStoreState minus the Phase 7A.6 / 7A.7 / 7A.8 fields.
-type V4State = Omit<UserStoreState, V7A6Fields | V7A7Fields | V7A8Fields>;
+// v4 shape — UserStoreState minus the Phase 7A.6 / 7A.7 / 7A.8 / 8.5 fields.
+type V4State = Omit<UserStoreState, V7A6Fields | V7A7Fields | V7A8Fields | Phase85Fields>;
 
-// v5 shape — UserStoreState minus the Phase 7A.7 / 7A.8 fields.
-type V5State = Omit<UserStoreState, V7A7Fields | V7A8Fields>;
+// v5 shape — UserStoreState minus the Phase 7A.7 / 7A.8 / 8.5 fields.
+type V5State = Omit<UserStoreState, V7A7Fields | V7A8Fields | Phase85Fields>;
 
 // v6 shape — UserStoreState minus the Phase 7A.8 mode-unlock field.
 // NB: the v6 `onboarding` blob on disk also carries the now-removed
 // `tokenWalkthroughSeen`; it's stripped during the v6 → v7 mapper
 // rather than reflected in this alias (the alias uses the current,
 // already-cleaned `OnboardingState`).
-type V6State = Omit<UserStoreState, V7A8Fields>;
+type V6State = Omit<UserStoreState, V7A8Fields | Phase85Fields>;
 
-// v7 shape — the full current UserStoreState, except the persisted
-// `dailyChallenge` predates the CP9.1 `firstPlayedDate` field (it's
+// v7 shape — UserStoreState minus the v9 `iapHistory`, with the persisted
+// `dailyChallenge` predating the CP9.1 `firstPlayedDate` field (it's
 // optional on disk; the v7 → v8 mapper backfills it).
 type V7DailyChallenge = Omit<DailyChallengeState, 'firstPlayedDate'> & {
   readonly firstPlayedDate?: string | null;
 };
-type V7State = Omit<UserStoreState, 'dailyChallenge'> & {
+type V7State = Omit<UserStoreState, 'dailyChallenge' | Phase85Fields> & {
   readonly dailyChallenge: V7DailyChallenge;
 };
+
+// v8 shape — the full current UserStoreState minus the v9 `iapHistory`.
+type V8State = Omit<UserStoreState, Phase85Fields>;
 
 function migrateV1ToV2(persisted: unknown): V2State {
   const v1 = (persisted ?? {}) as V1State;
@@ -849,7 +920,7 @@ function migrateV6ToV7(persisted: unknown): V7State {
  * their first play post-upgrade. Defensive `?? {}` + optional chaining
  * tolerate a malformed blob.
  */
-function migrateV7ToV8(persisted: unknown): UserStoreState {
+function migrateV7ToV8(persisted: unknown): V8State {
   const v7 = (persisted ?? {}) as V7State;
   const dc = v7.dailyChallenge ?? DAILY_CHALLENGE_DEFAULTS;
   const firstPlayedDate =
@@ -857,6 +928,21 @@ function migrateV7ToV8(persisted: unknown): UserStoreState {
   return {
     ...v7,
     dailyChallenge: { ...DAILY_CHALLENGE_DEFAULTS, ...dc, firstPlayedDate },
+  };
+}
+
+/**
+ * Phase 8.5.4 — v8 → v9: seed the IAP audit trail. Defaults-only: there
+ * is no pre-IAP cohort with historical purchases to synthesise (IAP
+ * ships in Phase 8.5), so every upgrading player starts with an empty
+ * `iapHistory`. A future replay of past App Store purchases happens
+ * through Restore (8.5.7) at runtime, not via migration.
+ */
+function migrateV8ToV9(persisted: unknown): UserStoreState {
+  const v8 = (persisted ?? {}) as V8State;
+  return {
+    ...v8,
+    iapHistory: [],
   };
 }
 
@@ -896,6 +982,9 @@ function migrateUserStore(persisted: unknown, version: number): UserStoreState {
     } else if (v === 7) {
       current = migrateV7ToV8(current);
       v = 8;
+    } else if (v === 8) {
+      current = migrateV8ToV9(current);
+      v = 9;
     } else {
       // Defensive — the bounds check above should prevent reaching
       // this branch, but it keeps the loop total in case the bound
@@ -1257,6 +1346,54 @@ export const useUserStore = create<UserStoreState & UserStoreActions>()(
         return { success: true, alreadyUnlocked };
       },
 
+      grantIAPTokens: (transaction) => {
+        // Validate the product first — an id absent from the catalog
+        // can't map to a token amount or entitlement.
+        const product = getProductById(transaction.productId);
+        if (product === undefined) {
+          return { success: false, error: 'invalid_product' };
+        }
+        // Idempotency gate (pure — no state touched on reject). StoreKit
+        // re-delivers unfinished transactions and Restore re-presents the
+        // same id, so a repeat must NOT double-grant.
+        if (
+          get().iapHistory.some((t) => t.transactionId === transaction.transactionId)
+        ) {
+          return { success: false, error: 'duplicate' };
+        }
+
+        const tokensGranted = product.type === 'consumable' ? product.tokenAmount : 0;
+        const record: IAPTransaction = {
+          transactionId: transaction.transactionId,
+          originalTransactionId: transaction.originalTransactionId,
+          productId: transaction.productId,
+          tokensGranted,
+          timestamp: Date.now(),
+          purchaseDate: transaction.purchaseDate,
+          // No subscription products — consumables and the lone
+          // non-consumable never expire.
+          expirationDate: null,
+          // VerifiedTransaction carries the raw StoreKit string; normalise
+          // to the audit union (anything but 'Sandbox' is treated as
+          // production — an audit label, not an entitlement gate).
+          environment: transaction.environment === 'Sandbox' ? 'Sandbox' : 'Production',
+          // Omit the key entirely when StoreKit reported no token.
+          ...(transaction.appAccountToken !== undefined
+            ? { appAccountToken: transaction.appAccountToken }
+            : {}),
+        };
+
+        // Single atomic set — history append + entitlement together, so a
+        // reader never sees a granted wallet/flag without its audit row.
+        set((s) => ({
+          iapHistory: [...s.iapHistory, record],
+          ...(product.type === 'consumable'
+            ? { tokens: s.tokens + tokensGranted }
+            : { adsRemoved: true }),
+        }));
+        return { success: true, transaction: record };
+      },
+
       applyRewardedDouble: (matchId) => {
         // Validation chain — each step has a typed error so the
         // caller (and analytics) can distinguish the reject reason.
@@ -1359,3 +1496,20 @@ export const useUserStore = create<UserStoreState & UserStoreActions>()(
 /** Test-only — exported so migration tests can call the pure mapper
  *  without hitting AsyncStorage / zustand internals. */
 export const __migrateUserStoreForTests = migrateUserStore;
+
+// ── Phase 8.5.4 — IAP selectors ──────────────────────────────────────
+// Pure `(state) => …` selectors for the IAP audit trail. Usable both as
+// hook selectors — `useUserStore(iapHistorySelector)` — and against a
+// snapshot — `iapHistorySelector(useUserStore.getState())`. (`adsRemoved`
+// keeps its existing inline `(s) => s.adsRemoved` read; no selector added.)
+
+/** The IAP purchase audit trail. */
+export const iapHistorySelector = (state: UserStoreState): readonly IAPTransaction[] =>
+  state.iapHistory;
+
+/** Factory: true if `productId` appears anywhere in the audit trail
+ *  (any environment) — i.e. the user has purchased it at least once. */
+export const hasPurchasedSelector =
+  (productId: ProductId) =>
+  (state: UserStoreState): boolean =>
+    state.iapHistory.some((t) => t.productId === productId);
