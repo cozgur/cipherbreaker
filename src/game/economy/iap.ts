@@ -3,8 +3,8 @@
  *
  * The persisted `adsRemoved: boolean` flag lives on `userStore`
  * (added in the same v3 → v4 migration as the ad-cap fields).
- * Production wiring: RevenueCat callback flips the flag on a
- * verified purchase. Dev / staging: a `__DEV__`-gated toggle in
+ * Production wiring: the expo-iap purchase listener flips the flag
+ * on a verified (StoreKit 2) purchase. Dev / staging: a `__DEV__`-gated toggle in
  * the Settings tab flips the flag for QA without hitting the App
  * Store sandbox.
  *

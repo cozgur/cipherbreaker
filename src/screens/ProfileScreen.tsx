@@ -457,8 +457,8 @@ function SettingsPanel({
 
 /**
  * Phase 7A.5 CP1 — `__DEV__`-only toggle for the Remove Ads IAP
- * flag. Production wires `setAdsRemoved` from the RevenueCat
- * verified-purchase callback; this row is a QA seam so we can
+ * flag. Production wires `setAdsRemoved` from the expo-iap
+ * verified-purchase listener; this row is a QA seam so we can
  * exercise the ad-free interstitial gate (CP3) without round-
  * tripping through the App Store sandbox.
  *

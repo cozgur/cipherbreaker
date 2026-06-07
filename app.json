@@ -36,7 +36,8 @@
     "plugins": [
       "expo-font",
       "expo-notifications",
-      "expo-audio"
+      "expo-audio",
+      "expo-iap"
     ]
   }
 }

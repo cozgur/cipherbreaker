@@ -85,13 +85,19 @@ export const REWARD_MULTIPLIER_HARD = 1.5;
 /**
  * Phase 7A.5 CP1 — Remove Ads IAP product metadata.
  *
- * Production: RevenueCat-verified non-consumable purchase.
- * `IAP_REMOVE_ADS_PRODUCT_ID` is the App Store / Play Store
- * product identifier; `IAP_REMOVE_ADS_PRICE_USD` is the canonical
- * price the catalog UI compares against; `IAP_REMOVE_ADS_DISPLAY_PRICE`
- * is the user-facing string. Localized pricing lands in Phase 8
- * (full IAP integration); for the prototype the display price is
- * a hardcoded USD string.
+ * Production: expo-iap verified non-consumable purchase (StoreKit 2,
+ * no backend — Phase 8.5). `IAP_REMOVE_ADS_PRODUCT_ID` is the App
+ * Store product identifier; `IAP_REMOVE_ADS_PRICE_USD` is the
+ * canonical price the catalog UI compares against;
+ * `IAP_REMOVE_ADS_DISPLAY_PRICE` is the user-facing fallback string
+ * (StoreKit's localized price is authoritative at runtime).
+ *
+ * Phase 8.5.2 — the full five-product catalog now lives in
+ * `src/lib/iap/productCatalog.ts`; this constant is retained for the
+ * existing `adsRemoved` call sites and holds the same wire SKU the
+ * catalog derives for `remove_ads`. The namespace was migrated from
+ * the pre-8.4 `com.cipherbreaker.*` placeholder to the current bundle
+ * id `com.ozgurcetintas.cipherbreaker`.
  *
  * What "Remove Ads" removes (brainstorm Q11): only the **forced**
  * interstitial layer (CP3). The need-driven `AdWatchScreen` reward
@@ -100,6 +106,6 @@ export const REWARD_MULTIPLIER_HARD = 1.5;
  * earning ceiling for paying players. Q12 confirmed: just remove
  * the ads, no token bonus on purchase.
  */
-export const IAP_REMOVE_ADS_PRODUCT_ID = 'com.cipherbreaker.remove_ads';
+export const IAP_REMOVE_ADS_PRODUCT_ID = 'com.ozgurcetintas.cipherbreaker.remove_ads';
 export const IAP_REMOVE_ADS_PRICE_USD = 2.99;
 export const IAP_REMOVE_ADS_DISPLAY_PRICE = '$2.99';

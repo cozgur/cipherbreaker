@@ -96,8 +96,8 @@ export interface UserStoreState {
    * has purchased the non-consumable `IAP_REMOVE_ADS_PRODUCT_ID`.
    * Removes only the forced interstitial layer (CP3); rewarded
    * paths (need-driven AdWatchScreen + double-token CTA) stay
-   * available. Wired by RevenueCat in production; toggled via a
-   * `__DEV__` Settings switch in dev/staging.
+   * available. Wired by the expo-iap purchase listener in
+   * production; toggled via a `__DEV__` Settings switch in dev/staging.
    */
   readonly adsRemoved: boolean;
   /**
@@ -357,7 +357,7 @@ export interface UserStoreActions {
   resetMatchCounter(): void;
   /**
    * Phase 7A.5 CP1 — flip the Remove Ads IAP flag. Production
-   * caller is the RevenueCat verified-purchase callback; dev /
+   * caller is the expo-iap verified-purchase listener; dev /
    * staging caller is the `__DEV__`-gated Settings toggle.
    * Boolean-only — no token-grant side effect (Q12: ad-removal
    * is the value prop, no bonus).
