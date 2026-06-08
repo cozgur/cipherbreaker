@@ -1,6 +1,6 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`ShopScreen snapshots the four-pack layout 1`] = `
+exports[`ShopScreen — layout snapshots the four-pack layout 1`] = `
 {
   "children": [
     {
@@ -5918,8 +5918,11 @@ exports[`ShopScreen snapshots the four-pack layout 1`] = `
                                           ],
                                           "props": {
                                             "style": {
+                                              "alignItems": "center",
                                               "backgroundColor": "#8b5cf6",
                                               "borderRadius": 12,
+                                              "justifyContent": "center",
+                                              "minWidth": 72,
                                               "paddingHorizontal": 16,
                                               "paddingVertical": 10,
                                               "shadowColor": "#8b5cf6",
@@ -5940,7 +5943,7 @@ exports[`ShopScreen snapshots the four-pack layout 1`] = `
                                         "accessibilityState": {
                                           "busy": undefined,
                                           "checked": undefined,
-                                          "disabled": undefined,
+                                          "disabled": false,
                                           "expanded": undefined,
                                           "selected": undefined,
                                         },
@@ -5975,6 +5978,7 @@ exports[`ShopScreen snapshots the four-pack layout 1`] = `
                                             "paddingHorizontal": 16,
                                             "paddingVertical": 16,
                                           },
+                                          null,
                                           null,
                                           null,
                                         ],
@@ -6384,8 +6388,11 @@ exports[`ShopScreen snapshots the four-pack layout 1`] = `
                                           ],
                                           "props": {
                                             "style": {
+                                              "alignItems": "center",
                                               "backgroundColor": "#8b5cf6",
                                               "borderRadius": 12,
+                                              "justifyContent": "center",
+                                              "minWidth": 72,
                                               "paddingHorizontal": 16,
                                               "paddingVertical": 10,
                                               "shadowColor": "#8b5cf6",
@@ -6406,7 +6413,7 @@ exports[`ShopScreen snapshots the four-pack layout 1`] = `
                                         "accessibilityState": {
                                           "busy": undefined,
                                           "checked": undefined,
-                                          "disabled": undefined,
+                                          "disabled": false,
                                           "expanded": undefined,
                                           "selected": undefined,
                                         },
@@ -6441,6 +6448,7 @@ exports[`ShopScreen snapshots the four-pack layout 1`] = `
                                             "paddingHorizontal": 16,
                                             "paddingVertical": 16,
                                           },
+                                          null,
                                           null,
                                           null,
                                         ],
@@ -6825,8 +6833,11 @@ exports[`ShopScreen snapshots the four-pack layout 1`] = `
                                           ],
                                           "props": {
                                             "style": {
+                                              "alignItems": "center",
                                               "backgroundColor": "#8b5cf6",
                                               "borderRadius": 12,
+                                              "justifyContent": "center",
+                                              "minWidth": 72,
                                               "paddingHorizontal": 16,
                                               "paddingVertical": 10,
                                               "shadowColor": "#8b5cf6",
@@ -6847,7 +6858,7 @@ exports[`ShopScreen snapshots the four-pack layout 1`] = `
                                         "accessibilityState": {
                                           "busy": undefined,
                                           "checked": undefined,
-                                          "disabled": undefined,
+                                          "disabled": false,
                                           "expanded": undefined,
                                           "selected": undefined,
                                         },
@@ -6882,6 +6893,7 @@ exports[`ShopScreen snapshots the four-pack layout 1`] = `
                                             "paddingHorizontal": 16,
                                             "paddingVertical": 16,
                                           },
+                                          null,
                                           null,
                                           null,
                                         ],
@@ -7307,8 +7319,11 @@ exports[`ShopScreen snapshots the four-pack layout 1`] = `
                                           ],
                                           "props": {
                                             "style": {
+                                              "alignItems": "center",
                                               "backgroundColor": "#8b5cf6",
                                               "borderRadius": 12,
+                                              "justifyContent": "center",
+                                              "minWidth": 72,
                                               "paddingHorizontal": 16,
                                               "paddingVertical": 10,
                                               "shadowColor": "#8b5cf6",
@@ -7329,7 +7344,7 @@ exports[`ShopScreen snapshots the four-pack layout 1`] = `
                                         "accessibilityState": {
                                           "busy": undefined,
                                           "checked": undefined,
-                                          "disabled": undefined,
+                                          "disabled": false,
                                           "expanded": undefined,
                                           "selected": undefined,
                                         },
@@ -7374,6 +7389,7 @@ exports[`ShopScreen snapshots the four-pack layout 1`] = `
                                             "shadowOpacity": 0.2,
                                             "shadowRadius": 28,
                                           },
+                                          null,
                                           null,
                                         ],
                                       },
