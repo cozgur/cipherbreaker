@@ -19,7 +19,8 @@
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "LSApplicationCategoryType": "public.app-category.puzzle-games"
-      }
+      },
+      "appleTeamId": "3X223RQUNA"
     },
     "android": {
       "package": "com.ozgurcetintas.cipherbreaker",
@@ -28,7 +29,10 @@
         "backgroundColor": "#0a0b1e"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.MODIFY_AUDIO_SETTINGS"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -36,7 +40,13 @@
     "plugins": [
       "expo-font",
       "expo-notifications",
-      "expo-audio",
+      [
+        "expo-audio",
+        {
+          "recordAudioAndroid": false,
+          "microphonePermission": false
+        }
+      ],
       "expo-iap"
     ]
   }
