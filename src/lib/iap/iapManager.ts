@@ -241,9 +241,20 @@ export async function purchase(wireSku: string): Promise<void> {
  * granting would lose the entitlement on a crash. `isConsumable` decides
  * whether StoreKit keeps it in `currentEntitlements` (non-consumables) or
  * drops it (consumables); derive it from the catalog product type.
+ *
+ * Errors are swallowed (logged, not thrown): a failed `finishTransaction`
+ * is non-fatal because the grant already landed and StoreKit will simply
+ * re-deliver the unfinished transaction on the next launch, where the
+ * idempotent `transactionId` dedup makes the re-grant a silent no-op.
+ * Throwing here would only surface a confusing error *after* a successful
+ * purchase.
  */
 export async function finishPurchase(purchase: Purchase, isConsumable: boolean): Promise<void> {
-  await finishTransaction({ purchase, isConsumable });
+  try {
+    await finishTransaction({ purchase, isConsumable });
+  } catch (error) {
+    console.log('[iap] finishPurchase failed (transaction will re-deliver)', { isConsumable, error });
+  }
 }
 
 /**

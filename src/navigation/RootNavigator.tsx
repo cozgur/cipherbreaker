@@ -1,6 +1,9 @@
+import { useEffect } from 'react';
 import { NavigationContainer, DefaultTheme, type Theme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
+import { dispose as disposeIap, initialize as initializeIap } from '@lib/iap/iapManager';
+import { startPurchaseListener } from '@lib/iap/purchaseFlow';
 import { AdWatchScreen } from '@screens/AdWatchScreen';
 import { ChangeUsernameModal } from '@screens/ChangeUsernameModal';
 import { DailyMatchScreen } from '@screens/DailyMatchScreen';
@@ -86,6 +89,23 @@ function pickInitialRoute(): keyof RootStackParamList {
 
 export function RootNavigator(): React.JSX.Element {
   const initialRouteName = pickInitialRoute();
+
+  // Phase 8.5.6 — app-launch IAP wiring. The persistent purchase listener
+  // is installed FIRST, then the store connects: a StoreKit transaction
+  // re-delivered during launch (an interrupted purchase, an Ask-to-Buy
+  // approval) then routes to purchaseFlow's unsolicited handler instead of
+  // being dropped. `initialize` is idempotent (ShopScreen also calls it);
+  // a launch-time connection failure is non-fatal — the shop surfaces a
+  // soft retry. Runs once at the app's root mount.
+  useEffect(() => {
+    startPurchaseListener();
+    initializeIap().catch((error) => {
+      console.log('[iap] launch initialize failed (shop will retry)', { error });
+    });
+    return () => {
+      void disposeIap();
+    };
+  }, []);
 
   return (
     <NavigationContainer theme={navTheme}>

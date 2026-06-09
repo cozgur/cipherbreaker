@@ -1,27 +1,38 @@
 /**
- * Phase 8.5.5 — ShopScreen wired to the expo-iap purchase flow.
+ * Phase 8.5.5 / 8.5.6 — ShopScreen wired to the expo-iap purchase flow.
  *
- * iapManager + purchaseFlow are mocked so we drive the three result
- * states deterministically; the REAL userStore handles grantIAPTokens so
- * a successful purchase is verified by its side effects (balance +
- * iapHistory) — which proves the screen called grant with the right
- * transaction. expo-iap itself is the auto-applied manual mock (errors.ts
- * reads its ErrorCode enum).
+ * `iapManager` is mocked and `purchaseProduct` is mocked (to drive the
+ * three result states deterministically), but `finalizePurchase` is the
+ * REAL implementation (partial mock) running against the REAL userStore —
+ * so a success is verified by its side effects (balance + iapHistory) AND
+ * we assert the screen finishes the StoreKit transaction (8.5.6) only when
+ * the entitlement is recorded (grant success / duplicate), never on
+ * invalid_product. expo-iap itself is the auto-applied manual mock
+ * (errors.ts reads its ErrorCode enum).
  */
 
 import { act, fireEvent, waitFor } from '@testing-library/react-native';
 
-import { initialize } from '@lib/iap/iapManager';
+import { finishPurchase, initialize } from '@lib/iap/iapManager';
 import { purchaseProduct } from '@lib/iap/purchaseFlow';
 import { IAPError } from '@lib/iap/errors';
 import { USER_STORE_DEFAULTS, useUserStore } from '@state/userStore';
 import { ShopScreen } from '../ShopScreen';
 import { renderWithNavigation, stableTreeForSnapshot } from '@/test-utils/renderWithNavigation';
 
-jest.mock('@lib/iap/iapManager', () => ({ initialize: jest.fn(() => Promise.resolve([])) }));
-jest.mock('@lib/iap/purchaseFlow', () => ({ purchaseProduct: jest.fn() }));
+jest.mock('@lib/iap/iapManager', () => ({
+  initialize: jest.fn(() => Promise.resolve([])),
+  finishPurchase: jest.fn(() => Promise.resolve()),
+}));
+// Real finalizePurchase (grant + finish) over a mocked purchaseProduct, so
+// the 8.5.6 finish orchestration is exercised end-to-end.
+jest.mock('@lib/iap/purchaseFlow', () => ({
+  ...jest.requireActual('@lib/iap/purchaseFlow'),
+  purchaseProduct: jest.fn(),
+}));
 
 const mockInitialize = initialize as unknown as jest.Mock;
+const mockFinish = finishPurchase as unknown as jest.Mock;
 const mockPurchase = purchaseProduct as unknown as jest.Mock;
 
 function verified(overrides: Record<string, unknown> = {}): unknown {
@@ -40,6 +51,7 @@ const POCKET = 'Buy 500 tokens for $0.99';
 beforeEach(() => {
   useUserStore.setState({ ...USER_STORE_DEFAULTS });
   mockInitialize.mockReset().mockResolvedValue([]);
+  mockFinish.mockReset().mockResolvedValue(undefined);
   mockPurchase.mockReset();
 });
 
@@ -91,6 +103,9 @@ describe('ShopScreen — purchase flow', () => {
     await waitFor(() => expect(useUserStore.getState().tokens).toBe(100 + 500));
     expect(useUserStore.getState().iapHistory).toHaveLength(1);
     expect(useUserStore.getState().iapHistory[0]?.transactionId).toBe('txn-1');
+    // 8.5.6 — the consumable transaction is finished after the grant.
+    expect(mockFinish).toHaveBeenCalledTimes(1);
+    expect(mockFinish).toHaveBeenCalledWith({}, true);
     expect(await utils.findByText('Tokens added! +500 tokens')).toBeTruthy();
   });
 
@@ -217,6 +232,28 @@ describe('ShopScreen — purchase flow', () => {
     });
     expect(useUserStore.getState().tokens).toBe(100); // unchanged
     expect(useUserStore.getState().iapHistory).toHaveLength(1); // not appended
+    expect(utils.queryByText(/Tokens added/)).toBeNull(); // silent
+    // 8.5.6 — a duplicate is still finished so StoreKit stops re-delivering.
+    expect(mockFinish).toHaveBeenCalledTimes(1);
+  });
+
+  it('does NOT finish the transaction when the product is unknown (invalid_product)', async () => {
+    // A success result carrying a product not in the catalog → grant
+    // returns invalid_product; the transaction is left unfinished
+    // (defensive — should not occur, but must never silently finish).
+    mockPurchase.mockResolvedValue({
+      status: 'success',
+      transaction: verified({ transactionId: 'txn-bad', productId: 'tokens_999' }),
+      rawPurchase: {},
+    });
+    const utils = renderWithNavigation('Shop', { Shop: ShopScreen });
+
+    await act(async () => {
+      fireEvent.press(utils.getByLabelText(POCKET));
+    });
+    expect(useUserStore.getState().tokens).toBe(100); // unchanged
+    expect(useUserStore.getState().iapHistory).toHaveLength(0); // nothing recorded
+    expect(mockFinish).not.toHaveBeenCalled(); // left unfinished
     expect(utils.queryByText(/Tokens added/)).toBeNull(); // silent
   });
 });

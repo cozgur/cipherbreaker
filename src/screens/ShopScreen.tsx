@@ -44,7 +44,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Screen } from '@components/Screen';
 import { TokenBadge } from '@components/TokenBadge';
 import { initialize as initializeIap } from '@lib/iap/iapManager';
-import { purchaseProduct } from '@lib/iap/purchaseFlow';
+import { finalizePurchase, purchaseProduct } from '@lib/iap/purchaseFlow';
 import type { IAPError, IAPErrorCode } from '@lib/iap/errors';
 import type { ProductId } from '@lib/iap/productCatalog';
 import type { RootStackParamList } from '@navigation/routes';
@@ -175,9 +175,13 @@ export function ShopScreen(): React.JSX.Element {
       const result = await purchaseProduct(pack.productId);
 
       if (result.status === 'success') {
-        // Apply the grant even if the modal was closed mid-purchase, so
-        // the balance is always correct; only skip the UI updates.
-        const grant = useUserStore.getState().grantIAPTokens(result.transaction);
+        // Grant + finish the transaction even if the modal was closed
+        // mid-purchase, so the balance is always correct and StoreKit
+        // stops re-delivering; only the UI updates below are gated on
+        // still being mounted. This MUST run before the mounted check —
+        // a solicited transaction is consumed here and never re-delivered,
+        // so an early return would silently drop the grant.
+        const grant = await finalizePurchase(result.transaction, result.rawPurchase);
         if (!mountedRef.current) return;
         if (grant.success) {
           setStatus({ kind: 'success', text: successText(grant.transaction) });

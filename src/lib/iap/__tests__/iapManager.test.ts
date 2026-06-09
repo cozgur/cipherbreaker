@@ -209,6 +209,13 @@ describe('iapManager.purchase / finishPurchase', () => {
       isConsumable: true,
     });
   });
+
+  it('finishPurchase() swallows a finishTransaction failure (re-delivery is the fallback)', async () => {
+    // The grant has already landed; a failed finish is non-fatal — StoreKit
+    // re-delivers and the idempotent grant absorbs it. Must NOT reject.
+    mockFinishTransaction.mockRejectedValue(new Error('finish boom'));
+    await expect(finishPurchase({ id: 'txn-1' } as never, false)).resolves.toBeUndefined();
+  });
 });
 
 describe('iapManager.setPurchaseHandler', () => {
