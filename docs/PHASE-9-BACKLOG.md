@@ -169,6 +169,63 @@ Or skip the gradient entirely once the hero asset itself gets replaced (the illu
 
 ## Cleanup / tech debt
 
+### Runtime bundle-identifier assertion at launch (catches native-cache drift)
+
+**Scope.** Add a lightweight startup check that the running app's native
+bundle identifier matches the expected `com.ozgurcetintas.cipherbreaker`, and
+log a loud warning on mismatch. Suggested location: `RootNavigator` mount or
+the `iapManager.initialize()` prelude. Read the actual id via
+`expo-application` (`Application.applicationId`) or
+`expo-constants`, compare to a hardcoded expectation, `console.warn` if they
+differ.
+
+**Why.** During the 8.5.8 sandbox device pass, IAP failed with "Product
+unavailable" because the committed-then-gitignored `ios/` native project
+carried a **stale** `PRODUCT_BUNDLE_IDENTIFIER = com.cipherbreaker.app` from a
+pre-8.4 generation — `expo prebuild` was never re-run after the Phase 8.4
+`app.json` bundle-id edit (commit 86ac12a). The build installed under the
+wrong id, so StoreKit/ASC couldn't resolve any products and `fetchProducts`
+returned empty. The drift was invisible (app.json was correct; only the
+generated native project was stale) and cost a full device-test cycle to
+diagnose. A one-line launch assertion would have surfaced it immediately.
+
+**Why deferred.** Not blocking 8.5.8 (root cause fixed via
+`expo prebuild --platform ios --clean`). It's a guard against a class of
+future cache-drift bugs, best added when next touching launch/init code.
+
+**Unblocks.** Whoever next edits `RootNavigator.tsx` or `iapManager.ts` near
+mount/init can add it in passing. Pair with a CI/prebuild-freshness note so
+the native project is regenerated after any `app.json` native-config change.
+
+### Require cycle: `userStore.ts` ↔ `matchStore.ts`
+
+**Scope.** Metro logged a `Require cycle: src/state/userStore.ts ↔
+src/state/matchStore.ts` warning during the 8.5.8 device run. Untangle the
+circular import (extract the shared type/helper to a third module, or invert
+one of the runtime edges) so the cycle is erased.
+
+**Why.** Require cycles are benign until they aren't — at runtime one module
+sees the other partially-initialized, which can surface as an `undefined`
+import that only bites under a specific load order. Currently harmless (the
+app runs), but it's latent risk and noise in the Metro log.
+
+**Why deferred.** Not blocking IAP; cosmetic warning, no observed
+misbehavior. Best fixed when next refactoring the store layer.
+
+### `SafeAreaView` from `react-native` is deprecated
+
+**Scope.** Metro logged a deprecation warning for `SafeAreaView` imported from
+`react-native`. Migrate the remaining usages to
+`react-native-safe-area-context`'s `SafeAreaView` (already a dependency,
+used elsewhere in the app).
+
+**Why.** RN's built-in `SafeAreaView` is deprecated and slated for removal;
+`react-native-safe-area-context` is the supported path and handles insets
+correctly across notch/Dynamic-Island devices.
+
+**Why deferred.** Cosmetic warning, no functional impact today. Sweep all
+usages in one cleanup CP.
+
 ### `completeOnboarding` does not flip `hasOnboarded`
 
 **Scope.** `completeOnboarding(today)` flips all 6 onboarding step flags + `completedAt` but leaves `hasOnboarded` as-is. Skip users land in `pickInitialRoute()`'s "all step flags true + hasOnboarded false" failsafe branch. The branch routes correctly to Home, but it's load-bearing for Skip users — not a true edge case.
