@@ -44,7 +44,8 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Screen } from '@components/Screen';
 import { TokenBadge } from '@components/TokenBadge';
 import { initialize as initializeIap } from '@lib/iap/iapManager';
-import { finalizePurchase, purchaseProduct } from '@lib/iap/purchaseFlow';
+import { finalizePurchase, purchaseProduct, type VerifiedTransaction } from '@lib/iap/purchaseFlow';
+import { getEntitlements, type Entitlement } from '@lib/iap/restorePurchases';
 import type { IAPError, IAPErrorCode } from '@lib/iap/errors';
 import type { ProductId } from '@lib/iap/productCatalog';
 import type { RootStackParamList } from '@navigation/routes';
@@ -59,6 +60,27 @@ type PurchaseStatus = { readonly kind: 'success' | 'pending' | 'error'; readonly
 
 /** Success message clears after this long; CTAs re-enable. */
 const SUCCESS_FADE_MS = 2000;
+
+/** Restore feedback (any state) clears after this long. */
+const RESTORE_FADE_MS = 3000;
+
+/**
+ * Adapt a restored `Entitlement` to the `VerifiedTransaction` shape
+ * `grantIAPTokens` consumes. Restored items expose no separate original id
+ * (they ARE the original purchase as StoreKit currently reports it), so we
+ * fold `originalTransactionId` onto the transaction id; `appAccountToken`
+ * is absent for restores. The grant's `transactionId` idempotency makes a
+ * re-restore of an already-applied entitlement a silent no-op.
+ */
+function entitlementToVerifiedTransaction(entitlement: Entitlement): VerifiedTransaction {
+  return {
+    transactionId: entitlement.transactionId,
+    originalTransactionId: entitlement.transactionId,
+    productId: entitlement.productId,
+    purchaseDate: entitlement.purchaseDate,
+    environment: entitlement.environment,
+  };
+}
 
 /**
  * User-facing message per error code. `USER_CANCELLED` is intentionally
@@ -130,15 +152,20 @@ export function ShopScreen(): React.JSX.Element {
   const [processing, setProcessing] = useState(false);
   const [activeProductId, setActiveProductId] = useState<ProductId | null>(null);
   const [status, setStatus] = useState<PurchaseStatus | null>(null);
+  const [isRestoring, setIsRestoring] = useState(false);
+  const [restoreMessage, setRestoreMessage] = useState<string | null>(null);
 
-  // Guards setState after unmount (the purchase await / fade timer can
-  // outlive the modal if the user closes it mid-flight).
+  // Guards setState after unmount (the purchase/restore await + fade timers
+  // can outlive the modal if the user closes it mid-flight).
   const mountedRef = useRef(true);
   const fadeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // Synchronous re-entrancy guard. `processing` state drives the UI but
-  // only after a re-render, so a rapid double-tap in the same tick could
-  // slip past it; the ref flips immediately and blocks the second call.
+  const restoreTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Synchronous re-entrancy guards. `processing`/`isRestoring` state drive
+  // the UI but only after a re-render, so a rapid double-tap in the same
+  // tick could slip past them; the refs flip immediately and block the
+  // second call (and cross-block purchase vs restore).
   const processingRef = useRef(false);
+  const restoringRef = useRef(false);
 
   const close = useCallback(() => navigation.goBack(), [navigation]);
 
@@ -155,6 +182,7 @@ export function ShopScreen(): React.JSX.Element {
     return () => {
       mountedRef.current = false;
       if (fadeTimerRef.current) clearTimeout(fadeTimerRef.current);
+      if (restoreTimerRef.current) clearTimeout(restoreTimerRef.current);
     };
   }, []);
 
@@ -166,7 +194,7 @@ export function ShopScreen(): React.JSX.Element {
 
   const handlePurchase = useCallback(
     async (pack: Pack): Promise<void> => {
-      if (processingRef.current) return; // re-entrancy guard (sync)
+      if (processingRef.current || restoringRef.current) return; // re-entrancy + cross-block (sync)
       processingRef.current = true;
       setStatus(null);
       setProcessing(true);
@@ -210,6 +238,47 @@ export function ShopScreen(): React.JSX.Element {
     },
     [reEnable],
   );
+
+  // Restore Purchases — required by Apple for apps with non-consumable IAPs
+  // (Remove Ads), even before its buy CTA ships (8.6). Discovers the user's
+  // restorable entitlements and re-applies each via grantIAPTokens; the
+  // grant's transactionId idempotency means already-applied entitlements
+  // are skipped (not counted). Grants apply even if the modal closed
+  // mid-restore; only the feedback UI is gated on still being mounted.
+  const handleRestore = useCallback(async (): Promise<void> => {
+    if (restoringRef.current || processingRef.current) return; // re-entrancy + cross-block (sync)
+    restoringRef.current = true;
+    setStatus(null);
+    setRestoreMessage(null);
+    setIsRestoring(true);
+
+    let message: string;
+    try {
+      const entitlements = await getEntitlements();
+      let restored = 0;
+      for (const entitlement of entitlements) {
+        const grant = useUserStore
+          .getState()
+          .grantIAPTokens(entitlementToVerifiedTransaction(entitlement));
+        if (grant.success) restored += 1;
+      }
+      message =
+        restored > 0
+          ? `${restored} purchase${restored === 1 ? '' : 's'} restored`
+          : 'Nothing to restore';
+    } catch {
+      message = "Couldn't restore purchases. Try again.";
+    }
+
+    restoringRef.current = false;
+    if (!mountedRef.current) return;
+    setIsRestoring(false);
+    setRestoreMessage(message);
+    if (restoreTimerRef.current) clearTimeout(restoreTimerRef.current);
+    restoreTimerRef.current = setTimeout(() => {
+      if (mountedRef.current) setRestoreMessage(null);
+    }, RESTORE_FADE_MS);
+  }, []);
 
   return (
     <Screen ambientTint={colors.gold} ambientIntensity={0.16}>
@@ -256,13 +325,42 @@ export function ShopScreen(): React.JSX.Element {
           <PackCard
             key={pack.productId}
             pack={pack}
-            disabled={processing}
+            disabled={processing || isRestoring}
             loading={activeProductId === pack.productId}
             onPress={() => {
               void handlePurchase(pack);
             }}
           />
         ))}
+
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Restore purchases"
+          accessibilityState={{ disabled: processing || isRestoring }}
+          disabled={processing || isRestoring}
+          onPress={() => {
+            void handleRestore();
+          }}
+          style={({ pressed }) => [
+            styles.restoreButton,
+            pressed && !isRestoring ? styles.restorePressed : null,
+          ]}
+        >
+          {isRestoring ? (
+            <View style={styles.restoreRow}>
+              <ActivityIndicator color={colors.textSecondary} size="small" />
+              <Text style={styles.restoreLabel}>Restoring…</Text>
+            </View>
+          ) : (
+            <Text style={styles.restoreLabel}>Restore Purchases</Text>
+          )}
+        </Pressable>
+        {restoreMessage ? (
+          <Text accessibilityLiveRegion="polite" style={styles.restoreMessage}>
+            {restoreMessage}
+          </Text>
+        ) : null}
+
         <Text style={styles.disclaimer}>All purchases are final. Tokens have no cash value.</Text>
       </ScrollView>
     </Screen>
@@ -533,6 +631,34 @@ const styles = StyleSheet.create({
     fontFamily: fonts.mono,
     fontSize: 15,
     color: '#ffffff',
+  },
+  restoreButton: {
+    marginTop: 18,
+    alignSelf: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+  },
+  restorePressed: {
+    opacity: 0.6,
+  },
+  restoreRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  restoreLabel: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: 14,
+    color: colors.textSecondary,
+    textDecorationLine: 'underline',
+  },
+  restoreMessage: {
+    marginTop: 6,
+    paddingHorizontal: 8,
+    fontFamily: fonts.body,
+    fontSize: 12,
+    color: colors.textSecondary,
+    textAlign: 'center',
   },
   disclaimer: {
     marginTop: 18,

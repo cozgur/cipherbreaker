@@ -7397,6 +7397,63 @@ exports[`ShopScreen — layout snapshots the four-pack layout 1`] = `
                                     },
                                     {
                                       "children": [
+                                        {
+                                          "children": [
+                                            "Restore Purchases",
+                                          ],
+                                          "props": {
+                                            "style": {
+                                              "color": "#a1a1b5",
+                                              "fontFamily": "Inter-Medium",
+                                              "fontSize": 14,
+                                              "textDecorationLine": "underline",
+                                            },
+                                          },
+                                          "type": "Text",
+                                        },
+                                      ],
+                                      "props": {
+                                        "accessibilityLabel": "Restore purchases",
+                                        "accessibilityRole": "button",
+                                        "accessibilityState": {
+                                          "busy": undefined,
+                                          "checked": undefined,
+                                          "disabled": false,
+                                          "expanded": undefined,
+                                          "selected": undefined,
+                                        },
+                                        "accessibilityValue": {
+                                          "max": undefined,
+                                          "min": undefined,
+                                          "now": undefined,
+                                          "text": undefined,
+                                        },
+                                        "accessible": true,
+                                        "collapsable": false,
+                                        "focusable": true,
+                                        "onBlur": [Function],
+                                        "onClick": [Function],
+                                        "onFocus": [Function],
+                                        "onResponderGrant": [Function],
+                                        "onResponderMove": [Function],
+                                        "onResponderRelease": [Function],
+                                        "onResponderTerminate": [Function],
+                                        "onResponderTerminationRequest": [Function],
+                                        "onStartShouldSetResponder": [Function],
+                                        "style": [
+                                          {
+                                            "alignSelf": "center",
+                                            "marginTop": 18,
+                                            "paddingHorizontal": 16,
+                                            "paddingVertical": 10,
+                                          },
+                                          null,
+                                        ],
+                                      },
+                                      "type": "View",
+                                    },
+                                    {
+                                      "children": [
                                         "All purchases are final. Tokens have no cash value.",
                                       ],
                                       "props": {

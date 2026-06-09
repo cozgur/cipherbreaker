@@ -15,6 +15,7 @@ import { act, fireEvent, waitFor } from '@testing-library/react-native';
 
 import { finishPurchase, initialize } from '@lib/iap/iapManager';
 import { purchaseProduct } from '@lib/iap/purchaseFlow';
+import { getEntitlements } from '@lib/iap/restorePurchases';
 import { IAPError } from '@lib/iap/errors';
 import { USER_STORE_DEFAULTS, useUserStore } from '@state/userStore';
 import { ShopScreen } from '../ShopScreen';
@@ -30,10 +31,12 @@ jest.mock('@lib/iap/purchaseFlow', () => ({
   ...jest.requireActual('@lib/iap/purchaseFlow'),
   purchaseProduct: jest.fn(),
 }));
+jest.mock('@lib/iap/restorePurchases', () => ({ getEntitlements: jest.fn() }));
 
 const mockInitialize = initialize as unknown as jest.Mock;
 const mockFinish = finishPurchase as unknown as jest.Mock;
 const mockPurchase = purchaseProduct as unknown as jest.Mock;
+const mockGetEntitlements = getEntitlements as unknown as jest.Mock;
 
 function verified(overrides: Record<string, unknown> = {}): unknown {
   return {
@@ -53,6 +56,7 @@ beforeEach(() => {
   mockInitialize.mockReset().mockResolvedValue([]);
   mockFinish.mockReset().mockResolvedValue(undefined);
   mockPurchase.mockReset();
+  mockGetEntitlements.mockReset();
 });
 
 afterEach(() => {
@@ -255,5 +259,152 @@ describe('ShopScreen — purchase flow', () => {
     expect(useUserStore.getState().iapHistory).toHaveLength(0); // nothing recorded
     expect(mockFinish).not.toHaveBeenCalled(); // left unfinished
     expect(utils.queryByText(/Tokens added/)).toBeNull(); // silent
+  });
+});
+
+describe('ShopScreen — restore purchases (Phase 8.5.7)', () => {
+  const RESTORE = 'Restore purchases'; // a11y label (distinct case from the visible text)
+
+  function entitlement(overrides: Record<string, unknown> = {}): unknown {
+    return {
+      productId: 'remove_ads',
+      transactionId: 'rt-1',
+      purchaseDate: 1_700_000_000_000,
+      environment: 'Production',
+      ...overrides,
+    };
+  }
+
+  /** A pre-existing iapHistory row (already-applied entitlement). */
+  function historyRow(transactionId: string): unknown {
+    return {
+      transactionId,
+      originalTransactionId: transactionId,
+      productId: 'remove_ads',
+      tokensGranted: 0,
+      timestamp: 1,
+      purchaseDate: 1,
+      expirationDate: null,
+      environment: 'Production',
+    };
+  }
+
+  it('renders the Restore Purchases button', () => {
+    const { getByText } = renderWithNavigation('Shop', { Shop: ShopScreen });
+    expect(getByText('Restore Purchases')).toBeTruthy();
+  });
+
+  it('reports "Nothing to restore" when no entitlements are found', async () => {
+    mockGetEntitlements.mockResolvedValue([]);
+    const utils = renderWithNavigation('Shop', { Shop: ShopScreen });
+
+    await act(async () => {
+      fireEvent.press(utils.getByLabelText(RESTORE));
+    });
+    expect(await utils.findByText('Nothing to restore')).toBeTruthy();
+    expect(useUserStore.getState().adsRemoved).toBe(false);
+    expect(useUserStore.getState().iapHistory).toHaveLength(0);
+  });
+
+  it('applies a restored non-consumable and reports "1 purchase restored"', async () => {
+    mockGetEntitlements.mockResolvedValue([entitlement({ transactionId: 'rt-1' })]);
+    const utils = renderWithNavigation('Shop', { Shop: ShopScreen });
+
+    await act(async () => {
+      fireEvent.press(utils.getByLabelText(RESTORE));
+    });
+    expect(await utils.findByText('1 purchase restored')).toBeTruthy();
+    expect(useUserStore.getState().adsRemoved).toBe(true);
+    expect(useUserStore.getState().iapHistory).toHaveLength(1);
+    expect(useUserStore.getState().iapHistory[0]?.transactionId).toBe('rt-1');
+  });
+
+  it('counts multiple newly-applied entitlements (plural copy)', async () => {
+    mockGetEntitlements.mockResolvedValue([
+      entitlement({ transactionId: 'rt-1' }),
+      entitlement({ transactionId: 'rt-2' }),
+    ]);
+    const utils = renderWithNavigation('Shop', { Shop: ShopScreen });
+
+    await act(async () => {
+      fireEvent.press(utils.getByLabelText(RESTORE));
+    });
+    expect(await utils.findByText('2 purchases restored')).toBeTruthy();
+    expect(useUserStore.getState().iapHistory).toHaveLength(2);
+  });
+
+  it('skips an already-applied entitlement (duplicate) → "Nothing to restore"', async () => {
+    useUserStore.setState({ iapHistory: [historyRow('rt-1')] as never });
+    mockGetEntitlements.mockResolvedValue([entitlement({ transactionId: 'rt-1' })]);
+    const utils = renderWithNavigation('Shop', { Shop: ShopScreen });
+
+    await act(async () => {
+      fireEvent.press(utils.getByLabelText(RESTORE));
+    });
+    expect(await utils.findByText('Nothing to restore')).toBeTruthy();
+    expect(useUserStore.getState().iapHistory).toHaveLength(1); // not appended
+  });
+
+  it('counts only the newly-applied entitlement when one is a duplicate', async () => {
+    useUserStore.setState({ iapHistory: [historyRow('rt-1')] as never });
+    mockGetEntitlements.mockResolvedValue([
+      entitlement({ transactionId: 'rt-1' }), // duplicate — skipped
+      entitlement({ transactionId: 'rt-2' }), // new — applied
+    ]);
+    const utils = renderWithNavigation('Shop', { Shop: ShopScreen });
+
+    await act(async () => {
+      fireEvent.press(utils.getByLabelText(RESTORE));
+    });
+    expect(await utils.findByText('1 purchase restored')).toBeTruthy();
+    expect(useUserStore.getState().iapHistory).toHaveLength(2);
+  });
+
+  it('shows an error message when discovery throws (no crash)', async () => {
+    mockGetEntitlements.mockRejectedValue(new IAPError('NETWORK_ERROR', 'offline'));
+    const utils = renderWithNavigation('Shop', { Shop: ShopScreen });
+
+    await act(async () => {
+      fireEvent.press(utils.getByLabelText(RESTORE));
+    });
+    expect(await utils.findByText("Couldn't restore purchases. Try again.")).toBeTruthy();
+    expect(useUserStore.getState().adsRemoved).toBe(false);
+  });
+
+  it('blocks a concurrent tap while a restore is in flight', async () => {
+    let resolveEntitlements: (value: unknown) => void = () => {};
+    mockGetEntitlements.mockReturnValue(
+      new Promise((resolve) => {
+        resolveEntitlements = resolve;
+      }),
+    );
+    const utils = renderWithNavigation('Shop', { Shop: ShopScreen });
+
+    await act(async () => {
+      fireEvent.press(utils.getByLabelText(RESTORE));
+      fireEvent.press(utils.getByLabelText(RESTORE)); // second tap, same flight
+    });
+    expect(mockGetEntitlements).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      resolveEntitlements([]);
+    });
+  });
+
+  it('auto-dismisses the restore message after 3s', async () => {
+    jest.useFakeTimers();
+    mockGetEntitlements.mockResolvedValue([]);
+    const utils = renderWithNavigation('Shop', { Shop: ShopScreen });
+
+    await act(async () => {
+      fireEvent.press(utils.getByLabelText(RESTORE));
+    });
+    expect(utils.getByText('Nothing to restore')).toBeTruthy();
+
+    act(() => {
+      jest.advanceTimersByTime(3000);
+    });
+    expect(utils.queryByText('Nothing to restore')).toBeNull();
+    jest.useRealTimers();
   });
 });
