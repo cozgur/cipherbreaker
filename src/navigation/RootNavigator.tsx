@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { NavigationContainer, DefaultTheme, type Theme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
+import { initialize as initializeAds } from '@lib/ads/adManager';
 import { dispose as disposeIap, initialize as initializeIap } from '@lib/iap/iapManager';
 import { startPurchaseListener } from '@lib/iap/purchaseFlow';
 import { AdWatchScreen } from '@screens/AdWatchScreen';
@@ -101,6 +102,15 @@ export function RootNavigator(): React.JSX.Element {
     startPurchaseListener();
     initializeIap().catch((error) => {
       console.log('[iap] launch initialize failed (shop will retry)', { error });
+    });
+    // Phase 8.6.2 — AdMob SDK bring-up, parallel with IAP (no dependency,
+    // no ordering constraint). Runs regardless of `adsRemoved`: Remove Ads
+    // only suppresses interstitial LOADS (8.6.4); the rewarded path stays
+    // available to payers (8.6.1 Q11). `initialize` contains its own
+    // failures (resolves false, dev-logged) — the catch is a belt-and-
+    // braces guard so no rejection can ever escape the launch effect.
+    initializeAds().catch((error) => {
+      console.log('[ads] launch initialize failed', { error });
     });
     return () => {
       void disposeIap();
