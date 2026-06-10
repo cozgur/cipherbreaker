@@ -93,6 +93,12 @@ export interface PurchaseHandler {
 let storeConnected = false;
 /** Fully ready: connection open AND products fetched. Gates getProducts. */
 let initialized = false;
+/** The in-flight `initialize` run, or null. Coalesces concurrent callers
+ *  (app-launch init in RootNavigator + ShopScreen mount) onto ONE
+ *  connect+fetch instead of racing two `initConnection`/`fetchProducts`
+ *  sequences before `initialized` flips. Cleared on settle so a failed
+ *  run can be retried. */
+let initializePromise: Promise<readonly StoreProduct[]> | null = null;
 let products: readonly StoreProduct[] = [];
 const subscriptions: Subscription[] = [];
 
@@ -114,39 +120,59 @@ let purchaseListenerAttached = false;
  * (e.g. unsigned Paid Apps Agreement returns an empty list, which the
  * UI handles as "unavailable" rather than a crash).
  *
+ * Concurrent callers (app-launch init + ShopScreen mount) share ONE
+ * in-flight run via `initializePromise` — without it, two calls that both
+ * arrive before `initialized` flips would each open a connection and fetch
+ * the catalog.
+ *
  * @throws {IapError} `CONNECTION_FAILED` if the store won't connect,
  *   `PRODUCTS_FETCH_FAILED` if the product query throws.
  */
 export async function initialize(): Promise<readonly StoreProduct[]> {
   if (initialized) return products;
+  // A run is already in flight — join it instead of starting a second.
+  if (initializePromise) return initializePromise;
 
-  // Reuse an already-open connection (e.g. a prior call that connected
-  // but failed at the fetch step) instead of reconnecting.
-  if (!storeConnected) {
-    let ok: boolean;
+  const run = (async () => {
+    // Reuse an already-open connection (e.g. a prior call that connected
+    // but failed at the fetch step) instead of reconnecting.
+    if (!storeConnected) {
+      let ok: boolean;
+      try {
+        ok = await initConnection();
+      } catch (error) {
+        throw new IapError('CONNECTION_FAILED', 'Failed to connect to the store.', error);
+      }
+      if (!ok) {
+        throw new IapError('CONNECTION_FAILED', 'Store connection was refused.');
+      }
+      storeConnected = true;
+    }
+
+    // Atomic: only flip `initialized` once products are cached. A fetch
+    // failure leaves the manager un-initialized so a later call retries
+    // the fetch instead of returning an empty cache forever.
     try {
-      ok = await initConnection();
+      const result = await fetchProducts({ skus: [...PRODUCT_SKUS], type: 'in-app' });
+      products = (result ?? []) as readonly StoreProduct[];
     } catch (error) {
-      throw new IapError('CONNECTION_FAILED', 'Failed to connect to the store.', error);
+      throw new IapError('PRODUCTS_FETCH_FAILED', 'Failed to fetch products.', error);
     }
-    if (!ok) {
-      throw new IapError('CONNECTION_FAILED', 'Store connection was refused.');
-    }
-    storeConnected = true;
-  }
+    initialized = true;
 
-  // Atomic: only flip `initialized` once products are cached. A fetch
-  // failure leaves the manager un-initialized so a later call retries
-  // the fetch instead of returning an empty cache forever.
+    return products;
+  })();
+  initializePromise = run;
+
+  // Clear the in-flight handle on settle: after success the `initialized`
+  // fast-path serves later calls; after failure the next call retries.
+  // Guard ownership — only null it if it's still *our* run, so a newer run
+  // started after a dispose isn't clobbered by this older finally.
   try {
-    const result = await fetchProducts({ skus: [...PRODUCT_SKUS], type: 'in-app' });
-    products = (result ?? []) as readonly StoreProduct[];
-  } catch (error) {
-    throw new IapError('PRODUCTS_FETCH_FAILED', 'Failed to fetch products.', error);
+    return await run;
+  } finally {
+    if (initializePromise === run) initializePromise = null;
   }
-  initialized = true;
-
-  return products;
 }
 
 /**
@@ -263,6 +289,19 @@ export async function finishPurchase(purchase: Purchase, isConsumable: boolean):
  * so a later `initialize` starts clean.
  */
 export async function dispose(): Promise<void> {
+  // Let an in-flight init settle FIRST, so teardown sees consistent state
+  // (and closes any connection the run opened) instead of racing it — a
+  // run that resolved after teardown would otherwise resurrect
+  // `initialized`/`storeConnected` or strand the native connection.
+  if (initializePromise) {
+    try {
+      await initializePromise;
+    } catch {
+      // An init failure is fine here — we're tearing down regardless.
+    }
+    initializePromise = null;
+  }
+
   for (const sub of subscriptions) sub.remove();
   subscriptions.length = 0;
   purchaseHandler = null;

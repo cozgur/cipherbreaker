@@ -226,6 +226,19 @@ correctly across notch/Dynamic-Island devices.
 **Why deferred.** Cosmetic warning, no functional impact today. Sweep all
 usages in one cleanup CP.
 
+### `iapManager.dispose` awaits an in-flight init unboundedly
+
+**Scope.** After the 8.5.9 dispose/init lifecycle fix, `dispose()` awaits any
+in-flight `initialize()` run before teardown (so it tears down consistent state
+and closes the connection the run opened). If the native `initConnection` /
+`fetchProducts` promise never settles, `dispose()` never settles either.
+
+**Why deferred.** Deliberate liveness tradeoff flagged NOTE-level by the 8.5.9
+Codex re-review (not a bug). `dispose` only runs on root-navigator unmount (app
+teardown) and StoreKit's native calls do settle/time out in practice, so the
+window is effectively unreachable. If ever needed, bound the await with a
+`Promise.race` timeout. No functional impact today.
+
 ### `completeOnboarding` does not flip `hasOnboarded`
 
 **Scope.** `completeOnboarding(today)` flips all 6 onboarding step flags + `completedAt` but leaves `hasOnboarded` as-is. Skip users land in `pickInitialRoute()`'s "all step flags true + hasOnboarded false" failsafe branch. The branch routes correctly to Home, but it's load-bearing for Skip users — not a true edge case.

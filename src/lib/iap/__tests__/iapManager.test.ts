@@ -95,6 +95,49 @@ describe('iapManager.initialize', () => {
     expect(mockFetchProducts).toHaveBeenCalledTimes(1);
   });
 
+  it('coalesces concurrent callers onto ONE connect + fetch', async () => {
+    // Launch init (RootNavigator) + ShopScreen mount can both call before
+    // `initialized` flips. Promise.all fires both before any await resolves,
+    // reproducing the race — the in-flight handle must collapse them to one
+    // connect + one fetch (8.5.9 Codex finding).
+    const [a, b] = await Promise.all([initialize(), initialize()]);
+    expect(mockInitConnection).toHaveBeenCalledTimes(1);
+    expect(mockFetchProducts).toHaveBeenCalledTimes(1);
+    expect(a).toEqual(SAMPLE_PRODUCTS);
+    expect(b).toEqual(SAMPLE_PRODUCTS);
+  });
+
+  it('retries on the next call after an in-flight init fails', async () => {
+    // A failed run must clear the in-flight handle so a later call can retry
+    // (not get stuck returning the rejected promise forever).
+    mockFetchProducts.mockRejectedValueOnce(new Error('transient'));
+    await expect(initialize()).rejects.toMatchObject({ code: 'PRODUCTS_FETCH_FAILED' });
+    const products = await initialize();
+    expect(products).toEqual(SAMPLE_PRODUCTS);
+    expect(mockFetchProducts).toHaveBeenCalledTimes(2);
+  });
+
+  it('dispose() awaits an in-flight init, then tears down cleanly', async () => {
+    // A dispose that races an in-flight init must let the run settle first,
+    // so it closes the connection the run opened and does not leave a stale
+    // `initialized` behind (8.5.9 Codex re-review SHOULD-FIX).
+    let resolveFetch: (v: unknown) => void = () => {};
+    mockFetchProducts.mockReturnValue(
+      new Promise((resolve) => {
+        resolveFetch = resolve;
+      }),
+    );
+
+    const initP = initialize(); // suspended awaiting fetchProducts
+    const disposeP = dispose(); // must await the in-flight init
+    resolveFetch(SAMPLE_PRODUCTS); // let the run complete
+    await initP;
+    await disposeP;
+
+    expect(mockEndConnection).toHaveBeenCalledTimes(1); // connection closed
+    expect(() => getProducts()).toThrow(IapError); // state reset, no stale init
+  });
+
   it('throws CONNECTION_FAILED when the store connection is refused', async () => {
     mockInitConnection.mockResolvedValue(false);
     await expect(initialize()).rejects.toMatchObject({ code: 'CONNECTION_FAILED' });

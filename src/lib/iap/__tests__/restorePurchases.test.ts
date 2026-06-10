@@ -71,6 +71,29 @@ describe('getEntitlements', () => {
     expect(entitlements[0]?.transactionId).toBe('older');
   });
 
+  it('filters out a non-purchased (pending Ask-to-Buy) entitlement', async () => {
+    // A `remove_ads` row still awaiting parental approval must NOT be
+    // granted on restore — it would flip `adsRemoved` for an incomplete
+    // purchase (8.5.9 Codex finding, over-rejection-safe guard).
+    mockGetAvailable.mockResolvedValue([
+      makePurchase('remove_ads', { transactionId: 'pending-row', purchaseState: 'pending' }),
+      makePurchase('remove_ads', { transactionId: 'good-row' }),
+    ]);
+    const entitlements = await getEntitlements();
+    expect(entitlements).toHaveLength(1);
+    expect(entitlements[0]?.transactionId).toBe('good-row');
+  });
+
+  it('filters out a malformed entitlement with an empty transactionId', async () => {
+    mockGetAvailable.mockResolvedValue([
+      makePurchase('remove_ads', { transactionId: '' }),
+      makePurchase('remove_ads', { transactionId: 'good-row' }),
+    ]);
+    const entitlements = await getEntitlements();
+    expect(entitlements).toHaveLength(1);
+    expect(entitlements[0]?.transactionId).toBe('good-row');
+  });
+
   it('throws a typed IAPError when the StoreKit query fails', async () => {
     mockGetAvailable.mockRejectedValue({ code: 'network-error', message: 'offline' });
     await expect(getEntitlements()).rejects.toBeInstanceOf(IAPError);

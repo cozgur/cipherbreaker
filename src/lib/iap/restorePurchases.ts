@@ -45,6 +45,18 @@ export async function getEntitlements(): Promise<Entitlement[]> {
 
   return purchases
     .filter(isApplePurchase)
+    // Only grant from a settled entitlement with a real id. `getAvailablePurchases`
+    // can surface unfinished / still-pending rows (e.g. an Ask-to-Buy `remove_ads`
+    // awaiting approval); granting one would flip `adsRemoved` for a purchase that
+    // hasn't completed. `purchaseState === 'purchased'` + a non-empty
+    // `transactionId` are the fields guaranteed present on an owned entitlement, so
+    // this is over-rejection-safe. We deliberately do NOT require the JWS
+    // (`purchaseToken`) here the way a live purchase event does: restore rows come
+    // from StoreKit's already-verified `currentEntitlements`, and whether expo-iap
+    // repopulates the JWS on the query path is unverified until the 8.6 restore
+    // device pass (obligation 4) — JWS-strictness lands there, not before.
+    .filter((purchase) => purchase.purchaseState === 'purchased')
+    .filter((purchase) => typeof purchase.transactionId === 'string' && purchase.transactionId.length > 0)
     .filter((purchase) => getProductBySku(purchase.productId)?.type === 'non-consumable')
     .map((purchase) => ({
       // Non-null: the filter above confirmed the product resolves.

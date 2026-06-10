@@ -1940,3 +1940,180 @@ BUG 4 (Mode 4 tutorial static timer) was confirmed intentional design and droppe
   micro-label (post-CP10; may not be needed).
 - `jitTooltipManager` queue-behavior audit once empirical data on simultaneous
   trigger events exists.
+
+## Phase 8.5 — IAP integration (delta)
+
+First real in-app purchases: four consumable token packs + one non-consumable
+(Remove Ads), wired through **expo-iap v4.3.1** (StoreKit 2, client-side, **no
+backend**). The token-store UI (`ShopScreen`) and entry point (token chip →
+`Shop` modal) already shipped pre-8.5; this phase added the SDK wiring,
+transaction lifecycle, idempotent grant/restore, and an on-device sandbox
+verification pass. 8.5.9 seals it.
+
+### CP timeline
+
+| CP | Commit | What |
+|---|---|---|
+| 8.5.1 | _recon (plan)_ | library decision — **expo-iap** over RevenueCat (supersedes the Phase 7A.5 RevenueCat comments) |
+| 8.5.2 | `51d37f4` | expo-iap install + config plugin + product catalog + `iapManager` skeleton |
+| 8.5.3 | `3a17800` | purchase flow (3-state) + receipt validation + Restore discovery foundation |
+| 8.5.4 | `a05317b` | userStore `iapHistory` + `grantIAPTokens` — schema **v8→v9** |
+| 8.5.5 | `0701446` | `ShopScreen` wired to the real expo-iap purchase flow |
+| 8.5.6 | `75e63ba` | `finishTransaction` orchestration + re-delivery handling + app-launch init |
+| 8.5.7 | `f5bf7fc` | Restore Purchases UI + entitlement application |
+| 8.5.8 | `6c32ca7` | sandbox device verification report; `cce06a2` config cleanup (pin `appleTeamId`, drop unused `RECORD_AUDIO`) |
+| 8.5.9 | _this CP_ | seal — ARCHITECTURE + Codex pre-tag review + tag |
+
+Test surface across the phase: `1620 → 1753` (+133 net).
+
+### Architecture overview — client-side StoreKit 2, no backend
+
+The whole IAP path runs on-device against StoreKit 2; there is **no
+server-side receipt validation**. Two layers of trust:
+
+1. **Cryptographic verification — native, not ours.** StoreKit 2 verifies the
+   JWS signature inside the OS *before* expo-iap emits a transaction to JS. A
+   transaction arriving on `purchaseUpdatedListener` is StoreKit-verified by
+   construction; a verification *failure* surfaces instead as the
+   `purchase-verification-failed` error code (→ `VERIFICATION_FAILED`, no
+   grant). We accept the bounded jailbreak-forge risk (8.5.1 decision) rather
+   than adding Apple server-to-server validation.
+2. **Structural sanity — `receiptValidator`.** A supplementary client-side
+   guard over the parsed transaction; *not* a re-implementation of signature
+   verification (impossible client-side without Apple credentials).
+
+### Module map (`src/lib/iap/`)
+
+| Module | Role |
+|---|---|
+| `productCatalog` | Single source of truth — 5 products. `ProductId` (short, e.g. `tokens_500`) is the internal discriminant; `WireSku` (reverse-DNS, derived from `SKU_PREFIX = com.ozgurcetintas.cipherbreaker.`) is the StoreKit/ASC string. The wire SKU is *derived*, never hand-typed, so the two can't drift. `getProductById` / `getProductBySku`. |
+| `iapManager` | **Transport layer only** — owns the StoreKit connection, the fetched-product cache, and exactly ONE persistent listener pair. `initialize` / `getProducts` / `setPurchaseHandler` / `purchase` / `finishPurchase` / `dispose`. Holds NO purchase business logic and mutates NO app state. |
+| `purchaseFlow` | Orchestration. ONE persistent handler routes **solicited** events (match the in-flight `pending` SKU → hand back to `purchaseProduct`'s awaiter) vs **unsolicited** re-deliveries (→ `finalizeUnsolicited`). `finalizePurchase` is the shared grant+finish point; `purchaseProduct` is grant-free. 3-state result: `success` / `pending` / `error`. |
+| `receiptValidator` | Structural guard. `validateTransaction` confirms: Apple store, `purchased` state, non-empty `transactionId`, JWS present (`purchaseToken`), known catalog product. |
+| `restorePurchases` | `getEntitlements` discovers restorable **non-consumable** entitlements via `getAvailablePurchases({ onlyIncludeActiveItemsIOS: true })`, projects to `Entitlement`, sorted oldest-first. Consumables are filtered out (gone once finished). |
+| `errors` | 8-code `IAPErrorCode` taxonomy (`USER_CANCELLED`, `PAYMENT_INVALID`, `PAYMENT_NOT_ALLOWED`, `PRODUCT_NOT_FOUND`, `NETWORK_ERROR`, `VERIFICATION_FAILED`, `DUPLICATE_TRANSACTION`, `UNKNOWN`) + `mapExpoErrorCode` (single translation point) + `isPendingCode` (Ask-to-Buy is *pending*, not an error) + `fromPurchaseError` / `coerceIAPError`. |
+
+### userStore schema v9 — `iapHistory` + `grantIAPTokens`
+
+- **`STORE_VERSION = 9`.** New top-level `iapHistory: readonly IAPTransaction[]`
+  (mirrors how `tokens` / `adsRemoved` sit at the top level).
+  `migrateV8ToV9` seeds `[]` — defaults-only, no pre-IAP cohort has historical
+  purchases to synthesise. The chained per-version mapper pattern (v1→…→v9)
+  held across the new step.
+- **`grantIAPTokens(transaction)` — atomic + idempotent.** The single grant
+  boundary for the `IAP` token source:
+  1. validate product (unknown id → `{ success: false, error: 'invalid_product' }`);
+  2. **idempotency gate** — pure, no state touched on reject — `transactionId`
+     already in `iapHistory` → `{ success: false, error: 'duplicate' }`;
+  3. one **atomic `set`**: append the `IAPTransaction` audit row **and**
+     (consumable) credit `tokens` or (non-consumable) flip `adsRemoved`, so a
+     reader never sees a granted wallet/flag without its audit row.
+- `environment` is normalised to the audit union (`'Sandbox'` exact, else
+  `'Production'`) — an audit label, never an entitlement gate.
+
+### Purchase lifecycle
+
+```
+request  → ShopScreen.purchaseProduct(id) → iapManager.purchase(sku)
+listener → persistent onPurchase  (installed at LAUNCH, before initialize)
+verify   → resultForPurchase → validateTransaction (structural guard)
+grant    → ShopScreen.finalizePurchase → grantIAPTokens  (atomic, idempotent)
+finish   → iapManager.finishPurchase  (ONLY after grant success|duplicate)
+```
+
+- **Listener-before-init ordering (RootNavigator).** `startPurchaseListener`
+  runs at app launch *before* `iapManager.initialize`, so a transaction
+  re-delivered during launch is routed, not dropped.
+- **finish-after-grant invariant.** `finishTransaction` is called only once the
+  entitlement is recorded (`success` or `duplicate`). Finishing before granting
+  would lose the entitlement on a crash; finishing on `invalid_product` would
+  discard an unverifiable transaction (left unfinished so StoreKit replays it).
+- **Re-delivery** (interrupted purchase / Ask-to-Buy approval after the sheet
+  closed / unfinished transaction replayed on relaunch) arrives as an
+  *unsolicited* event → `finalizeUnsolicited` validates → `finalizePurchase`
+  grants + finishes **silently**. The `transactionId` dedup makes a re-grant a
+  no-op; `finishPurchase` swallows its own errors (a failed finish just
+  re-delivers, absorbed idempotently — never surfaces a confusing post-success
+  error).
+
+### Key decisions (from 8.5.1)
+
+- **expo-iap, not RevenueCat.** Client-side StoreKit 2, no backend, no revenue
+  share — matches the use case (one-time consumables + one non-consumable,
+  iOS-only, no subscriptions). RevenueCat's value (subscriptions,
+  cross-platform, server validation, dashboard) is unused here. Supersedes the
+  Phase 7A.5 RevenueCat code comments.
+- **Consumable token packs + non-consumable Remove Ads** through the same SDK.
+- **Client-side validation trade-off** — rely on StoreKit 2's native JWS
+  verification + a structural guard; accept the bounded jailbreak-forge risk
+  rather than standing up an Apple S2S validation backend.
+- **Top-level `iapHistory`** (not nested) + **`transactionId` idempotency** as
+  the one schema detail that genuinely matters — it's the double-grant safety
+  net across re-delivery and restore.
+
+### Device verification (8.5.8)
+
+On-device sandbox pass — see `docs/PHASE-8-IAP-VERIFICATION.md` for the full
+report. Three of four load-bearing assumptions device-verified:
+
+- **Obligation 1** (verification-failure → error) — code-confirmed +
+  device-corroborated (no silent grants).
+- **Obligation 2** (`environmentIOS === 'Sandbox'`, exact) — ✅ verified; the
+  normaliser needs no change.
+- **Obligation 3** (listener-before-init / finish-post-grant / idempotency) —
+  ✅ verified; an interrupted purchase re-delivered on relaunch granted
+  **exactly once** (+500), then finished.
+- **Obligation 4** (restore `transactionId` stability) — ⏳ deferred to 8.6
+  (exercised through Remove Ads, which has no ShopScreen CTA yet).
+
+### Deferred to Phase 8.6 (Ad SDK)
+
+- **Remove Ads CTA** in `ShopScreen` (held from 8.5.5) — wires the
+  non-consumable purchase that flips `adsRemoved` as the production path.
+- **Obligation 4 device-verify** — restore `transactionId` stability, testable
+  once the Remove Ads CTA exists.
+- **E4 already-owned** edge case (re-buy Remove Ads) — same gating.
+- Phase 9 backlog surfaced during 8.5: runtime bundle-id launch assertion,
+  `userStore ↔ matchStore` require cycle, `react-native` `SafeAreaView`
+  deprecation.
+
+### Codex pre-tag review — 2 findings, both fixed (+ 1 re-review fix)
+
+Per the Phase 7A.8 discipline (pre-tag review breaks the post-tag-fix cycle),
+the full 8.5 IAP surface was reviewed before tagging. Findings + fixes (all
+in `iapManager` / `restorePurchases`, +5 tests):
+
+1. **MUST-FIX — restore grant skipped validation.** `getEntitlements` granted
+   every returned row after only the apple-store + non-consumable filters, so a
+   *pending* (Ask-to-Buy) or malformed `remove_ads` entitlement from
+   `getAvailablePurchases` could flip `adsRemoved` without the validation a live
+   purchase event gets. **Fix:** guard restore rows on
+   `purchaseState === 'purchased'` + non-empty `transactionId` before
+   projection/grant. **Deliberately NOT** the full live-event JWS
+   (`purchaseToken`) check: restore rows come from StoreKit's already-verified
+   `currentEntitlements`, whether expo-iap repopulates the JWS on the query path
+   is unverified until the 8.6 device pass, and the path is unreachable today
+   (no Remove Ads CTA) — so gating on an unverifiable JWS would risk
+   over-rejecting real restores with the safety net firing only *after* the tag.
+   JWS-strictness folds into 8.6 (obligation 4). Re-review explicitly accepted
+   this deferral.
+2. **SHOULD-FIX — init race.** Launch init (`RootNavigator`) and `ShopScreen`
+   mount both call `initialize`; the early-return only guarded `initialized`
+   (set last), so two callers could each open a connection + fetch the catalog.
+   **Fix:** memoize the in-flight run in `initializePromise`, returned to
+   concurrent callers and cleared ownership-guarded on settle.
+3. **Re-review SHOULD-FIX — dispose/init lifecycle race.** A stale init settling
+   after `dispose()` could resurrect `initialized`/`storeConnected` or strand the
+   connection. **Fix:** `dispose` awaits any in-flight init before teardown (so
+   state is consistent and the connection is closed), and the `initialize`
+   `finally` clears the handle only if it still owns it.
+
+Final re-review: **clean — 0 MUST-FIX, 0 SHOULD-FIX.** One NOTE: `dispose` now
+awaits the in-flight init unboundedly — a teardown-only liveness tradeoff (if the
+native init never settles, dispose doesn't either), recorded in the backlog.
+
+### Phase 8.5 sealed — Phase 8.6 (Ad SDK) handoff
+
+IAP integration is complete and device-verified for the token packs. 8.6 wires
+AdMob, adds the Remove Ads CTA, and completes obligation 4 + E4. Schema
+migrations are now applied through `v9`.
